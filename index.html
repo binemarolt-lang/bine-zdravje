@@ -512,6 +512,44 @@
       stroke-width: 2;
     }
 
+    /* Floating Action Button (FAB) za Foto Vnos Hrane */
+    .fab-photo-food {
+      position: fixed;
+      bottom: calc(72px + env(safe-area-inset-bottom, 12px));
+      right: 16px;
+      z-index: 150;
+      background: linear-gradient(135deg, #00E676 0%, #00B0FF 100%);
+      color: #08090A;
+      border: none;
+      border-radius: 999px;
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      box-shadow: 0 8px 26px rgba(0, 230, 118, 0.42), 0 0 1px 1px rgba(255, 255, 255, 0.5);
+      cursor: pointer;
+      font-weight: 800;
+      font-size: 0.85rem;
+      letter-spacing: -0.01em;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .fab-photo-food:hover {
+      transform: translateY(-2px) scale(1.04);
+      box-shadow: 0 12px 34px rgba(0, 230, 118, 0.55);
+    }
+    .fab-photo-food:active {
+      transform: scale(0.93);
+    }
+    .fab-photo-food svg {
+      width: 19px;
+      height: 19px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2.3;
+    }
+
     /* Body Scroll-Lock za mobilni iOS in Android */
     html.modal-open,
     body.modal-open {
@@ -1505,7 +1543,7 @@
 
   <header>
     <div class="brand">
-      🧬 BINE <span>ZDRAVJE</span> <small style="font-size: 0.65rem; color: var(--rec-green); font-weight: 700; border: 1px solid rgba(0,230,118,0.3); padding: 2px 6px; border-radius: 6px; margin-left: 6px;">v2.5</small>
+      🧬 BINE <span>ZDRAVJE</span> <small style="font-size: 0.65rem; color: var(--rec-green); font-weight: 700; border: 1px solid rgba(0,230,118,0.3); padding: 2px 6px; border-radius: 6px; margin-left: 6px;">v2.6</small>
     </div>
     <div style="display: flex; align-items: center; gap: 8px;">
       <button class="status-pill" onclick="cycleAnimeVibe()" id="vibeBtn" style="cursor: pointer; background: var(--surface-3); border-color: var(--edge-3); color: var(--text-1);" title="Nastavi glasnost anime ozadja">⚡ Vibe: 16%</button>
@@ -1606,6 +1644,23 @@
           <button class="btn secondary" style="padding: 4px 8px; font-size: 0.72rem;" onclick="switchNav('vault')">+ Dodaj</button>
         </div>
         <div id="danesSlotsContainer" style="display: flex; flex-direction: column; gap: 8px;"></div>
+      </div>
+
+      <!-- HITRI VNOS PREHRANE (FOTO + ROČNO) -->
+      <div class="card" style="border-top: 2px solid var(--rec-green); background: linear-gradient(180deg, var(--surface-2) 0%, rgba(20, 23, 26, 0.7) 100%);">
+        <div class="card-header">
+          <div class="card-title">🍽️ Dnevnik Prehrane</div>
+          <span class="status-pill" id="danesMealCountBadge" style="color: var(--rec-green); border-color: rgba(0,230,118,0.3);">0 obrokov danes</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px;">
+          <button type="button" class="btn" style="padding: 12px 10px; font-size: 0.88rem; font-weight: 800; background: linear-gradient(135deg, #00E676 0%, #00B0FF 100%); color: #08090A; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,230,118,0.3); cursor: pointer;" onclick="triggerDirectFoodPhotoUpload()">
+            <svg viewBox="0 0 24 24" style="width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.2;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+            + 📷 Foto Obrok
+          </button>
+          <button type="button" class="btn secondary" style="padding: 12px 8px; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 4px; border-radius: 12px; cursor: pointer;" onclick="switchNav('prehrana'); openQuickAddModal();">
+            ⚡ Ročni Vnos
+          </button>
+        </div>
       </div>
 
       <!-- DNEVNI VNOS TEŽE, TLAKA IN FOTOGRAFIJE FORME -->
@@ -1827,10 +1882,16 @@
           <span class="status-pill" id="mealCountBadge">Danes: 0 obrokov</span>
         </div>
 
+        <!-- Glavni gumb: + Foto vnos obroka -->
+        <button type="button" class="btn" style="width: 100%; padding: 13px; font-size: 0.95rem; font-weight: 800; background: linear-gradient(135deg, #00E676 0%, #00B0FF 100%); color: #08090A; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; margin-bottom: 10px; box-shadow: 0 4px 18px rgba(0,230,118,0.35); cursor: pointer;" onclick="triggerDirectFoodPhotoUpload()">
+          <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.2;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+          + 📷 Foto Vnos Obroka (Kamera / Slike)
+        </button>
+
         <!-- Hitre akcije -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-          <button type="button" class="btn" style="padding: 10px; font-size: 0.82rem;" onclick="openQuickAddModal()">
-            ⚡ Hitri vnos (Atwater)
+          <button type="button" class="btn secondary" style="padding: 10px; font-size: 0.82rem;" onclick="openQuickAddModal()">
+            ⚡ Ročni vnos (Atwater)
           </button>
           <button type="button" class="btn secondary" style="padding: 10px; font-size: 0.82rem;" onclick="openOffSearchModal()">
             🔍 Open Food Facts / 📷
@@ -2188,6 +2249,12 @@
     </button>
   </nav>
 
+  <!-- PLAVAJOČI GUMB ZA TRENUTNI FOTO VNOS HRANE (FAB) -->
+  <button type="button" class="fab-photo-food" onclick="triggerDirectFoodPhotoUpload()" title="Fotografiraj obrok za dnevnik">
+    <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+    <span>+ Foto Hrana</span>
+  </button>
+  <input type="file" id="directFoodCameraInput" accept="image/*" capture="environment" style="display: none;" onchange="handleDirectFoodPhotoUpload(this)">
 
   <!-- MODAL ZA HITRI VNOS (ATWATER QUICK ADD) -->
   <div class="modal-overlay" id="quickAddModalOverlay" onclick="if(event.target.id==='quickAddModalOverlay') closeQuickAddModal()">
@@ -2195,50 +2262,18 @@
       <div class="modal-header">
         <div class="modal-sheet-handle"></div>
         <div class="modal-header-row">
-          <h3>⚡ Hitri Vnos Obroka (Atwater)</h3>
+          <h3 id="quickAddModalTitle">📸 Foto / Hitri Vnos Obroka</h3>
           <button type="button" class="modal-close" onclick="closeQuickAddModal()">✕</button>
         </div>
       </div>
       <div class="modal-body">
-        <div>
-          <label style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Naziv obroka / živila</label>
-          <input type="text" id="qaFoodName" placeholder="npr. Piščanec z rižem" style="width: 100%; padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 8px; color: #fff; font-weight: 600;">
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-          <div>
-            <label style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Kalorije (kcal)</label>
-            <input type="number" id="qaCalories" placeholder="0" style="width: 100%; padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 8px; color: #fff; font-weight: 700;">
-          </div>
-          <div>
-            <label style="font-size: 0.72rem; color: var(--rec-green); font-weight: 700; text-transform: uppercase;">Beljakovine (g)</label>
-            <input type="number" id="qaProtein" placeholder="0" oninput="autoSyncAtwater()" style="width: 100%; padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 8px; color: var(--rec-green); font-weight: 700;">
-          </div>
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-          <div>
-            <label style="font-size: 0.72rem; color: var(--strain-blue); font-weight: 700; text-transform: uppercase;">Ogljikovi hidrati (g)</label>
-            <input type="number" id="qaCarbs" placeholder="0" oninput="autoSyncAtwater()" style="width: 100%; padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 8px; color: var(--strain-blue); font-weight: 700;">
-          </div>
-          <div>
-            <label style="font-size: 0.72rem; color: var(--rec-yellow); font-weight: 700; text-transform: uppercase;">Maščobe (g)</label>
-            <input type="number" id="qaFat" placeholder="0" oninput="autoSyncAtwater()" style="width: 100%; padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 8px; color: var(--rec-yellow); font-weight: 700;">
-          </div>
-        </div>
-
-        <div style="background: var(--surface-2); border: 1px solid var(--edge-1); padding: 8px 12px; border-radius: 8px; font-size: 0.74rem; color: var(--text-2); display: flex; justify-content: space-between; align-items: center;">
-          <span>Atwater izračun: <strong id="qaAtwaterSum" style="color: #fff;">0 kcal</strong></span>
-          <button type="button" class="btn secondary" style="font-size: 0.68rem; padding: 4px 8px;" onclick="applyAtwaterCalories()">Uporabi Atwater</button>
-        </div>
-
-        <!-- Foto Vnos za Obrok -->
-        <div style="background: var(--surface-2); border: 1px dashed var(--edge-2); border-radius: 10px; padding: 10px; text-align: center;">
-          <input type="file" id="mealPhotoInput" accept="image/*" style="display: none;" onchange="handleMealPhotoUpload(this)">
+        <!-- Foto Vnos za Obrok (Na vrhu za takojšen predogled) -->
+        <div style="background: var(--surface-2); border: 1px dashed var(--edge-2); border-radius: 12px; padding: 10px; text-align: center;">
+          <input type="file" id="mealPhotoInput" accept="image/*" capture="environment" style="display: none;" onchange="handleMealPhotoUpload(this)">
           <button type="button" class="btn secondary" style="width: 100%; padding: 8px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;" onclick="document.getElementById('mealPhotoInput').click()">
-            📷 Posnemi ali naloži fotografijo obroka
+            📷 Posnemi ali zamenjaj fotografijo obroka
           </button>
-          <div class="photo-preview-card" id="mealPreview" style="display: none;">
+          <div class="photo-preview-card" id="mealPreview" style="display: none; margin-top: 8px;">
             <div class="photo-preview-topbar">
               <span class="photo-meta-info" id="mealPhotoMeta">✓ Slika obroka</span>
               <div class="photo-action-group">
@@ -2253,8 +2288,48 @@
           </div>
         </div>
 
-        <button type="button" class="btn" style="width: 100%; padding: 12px; margin-top: 6px;" onclick="submitQuickAddMeal()">
-          + Dodaj v Dnevnik
+        <div>
+          <label style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Naziv obroka / živila</label>
+          <input type="text" id="qaFoodName" placeholder="npr. Kosilo, Piščanec z rižem..." style="width: 100%; padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 8px; color: #fff; font-weight: 600;">
+        </div>
+
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <label style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Kalorije (kcal)</label>
+            <div style="display: flex; gap: 4px;">
+              <button type="button" class="btn secondary" style="font-size: 0.65rem; padding: 2px 6px;" onclick="setQuickCal(350)">350</button>
+              <button type="button" class="btn secondary" style="font-size: 0.65rem; padding: 2px 6px;" onclick="setQuickCal(500)">500</button>
+              <button type="button" class="btn secondary" style="font-size: 0.65rem; padding: 2px 6px;" onclick="setQuickCal(750)">750</button>
+              <button type="button" class="btn secondary" style="font-size: 0.65rem; padding: 2px 6px;" onclick="setQuickCal(1000)">1000</button>
+            </div>
+          </div>
+          <input type="number" id="qaCalories" placeholder="0" style="width: 100%; padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 8px; color: #fff; font-weight: 700;">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div>
+            <label style="font-size: 0.72rem; color: var(--rec-green); font-weight: 700; text-transform: uppercase;">Beljakovine (g)</label>
+            <input type="number" id="qaProtein" placeholder="0" oninput="autoSyncAtwater()" style="width: 100%; padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 8px; color: var(--rec-green); font-weight: 700;">
+          </div>
+          <div>
+            <label style="font-size: 0.72rem; color: var(--strain-blue); font-weight: 700; text-transform: uppercase;">Ogljikovi hidrati (g)</label>
+            <input type="number" id="qaCarbs" placeholder="0" oninput="autoSyncAtwater()" style="width: 100%; padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 8px; color: var(--strain-blue); font-weight: 700;">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div>
+            <label style="font-size: 0.72rem; color: var(--rec-yellow); font-weight: 700; text-transform: uppercase;">Maščobe (g)</label>
+            <input type="number" id="qaFat" placeholder="0" oninput="autoSyncAtwater()" style="width: 100%; padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 8px; color: var(--rec-yellow); font-weight: 700;">
+          </div>
+          <div style="background: var(--surface-2); border: 1px solid var(--edge-1); padding: 6px 10px; border-radius: 8px; font-size: 0.7rem; color: var(--text-2); display: flex; flex-direction: column; justify-content: center; gap: 2px;">
+            <span>Atwater: <strong id="qaAtwaterSum" style="color: #fff;">0 kcal</strong></span>
+            <button type="button" class="btn secondary" style="font-size: 0.65rem; padding: 2px 6px;" onclick="applyAtwaterCalories()">Uveljavi</button>
+          </div>
+        </div>
+
+        <button type="button" class="btn" style="width: 100%; padding: 12px; margin-top: 6px; font-weight: 800; background: linear-gradient(135deg, #00E676 0%, #00B0FF 100%); color: #08090A; box-shadow: 0 4px 16px rgba(0,230,118,0.3);" onclick="submitQuickAddMeal()">
+          ✓ Shrani Obrok v Dnevnik
         </button>
       </div>
     </div>
@@ -3193,7 +3268,7 @@
     // Service worker & Auto-Update
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=3').then((reg) => {
+        navigator.serviceWorker.register('./sw.js?v=4').then((reg) => {
           reg.update();
           reg.onupdatefound = () => {
             const installingWorker = reg.installing;
@@ -3674,6 +3749,64 @@
     // 3. Foto vnos obroka
     let currentMealPhotoDataUrl = null;
 
+    function triggerDirectFoodPhotoUpload() {
+      const inp = document.getElementById('directFoodCameraInput');
+      if (inp) {
+        inp.value = '';
+        inp.click();
+      }
+    }
+
+    function getSuggestedMealName() {
+      const h = new Date().getHours();
+      if (h < 10) return 'Zajtrk';
+      if (h < 12) return 'Dopoldanska malica';
+      if (h < 15) return 'Kosilo';
+      if (h < 18) return 'Popoldanska malica';
+      if (h < 22) return 'Večerja';
+      return 'Pozni prigrizek';
+    }
+
+    function setQuickCal(kcal) {
+      const inp = document.getElementById('qaCalories');
+      if (inp) inp.value = kcal;
+      const atwater = document.getElementById('qaAtwaterSum');
+      if (atwater) atwater.textContent = `${kcal} kcal`;
+    }
+
+    function handleDirectFoodPhotoUpload(input) {
+      const file = input.files && input.files[0];
+      if (!file) return;
+
+      showMascotNotification('⏳ Obdelujem fotografijo obroka...');
+
+      compressAndResizeImage(file, { maxDim: 1200, initialQuality: 0.78, maxSizeKB: 150 })
+        .then(res => {
+          currentMealPhotoDataUrl = res.dataUrl;
+          const img = document.getElementById('mealPreviewImg');
+          if (img) img.src = res.dataUrl;
+          const preview = document.getElementById('mealPreview');
+          if (preview) preview.style.display = 'block';
+          const meta = document.getElementById('mealPhotoMeta');
+          if (meta) {
+            meta.innerHTML = `✓ ${res.width}×${res.height} · <strong style="color:var(--rec-green);">${res.sizeKB} KB</strong>`;
+          }
+          saveToLocalStorageSafe('bine_zdravje_last_meal_photo', res.dataUrl);
+
+          const nameInp = document.getElementById('qaFoodName');
+          if (nameInp && !nameInp.value.trim()) {
+            nameInp.value = getSuggestedMealName();
+          }
+
+          openQuickAddModal();
+          showMascotNotification(`Fotografija obroka pripravljena (${res.sizeKB} KB).`);
+        })
+        .catch(err => {
+          console.error('[Direct Food Upload]', err);
+          alert('Napaka pri zajemu fotografije: ' + err.message);
+        });
+    }
+
     function handleMealPhotoUpload(input) {
       const file = input.files && input.files[0];
       if (!file) return;
@@ -4112,6 +4245,8 @@
       const mealsList = document.getElementById('mealEntriesList');
       const countBadge = document.getElementById('mealCountBadge');
       if (countBadge) countBadge.textContent = `Danes: ${prehranaState.meals.length} obrokov (${Math.round(totKcal)} kcal, ${Math.round(totProt)}g B)`;
+      const danesBadge = document.getElementById('danesMealCountBadge');
+      if (danesBadge) danesBadge.textContent = `${prehranaState.meals.length} obrokov (${Math.round(totKcal)} kcal)`;
 
       if (mealsList) {
         mealsList.innerHTML = '';
@@ -4302,8 +4437,14 @@
       }
 
       if (kcal <= 0 && p <= 0) {
-        alert('Vnesi vsaj kalorije ali makrohranila.');
-        return;
+        if (currentMealPhotoDataUrl) {
+          kcal = 450; // Privzeta ocena za foto obrok brez vpisanih številk
+          p = 25;
+          showMascotNotification('Obrok shranjen s privzeto oceno (~450 kcal). Makre lahko kadarkoli prilagodiš!');
+        } else {
+          alert('Vnesi vsaj kalorije ali makrohranila.');
+          return;
+        }
       }
 
       const entry = {
