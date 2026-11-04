@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bine-zdravje-v6';
+const CACHE_NAME = 'bine-zdravje-v7';
 const ASSETS = [
   './',
   './index.html',
@@ -12,6 +12,7 @@ const ASSETS = [
   './food-aliases.json',
   './exercise-db.json',
   './workout-templates.json',
+  './google-health-workouts.json',
   './exercise-match.js',
   './workout-engine.js',
   './recovery-engine.js',

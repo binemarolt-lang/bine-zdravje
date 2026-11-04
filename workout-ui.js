@@ -793,7 +793,7 @@
       .wui-sheet-header { background: var(--surface-2); border-bottom: 1px solid var(--edge-1); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
       .wui-sheet-title-input { background: transparent; border: none; font-size: 1.15rem; font-weight: 800; color: #fff; flex: 1; padding: 4px 0; outline: none; }
       .wui-timer-badge { background: var(--surface-3); border: 1px solid var(--edge-2); border-radius: 8px; padding: 4px 10px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; font-weight: 700; color: var(--rec-green); }
-      .wui-sheet-body { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 14px; -webkit-overflow-scrolling: touch; }
+      .wui-sheet-body { flex: 1; overflow-y: auto; padding: 14px 14px calc(110px + env(safe-area-inset-bottom, 24px)) 14px; display: flex; flex-direction: column; gap: 14px; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; }
       .wui-sheet-footer { background: var(--surface-2); border-top: 1px solid var(--edge-1); padding: 12px 16px; display: flex; gap: 10px; }
 
       /* Vaja v treningu */
@@ -1092,8 +1092,60 @@
       }
     }
 
+    // Samodejno uvozi Google Health vadbe, če je zgodovina še prazna
+    if (getWorkouts().length === 0) {
+      importGoogleHealthWorkouts(false).catch(() => {});
+    }
+
     renderDashboard();
     renderBodyMapColors();
+  }
+
+  let historyExpanded = false;
+
+  async function importGoogleHealthWorkouts(notify = true) {
+    try {
+      const res = await fetch('./google-health-workouts.json?v=' + Date.now());
+      if (!res.ok) throw new Error('Datoteka ni dosegljiva (' + res.status + ')');
+      const incoming = await res.json();
+      if (!Array.isArray(incoming) || !incoming.length) return 0;
+
+      const current = getWorkouts();
+      const existingIds = new Set(current.map(w => w.id));
+      let added = 0;
+
+      for (const w of incoming) {
+        if (!existingIds.has(w.id)) {
+          current.push(w);
+          existingIds.add(w.id);
+          added++;
+        }
+      }
+
+      if (added > 0) {
+        current.sort((a, b) => (b.start || new Date(b.date).getTime()) - (a.start || new Date(a.date).getTime()));
+        saveWorkouts(current);
+        renderDashboard();
+        renderBodyMapColors();
+        if (notify && typeof root.showMascotNotification === 'function') {
+          root.showMascotNotification(`📥 Uspešno uvoženih ${added} treningov iz Google Health!`);
+        }
+      } else if (notify && typeof root.showMascotNotification === 'function') {
+        root.showMascotNotification('Vsi treningi iz Google Health so že uvoženi.');
+      }
+      return added;
+    } catch (e) {
+      console.warn('[WorkoutUI] Napaka pri uvozu Google Health treningov:', e);
+      if (notify && typeof root.showMascotNotification === 'function') {
+        root.showMascotNotification('Uvoz iz Google Health ni uspel: ' + e.message);
+      }
+      return 0;
+    }
+  }
+
+  function toggleHistoryExpanded() {
+    historyExpanded = !historyExpanded;
+    renderDashboard();
   }
 
   // ========== IZRIS GLAVNEGA ZAVIHKA (DASHBOARD) ==========
@@ -1159,15 +1211,25 @@
       <div class="card">
         <div class="card-header">
           <div class="card-title">📅 Zgodovina treningov</div>
-          <span style="font-size: 0.75rem; color: var(--text-3);">${history.length} shranjenih</span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <button type="button" class="btn secondary" style="padding: 4px 8px; font-size: 0.68rem; border-radius: 6px; cursor: pointer;" onclick="WorkoutUI.importGoogleHealthWorkouts(true)" title="Uvozi prejšnje vadbe iz Google Health">📥 Google Health</button>
+            <span style="font-size: 0.75rem; color: var(--text-3); font-family: 'JetBrains Mono', monospace;">${history.length}</span>
+          </div>
         </div>
         <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px;" id="wuiHistoryList">
     `;
 
     if (!history.length) {
-      html += `<div style="text-align: center; color: var(--text-3); font-size: 0.8rem; padding: 16px;">Še ni zabeleženih treningov. Začni prvega zgoraj!</div>`;
+      html += `
+        <div style="text-align: center; color: var(--text-3); font-size: 0.8rem; padding: 18px;">
+          Še ni zabeleženih treningov. Začni prvega zgoraj!
+          <div style="margin-top: 10px;">
+            <button type="button" class="btn secondary" style="font-size: 0.78rem; padding: 6px 14px; border-radius: 8px; cursor: pointer;" onclick="WorkoutUI.importGoogleHealthWorkouts(true)">📥 Uvozi 21 treningov iz Google Health (Fitbit)</button>
+          </div>
+        </div>
+      `;
     } else {
-      const showList = history.slice(0, 5);
+      const showList = historyExpanded ? history : history.slice(0, 5);
       for (const w of showList) {
         const dur = w.start && w.end ? Math.round((w.end - w.start) / 60000) : 0;
         const vol = calculateVolume(w);
@@ -1180,13 +1242,20 @@
             </div>
             <div style="font-size: 0.75rem; color: var(--text-2); display: flex; gap: 12px;">
               <span>⏱️ ${dur} min</span>
-              <span>🏋️ ${vol.toLocaleString('sl-SI')} kg</span>
+              ${vol > 0 ? `<span>🏋️ ${vol.toLocaleString('sl-SI')} kg</span>` : ''}
               <span>🔢 ${(w.exercises || []).reduce((acc, e) => acc + (e.sets || []).filter(s => s.done).length, 0)} serij</span>
             </div>
             <div style="font-size: 0.7rem; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
               ${esc(exSummary)}
             </div>
           </div>
+        `;
+      }
+      if (history.length > 5) {
+        html += `
+          <button type="button" class="btn secondary" style="width: 100%; padding: 8px; font-size: 0.75rem; border-radius: 8px; margin-top: 4px; cursor: pointer;" onclick="WorkoutUI.toggleHistoryExpanded()">
+            ${historyExpanded ? '▲ Prikaži manj' : '▼ Prikaži vseh ' + history.length + ' treningov'}
+          </button>
         `;
       }
     }
@@ -2598,7 +2667,9 @@
     saveSettingsForm,
     openTemplateModal,
     closeTemplateModal,
-    pickTemplate
+    pickTemplate,
+    importGoogleHealthWorkouts,
+    toggleHistoryExpanded
   };
 
   // UMD izvoz

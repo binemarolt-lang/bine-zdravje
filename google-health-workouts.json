@@ -1,0 +1,626 @@
+[
+  {
+    "id": "gh_3815686547814486104",
+    "date": "2026-09-26",
+    "start": 1790442000000,
+    "end": 1790442780000,
+    "name": "Google Fitbit Air: Bike",
+    "notes": "Google Fitbit Air vadba (102 kcal, 13 min)",
+    "bodyweight": 80,
+    "exercises": [
+      {
+        "exId": "cardio:bike",
+        "name": "Bike",
+        "sets": [
+          {
+            "w": null,
+            "reps": null,
+            "sec": 780,
+            "type": "normal",
+            "done": true
+          }
+        ],
+        "note": "Google Fitbit Air · 102 kcal · 13 min"
+      }
+    ],
+    "source": "import"
+  },
+  {
+    "id": "gh_752522216553819040",
+    "date": "2026-09-26",
+    "start": 1790442000000,
+    "end": 1790446740000,
+    "name": "Google Fitbit Air: Sport",
+    "notes": "Google Fitbit Air vadba (515 kcal, 79 min)",
+    "bodyweight": 80,
+    "exercises": [
+      {
+        "exId": "custom:sport",
+        "name": "Sport",
+        "sets": [
+          {
+            "w": null,
+            "reps": null,
+            "sec": 4740,
+            "type": "normal",
+            "done": true
+          }
+        ],
+        "note": "Google Fitbit Air · 515 kcal · 79 min"
+      }
+    ],
+    "source": "import"
+  },
+  {
+    "id": "gh_7240927678554208920",
+    "date": "2026-09-27",
+    "start": 1790528400000,
+    "end": 1790530200000,
+    "name": "Google Fitbit Air: Activity",
+    "notes": "Google Fitbit Air vadba (125 kcal, 30 min)",
+    "bodyweight": 80,
+    "exercises": [
+      {
+        "exId": "custom:activity",
+        "name": "Activity",
+        "sets": [
+          {
+            "w": null,
+            "reps": null,
+            "sec": 1800,
+            "type": "normal",
+            "done": true
+          }
+        ],
+        "note": "Google Fitbit Air · 125 kcal · 30 min"
+      }
+    ],
+    "source": "import"
+  },
+  {
+    "id": "gh_5036429549718416376",
+    "date": "2026-09-28",
+    "start": 1790614800000,
+    "end": 1790616660000,
+    "name": "Google Fitbit Air: Activity",
+    "notes": "Google Fitbit Air vadba (281 kcal, 31 min)",
+    "bodyweight": 80,
+    "exercises": [
+      {
+        "exId": "custom:activity",
+        "name": "Activity",
+        "sets": [
+          {
+            "w": null,
+            "reps": null,
+            "sec": 1860,
+            "type": "normal",
+            "done": true
+          }
+        ],
+        "note": "Google Fitbit Air · 281 kcal · 31 min"
+      }
+    ],
+    "source": "import"
+  },
+  {
+    "id": "gh_6638708191485619560",
+    "date": "2026-09-28",
+    "start": 1790614800000,
+    "end": 1790619480000,
+    "name": "Google Fitbit Air: Sport",
+    "notes": "Google Fitbit Air vadba (583 kcal, 78 min)",
+    "bodyweight": 80,
+    "exercises": [
+      {
+        "exId": "custom:sport",
+        "name": "Sport",
+        "sets": [
+          {
+            "w": null,
+            "reps": null,
+            "sec": 4680,
+            "type": "normal",
+            "done": true
+          }
+        ],
+        "note": "Google Fitbit Air · 583 kcal · 78 min"
+      }
+    ],
+    "source": "import"
+  },
+  {
+    "id": "gh_7290027974018945168",
+    "date": "2026-09-28",
+    "start": 1790614800000,
+    "end": 1790615760000,
+    "name": "Google Fitbit Air: Activity",
+    "notes": "Google Fitbit Air vadba (103 kcal, 16 min)",
+    "bodyweight": 80,
+    "exercises": [
+      {
+        "exId": "custom:activity",
+        "name": "Activity",
+        "sets": [
+          {
+            "w": null,
+            "reps": null,
+            "sec": 960,
+            "type": "normal",
+            "done": true
+          }
+        ],
+        "note": "Google Fitbit Air · 103 kcal · 16 min"
+      }
+    ],
+    "source": "import"
+  },
+  {
+    "id": "gh_730839672401266072",
+    "date": "2026-09-28",
+    "start": 1790614800000,
+    "end": 1790616240000,
+    "name": "Google Fitbit Air: Walk",
+    "notes": "Google Fitbit Air vadba (188 kcal, 24 min)",
+    "bodyweight": 80,
+    "exercises": [
+      {
+        "exId": "cardio:walk",
+        "name": "Walk",
+        "sets": [
+          {
+            "w": null,
+            "reps": null,
+            "sec": 1440,
+            "type": "normal",
+            "done": true
+          }
+        ],
+        "note": "Google Fitbit Air · 188 kcal · 24 min"
+      }
+    ],
+    "source": "import"
+  },
+  {
+    "id": "gh_6349676820126775080",
+    "date": "2026-09-30",
+    "start": 1790787600000,
+    "end": 1790788920000,
+    "name": "Google Fitbit Air: Walk",
+    "notes": "Google Fitbit Air vadba (177 kcal, 22 min)",
+    "bodyweight": 80,
+    "exercises": [
+      {
+        "exId": "cardio:walk",
+        "name": "Walk",
+        "sets": [
+          {
+            "w": null,
+            "reps": null,
+            "sec": 1320,
+            "type": "normal",
+            "done": true
+          }
+        ],
+        "note": "Google Fitbit Air · 177 kcal · 22 min"
+      }
+    ],
+    "source": "import"
+  },
+  {
+    "id": "gh_8609371226253838616",
+    "date": "2026-09-30",
+    "start": 1790787600000,
+    "end": 1790788620000,
+    "name": "Google Fitbit Air: Activity",
+    "notes": "Google Fitbit Air vadba (104 kcal, 17 min)",
+    "bodyweight": 80,
+    "exercises": [
+      {
+        "exId": "custom:activity",
+        "name": "Activity",
+        "sets": [
+          {
+            "w": null,
+            "reps": null,
+            "sec": 1020,
+            "type": "normal",
+            "done": true
+          }
+        ],
+        "note": "Google Fitbit Air · 104 kcal · 17 min"
+      }
+    ],
+    "source": "import"
+  },
+  {
+    "id": "gh_9191950629746201920",
+    "date": "2026-09-30",
+    "start": 1790787600000,
+    "end": 1790788980000,
+    "name": "Google Fitbit Air: Walk",
+    "notes": "Google Fitbit Air vadba (165 kcal, 23 min)",
+    "bodyweight": 80,
+    "exercises": [
+      {
+        "exId": "cardio:walk",
+        "name": "Walk",
+        "sets": [
+          {
+            "w": null,
+            "reps": null,
+            "sec": 1380,
+            "type": "normal",
+            "done": true
+          }
+        ],
+        "note": "Google Fitbit Air · 165 kcal · 23 min"
+      }
+    ],
+    "source": "import"
+  },
+  {
+    "id": "gh_4087163053960766920",
+    "date": "2026-10-01",
+    "start": 1790874000000,
+    "end": 1790875380000,
+    "name": "Google Fitbit Air: Walk",
+    "notes": "Google Fitbit Air vadba (195 kcal, 23 min)",
+    "bodyweight": 80,
+    "exercises": [
+      {
+        "exId": "cardio:walk",
+        "name": "Walk",
+        "sets": [
+          {
+            "w": null,
+            "reps": null,
+            "sec": 1380,
+            "type": "normal",
+            "done": true
+          }
+        ],
+        "note": "Google Fitbit Air · 195 kcal · 23 min"
+      }
+    ],
+    "source": "import"
+  },
+  {
+    "id": "gh_8359208191476412480",
+    "date": "2026-10-01",
+    "start": 1790874000000,
+    "end": 1790875440000,
+    "name": "Google Fitbit Air: Run",
+    "notes": "Google Fitbit Air vadba (285 kcal, 24 min)",
+    "bodyweight": 80,
+    "exercises": [
+      {
+        "exId": "cardio:run",
+        "name": "Run",
+        "sets": [
+          {
+            "w": null,
+            "reps": null,
+            "sec": 1440,
+            "type": "normal",
+            "done": true
+          }
+        ],
+        "note": "Google Fitbit Air · 285 kcal · 24 min"
+      }
+    ],
+    "source": "import"
+  },
+  {
+    "id": "gh_7316306406479862344",
+    "date": "2026-10-02",
+    "start": 1790960400000,
+    "end": 1790962320000,
+    "name": "Google Fitbit Air: Walk",
+    "notes": "Google Fitbit Air vadba (260 kcal, 32 min)",
+    "bodyweight": 80,
+    "exercises": [
+      {
+        "exId": "cardio:walk",
+        "name": "Walk",
+        "sets": [
+          {
+            "w": null,
+            "reps": null,
+            "sec": 1920,
+            "type": "normal",
+            "done": true
+          }
+        ],
+        "note": "Google Fitbit Air · 260 kcal · 32 min"
+      }
+    ],
+    "source": "import"
+  },
+  {
+    "id": "gh_1960518622786118848",
+    "date": "2026-10-03",
+    "start": 1791046800000,
+    "end": 1791049080000,
+    "name": "Google Fitbit Air: Activity",
+    "notes": "Google Fitbit Air vadba (142 kcal, 38 min)",
+    "bodyweight": 80,
+    "exercises": [
+      {
+        "exId": "custom:activity",
+        "name": "Activity",
+        "sets": [
+          {
+            "w": null,
+            "reps": null,
+            "sec": 2280,
+            "type": "normal",
+            "done": true
+          }
+        ],
+        "note": "Google Fitbit Air · 142 kcal · 38 min"
+      }
+    ],
+    "source": "import"
+  },
+  {
+    "id": "gh_4991497227879915176",
+    "date": "2026-10-28",
+    "start": 1793206800000,
+    "end": 1793207820000,
+    "name": "Fitbit Air: Racket sports",
+    "notes": "Fitbit Air vadba (104 kcal, 17 min)",
+    "bodyweight": 80,
+    "exercises": [
+      {
+        "exId": "custom:racket-sports",
+        "name": "Racket sports",
+        "sets": [
+          {
+            "w": null,
+            "reps": null,
+            "sec": 1020,
+            "type": "normal",
+            "done": true
+          }
+        ],
+        "note": "Fitbit Air · 104 kcal · 17 min"
+      }
+    ],
+    "source": "import"
+  },
+  {
+    "id": "gh_6758618717214135864",
+    "date": "2026-10-28",
+    "start": 1793206800000,
+    "end": 1793212140000,
+    "name": "Fitbit Air: Strength training",
+    "notes": "Fitbit Air vadba (352 kcal, 89 min)",
+    "bodyweight": 80,
+    "exercises": [
+      {
+        "exId": "0025",
+        "name": "barbell bench press",
+        "sets": [
+          {
+            "w": 75,
+            "reps": 8,
+            "rir": 2,
+            "rpe": 8,
+            "type": "normal",
+            "done": true
+          },
+          {
+            "w": 75,
+            "reps": 8,
+            "rir": 2,
+            "rpe": 8,
+            "type": "normal",
+            "done": true
+          },
+          {
+            "w": 75,
+            "reps": 7,
+            "rir": 1,
+            "rpe": 9,
+            "type": "normal",
+            "done": true
+          }
+        ],
+        "note": "Samodejno sinhroniziran Fitnes trening iz Google Health (89 min, 352 kcal)"
+      },
+      {
+        "exId": "0043",
+        "name": "barbell full squat",
+        "sets": [
+          {
+            "w": 90,
+            "reps": 6,
+            "rir": 2,
+            "rpe": 8,
+            "type": "normal",
+            "done": true
+          },
+          {
+            "w": 90,
+            "reps": 6,
+            "rir": 2,
+            "rpe": 8,
+            "type": "normal",
+            "done": true
+          }
+        ]
+      }
+    ],
+    "source": "import"
+  },
+  {
+    "id": "gh_4044975101507518144",
+    "date": "2026-10-29",
+    "start": 1793293200000,
+    "end": 1793294220000,
+    "name": "Fitbit Air: Walk",
+    "notes": "Fitbit Air vadba (146 kcal, 17 min)",
+    "bodyweight": 80,
+    "exercises": [
+      {
+        "exId": "cardio:walk",
+        "name": "Walk",
+        "sets": [
+          {
+            "w": null,
+            "reps": null,
+            "sec": 1020,
+            "type": "normal",
+            "done": true
+          }
+        ],
+        "note": "Fitbit Air · 146 kcal · 17 min"
+      }
+    ],
+    "source": "import"
+  },
+  {
+    "id": "gh_4848423750486336176",
+    "date": "2026-10-29",
+    "start": 1793293200000,
+    "end": 1793294520000,
+    "name": "Fitbit Air: Walk",
+    "notes": "Fitbit Air vadba (184 kcal, 22 min)",
+    "bodyweight": 80,
+    "exercises": [
+      {
+        "exId": "cardio:walk",
+        "name": "Walk",
+        "sets": [
+          {
+            "w": null,
+            "reps": null,
+            "sec": 1320,
+            "type": "normal",
+            "done": true
+          }
+        ],
+        "note": "Fitbit Air · 184 kcal · 22 min"
+      }
+    ],
+    "source": "import"
+  },
+  {
+    "id": "gh_5482186660517086720",
+    "date": "2026-10-29",
+    "start": 1793293200000,
+    "end": 1793299560000,
+    "name": "Fitbit Air: Strength training",
+    "notes": "Fitbit Air vadba (369 kcal, 106 min)",
+    "bodyweight": 80,
+    "exercises": [
+      {
+        "exId": "0025",
+        "name": "barbell bench press",
+        "sets": [
+          {
+            "w": 75,
+            "reps": 8,
+            "rir": 2,
+            "rpe": 8,
+            "type": "normal",
+            "done": true
+          },
+          {
+            "w": 75,
+            "reps": 8,
+            "rir": 2,
+            "rpe": 8,
+            "type": "normal",
+            "done": true
+          },
+          {
+            "w": 75,
+            "reps": 7,
+            "rir": 1,
+            "rpe": 9,
+            "type": "normal",
+            "done": true
+          }
+        ],
+        "note": "Samodejno sinhroniziran Fitnes trening iz Google Health (106 min, 369 kcal)"
+      },
+      {
+        "exId": "0043",
+        "name": "barbell full squat",
+        "sets": [
+          {
+            "w": 90,
+            "reps": 6,
+            "rir": 2,
+            "rpe": 8,
+            "type": "normal",
+            "done": true
+          },
+          {
+            "w": 90,
+            "reps": 6,
+            "rir": 2,
+            "rpe": 8,
+            "type": "normal",
+            "done": true
+          }
+        ]
+      }
+    ],
+    "source": "import"
+  },
+  {
+    "id": "gh_7528083534675420072",
+    "date": "2026-10-29",
+    "start": 1793293200000,
+    "end": 1793294100000,
+    "name": "Fitbit Air: Bike",
+    "notes": "Fitbit Air vadba (101 kcal, 15 min)",
+    "bodyweight": 80,
+    "exercises": [
+      {
+        "exId": "cardio:bike",
+        "name": "Bike",
+        "sets": [
+          {
+            "w": null,
+            "reps": null,
+            "sec": 900,
+            "type": "normal",
+            "done": true
+          }
+        ],
+        "note": "Fitbit Air · 101 kcal · 15 min"
+      }
+    ],
+    "source": "import"
+  },
+  {
+    "id": "gh_3885061696929149568",
+    "date": "2026-10-30",
+    "start": 1793379600000,
+    "end": 1793380860000,
+    "name": "Fitbit Air: Walk",
+    "notes": "Fitbit Air vadba (138 kcal, 21 min)",
+    "bodyweight": 80,
+    "exercises": [
+      {
+        "exId": "cardio:walk",
+        "name": "Walk",
+        "sets": [
+          {
+            "w": null,
+            "reps": null,
+            "sec": 1260,
+            "type": "normal",
+            "done": true
+          }
+        ],
+        "note": "Fitbit Air · 138 kcal · 21 min"
+      }
+    ],
+    "source": "import"
+  }
+]
