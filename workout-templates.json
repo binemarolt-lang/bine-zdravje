@@ -1,0 +1,1443 @@
+[
+  {
+    "id": "ppl-6day",
+    "name_sl": "Potisk / Vlek / Noge (6 dni)",
+    "name_en": "Push / Pull / Legs (6-day)",
+    "source_url": "https://www.reddit.com/r/Fitness/comments/37ylk5/a_linear_progression_based_ppl_program_for/",
+    "days": [
+      {
+        "name": "Push A",
+        "exercises": [
+          {
+            "exId": "0025",
+            "name": "barbell bench press",
+            "sets": 3,
+            "repRange": [
+              6,
+              8
+            ],
+            "restSec": 180,
+            "rir": 2
+          },
+          {
+            "exId": "1162",
+            "name": "barbell standing military press",
+            "sets": 3,
+            "repRange": [
+              8,
+              10
+            ],
+            "restSec": 120,
+            "rir": 2
+          },
+          {
+            "exId": "0314",
+            "name": "dumbbell incline bench press",
+            "sets": 3,
+            "repRange": [
+              8,
+              12
+            ],
+            "restSec": 90,
+            "rir": 2
+          },
+          {
+            "exId": "0241",
+            "name": "cable triceps pushdown (v-bar)",
+            "sets": 3,
+            "repRange": [
+              10,
+              15
+            ],
+            "restSec": 60,
+            "rir": 1
+          },
+          {
+            "exId": "0334",
+            "name": "dumbbell lateral raise",
+            "sets": 4,
+            "repRange": [
+              12,
+              15
+            ],
+            "restSec": 60,
+            "rir": 1
+          }
+        ]
+      },
+      {
+        "name": "Pull A",
+        "exercises": [
+          {
+            "exId": "0032",
+            "name": "barbell deadlift",
+            "sets": 3,
+            "repRange": [
+              5,
+              5
+            ],
+            "restSec": 180,
+            "rir": 2
+          },
+          {
+            "exId": "2291",
+            "name": "cable wide grip lat pulldown",
+            "sets": 3,
+            "repRange": [
+              8,
+              12
+            ],
+            "restSec": 90,
+            "rir": 2
+          },
+          {
+            "exId": "0861",
+            "name": "cable seated row",
+            "sets": 3,
+            "repRange": [
+              8,
+              12
+            ],
+            "restSec": 90,
+            "rir": 2
+          },
+          {
+            "exId": "5609",
+            "name": "cable standing face pull",
+            "sets": 3,
+            "repRange": [
+              12,
+              15
+            ],
+            "restSec": 60,
+            "rir": 2
+          },
+          {
+            "exId": "0031",
+            "name": "barbell curl",
+            "sets": 3,
+            "repRange": [
+              8,
+              10
+            ],
+            "restSec": 90,
+            "rir": 1
+          },
+          {
+            "exId": "0313",
+            "name": "dumbbell hammer curl",
+            "sets": 3,
+            "repRange": [
+              10,
+              12
+            ],
+            "restSec": 60,
+            "rir": 1
+          }
+        ]
+      },
+      {
+        "name": "Legs A",
+        "exercises": [
+          {
+            "exId": "0043",
+            "name": "barbell full squat",
+            "sets": 3,
+            "repRange": [
+              6,
+              8
+            ],
+            "restSec": 180,
+            "rir": 2
+          },
+          {
+            "exId": "0085",
+            "name": "barbell romanian deadlift",
+            "sets": 3,
+            "repRange": [
+              8,
+              10
+            ],
+            "restSec": 120,
+            "rir": 2
+          },
+          {
+            "exId": "0739",
+            "name": "sled 45° leg press",
+            "sets": 3,
+            "repRange": [
+              10,
+              12
+            ],
+            "restSec": 90,
+            "rir": 2
+          },
+          {
+            "exId": "0586",
+            "name": "lever lying leg curl",
+            "sets": 3,
+            "repRange": [
+              10,
+              12
+            ],
+            "restSec": 60,
+            "rir": 1
+          },
+          {
+            "exId": "3018",
+            "name": "standing calf raise",
+            "sets": 4,
+            "repRange": [
+              12,
+              15
+            ],
+            "restSec": 60,
+            "rir": 1
+          }
+        ]
+      },
+      {
+        "name": "Push B",
+        "exercises": [
+          {
+            "exId": "1162",
+            "name": "barbell standing military press",
+            "sets": 3,
+            "repRange": [
+              6,
+              8
+            ],
+            "restSec": 180,
+            "rir": 2
+          },
+          {
+            "exId": "0025",
+            "name": "barbell bench press",
+            "sets": 3,
+            "repRange": [
+              8,
+              10
+            ],
+            "restSec": 120,
+            "rir": 2
+          },
+          {
+            "exId": "0251",
+            "name": "chest dip",
+            "sets": 3,
+            "repRange": [
+              8,
+              12
+            ],
+            "restSec": 90,
+            "rir": 2
+          },
+          {
+            "exId": "0178",
+            "name": "cable lateral raise",
+            "sets": 4,
+            "repRange": [
+              12,
+              15
+            ],
+            "restSec": 60,
+            "rir": 1
+          },
+          {
+            "exId": "0061",
+            "name": "barbell lying triceps extension",
+            "sets": 3,
+            "repRange": [
+              10,
+              12
+            ],
+            "restSec": 60,
+            "rir": 1
+          }
+        ]
+      },
+      {
+        "name": "Pull B",
+        "exercises": [
+          {
+            "exId": "0027",
+            "name": "barbell bent over row",
+            "sets": 3,
+            "repRange": [
+              6,
+              8
+            ],
+            "restSec": 120,
+            "rir": 2
+          },
+          {
+            "exId": "0652",
+            "name": "pull-up",
+            "sets": 3,
+            "repRange": [
+              6,
+              10
+            ],
+            "restSec": 120,
+            "rir": 2
+          },
+          {
+            "exId": "0292",
+            "name": "dumbbell one arm bent-over row",
+            "sets": 3,
+            "repRange": [
+              8,
+              12
+            ],
+            "restSec": 90,
+            "rir": 1
+          },
+          {
+            "exId": "5609",
+            "name": "cable standing face pull",
+            "sets": 3,
+            "repRange": [
+              12,
+              15
+            ],
+            "restSec": 60,
+            "rir": 2
+          },
+          {
+            "exId": "0318",
+            "name": "dumbbell incline curl",
+            "sets": 3,
+            "repRange": [
+              10,
+              12
+            ],
+            "restSec": 60,
+            "rir": 1
+          },
+          {
+            "exId": "0313",
+            "name": "dumbbell hammer curl",
+            "sets": 3,
+            "repRange": [
+              10,
+              12
+            ],
+            "restSec": 60,
+            "rir": 1
+          }
+        ]
+      },
+      {
+        "name": "Legs B",
+        "exercises": [
+          {
+            "exId": "0043",
+            "name": "barbell full squat",
+            "sets": 3,
+            "repRange": [
+              8,
+              10
+            ],
+            "restSec": 150,
+            "rir": 2
+          },
+          {
+            "exId": "0085",
+            "name": "barbell romanian deadlift",
+            "sets": 3,
+            "repRange": [
+              8,
+              10
+            ],
+            "restSec": 120,
+            "rir": 2
+          },
+          {
+            "exId": "0585",
+            "name": "lever leg extension",
+            "sets": 3,
+            "repRange": [
+              10,
+              15
+            ],
+            "restSec": 60,
+            "rir": 1
+          },
+          {
+            "exId": "0599",
+            "name": "lever seated leg curl",
+            "sets": 3,
+            "repRange": [
+              10,
+              15
+            ],
+            "restSec": 60,
+            "rir": 1
+          },
+          {
+            "exId": "3018",
+            "name": "standing calf raise",
+            "sets": 4,
+            "repRange": [
+              12,
+              15
+            ],
+            "restSec": 60,
+            "rir": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "upper-lower-4day",
+    "name_sl": "Zgornji / Spodnji del (4 dni)",
+    "name_en": "Upper / Lower (4-day)",
+    "source_url": "https://www.muscleandstrength.com/workouts/phul-workout",
+    "days": [
+      {
+        "name": "Upper Power",
+        "exercises": [
+          {
+            "exId": "0025",
+            "name": "barbell bench press",
+            "sets": 3,
+            "repRange": [
+              5,
+              6
+            ],
+            "restSec": 180,
+            "rir": 2
+          },
+          {
+            "exId": "0027",
+            "name": "barbell bent over row",
+            "sets": 3,
+            "repRange": [
+              5,
+              6
+            ],
+            "restSec": 180,
+            "rir": 2
+          },
+          {
+            "exId": "1162",
+            "name": "barbell standing military press",
+            "sets": 3,
+            "repRange": [
+              6,
+              8
+            ],
+            "restSec": 120,
+            "rir": 2
+          },
+          {
+            "exId": "2291",
+            "name": "cable wide grip lat pulldown",
+            "sets": 3,
+            "repRange": [
+              8,
+              10
+            ],
+            "restSec": 90,
+            "rir": 2
+          },
+          {
+            "exId": "0031",
+            "name": "barbell curl",
+            "sets": 3,
+            "repRange": [
+              8,
+              10
+            ],
+            "restSec": 90,
+            "rir": 1
+          },
+          {
+            "exId": "0201",
+            "name": "cable pushdown",
+            "sets": 3,
+            "repRange": [
+              8,
+              10
+            ],
+            "restSec": 90,
+            "rir": 1
+          }
+        ]
+      },
+      {
+        "name": "Lower Power",
+        "exercises": [
+          {
+            "exId": "0043",
+            "name": "barbell full squat",
+            "sets": 3,
+            "repRange": [
+              5,
+              6
+            ],
+            "restSec": 180,
+            "rir": 2
+          },
+          {
+            "exId": "0032",
+            "name": "barbell deadlift",
+            "sets": 3,
+            "repRange": [
+              5,
+              5
+            ],
+            "restSec": 180,
+            "rir": 2
+          },
+          {
+            "exId": "0739",
+            "name": "sled 45° leg press",
+            "sets": 3,
+            "repRange": [
+              8,
+              10
+            ],
+            "restSec": 120,
+            "rir": 2
+          },
+          {
+            "exId": "0586",
+            "name": "lever lying leg curl",
+            "sets": 3,
+            "repRange": [
+              8,
+              10
+            ],
+            "restSec": 90,
+            "rir": 1
+          },
+          {
+            "exId": "3018",
+            "name": "standing calf raise",
+            "sets": 4,
+            "repRange": [
+              10,
+              12
+            ],
+            "restSec": 60,
+            "rir": 1
+          }
+        ]
+      },
+      {
+        "name": "Upper Hypertrophy",
+        "exercises": [
+          {
+            "exId": "0314",
+            "name": "dumbbell incline bench press",
+            "sets": 3,
+            "repRange": [
+              8,
+              12
+            ],
+            "restSec": 90,
+            "rir": 2
+          },
+          {
+            "exId": "0861",
+            "name": "cable seated row",
+            "sets": 3,
+            "repRange": [
+              8,
+              12
+            ],
+            "restSec": 90,
+            "rir": 2
+          },
+          {
+            "exId": "0334",
+            "name": "dumbbell lateral raise",
+            "sets": 4,
+            "repRange": [
+              12,
+              15
+            ],
+            "restSec": 60,
+            "rir": 1
+          },
+          {
+            "exId": "1030",
+            "name": "lever pec deck fly",
+            "sets": 3,
+            "repRange": [
+              10,
+              15
+            ],
+            "restSec": 60,
+            "rir": 1
+          },
+          {
+            "exId": "0318",
+            "name": "dumbbell incline curl",
+            "sets": 3,
+            "repRange": [
+              10,
+              12
+            ],
+            "restSec": 60,
+            "rir": 1
+          },
+          {
+            "exId": "0061",
+            "name": "barbell lying triceps extension",
+            "sets": 3,
+            "repRange": [
+              10,
+              12
+            ],
+            "restSec": 60,
+            "rir": 1
+          }
+        ]
+      },
+      {
+        "name": "Lower Hypertrophy",
+        "exercises": [
+          {
+            "exId": "0042",
+            "name": "barbell front squat",
+            "sets": 3,
+            "repRange": [
+              8,
+              10
+            ],
+            "restSec": 120,
+            "rir": 2
+          },
+          {
+            "exId": "0085",
+            "name": "barbell romanian deadlift",
+            "sets": 3,
+            "repRange": [
+              8,
+              12
+            ],
+            "restSec": 120,
+            "rir": 2
+          },
+          {
+            "exId": "0585",
+            "name": "lever leg extension",
+            "sets": 3,
+            "repRange": [
+              10,
+              15
+            ],
+            "restSec": 60,
+            "rir": 1
+          },
+          {
+            "exId": "0599",
+            "name": "lever seated leg curl",
+            "sets": 3,
+            "repRange": [
+              10,
+              15
+            ],
+            "restSec": 60,
+            "rir": 1
+          },
+          {
+            "exId": "3018",
+            "name": "standing calf raise",
+            "sets": 4,
+            "repRange": [
+              12,
+              15
+            ],
+            "restSec": 60,
+            "rir": 1
+          },
+          {
+            "exId": "0472",
+            "name": "hanging leg raise",
+            "sets": 3,
+            "repRange": [
+              10,
+              15
+            ],
+            "restSec": 60,
+            "rir": 2
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "fullbody-3day",
+    "name_sl": "Celotno telo (3 dni)",
+    "name_en": "Full Body (3-day)",
+    "source_url": "https://thefitness.wiki/routines/r-fitness-basic-beginner-routine/",
+    "days": [
+      {
+        "name": "Full Body A",
+        "exercises": [
+          {
+            "exId": "0043",
+            "name": "barbell full squat",
+            "sets": 3,
+            "repRange": [
+              6,
+              8
+            ],
+            "restSec": 150,
+            "rir": 2
+          },
+          {
+            "exId": "0025",
+            "name": "barbell bench press",
+            "sets": 3,
+            "repRange": [
+              6,
+              8
+            ],
+            "restSec": 150,
+            "rir": 2
+          },
+          {
+            "exId": "0027",
+            "name": "barbell bent over row",
+            "sets": 3,
+            "repRange": [
+              6,
+              8
+            ],
+            "restSec": 120,
+            "rir": 2
+          },
+          {
+            "exId": "0334",
+            "name": "dumbbell lateral raise",
+            "sets": 3,
+            "repRange": [
+              10,
+              15
+            ],
+            "restSec": 60,
+            "rir": 1
+          },
+          {
+            "exId": "0031",
+            "name": "barbell curl",
+            "sets": 3,
+            "repRange": [
+              8,
+              12
+            ],
+            "restSec": 60,
+            "rir": 1
+          }
+        ]
+      },
+      {
+        "name": "Full Body B",
+        "exercises": [
+          {
+            "exId": "0032",
+            "name": "barbell deadlift",
+            "sets": 3,
+            "repRange": [
+              5,
+              5
+            ],
+            "restSec": 180,
+            "rir": 2
+          },
+          {
+            "exId": "1162",
+            "name": "barbell standing military press",
+            "sets": 3,
+            "repRange": [
+              6,
+              8
+            ],
+            "restSec": 120,
+            "rir": 2
+          },
+          {
+            "exId": "2291",
+            "name": "cable wide grip lat pulldown",
+            "sets": 3,
+            "repRange": [
+              8,
+              12
+            ],
+            "restSec": 90,
+            "rir": 2
+          },
+          {
+            "exId": "0314",
+            "name": "dumbbell incline bench press",
+            "sets": 3,
+            "repRange": [
+              8,
+              12
+            ],
+            "restSec": 90,
+            "rir": 2
+          },
+          {
+            "exId": "0201",
+            "name": "cable pushdown",
+            "sets": 3,
+            "repRange": [
+              10,
+              12
+            ],
+            "restSec": 60,
+            "rir": 1
+          }
+        ]
+      },
+      {
+        "name": "Full Body C",
+        "exercises": [
+          {
+            "exId": "0043",
+            "name": "barbell full squat",
+            "sets": 3,
+            "repRange": [
+              8,
+              10
+            ],
+            "restSec": 150,
+            "rir": 2
+          },
+          {
+            "exId": "0025",
+            "name": "barbell bench press",
+            "sets": 3,
+            "repRange": [
+              8,
+              10
+            ],
+            "restSec": 120,
+            "rir": 2
+          },
+          {
+            "exId": "0861",
+            "name": "cable seated row",
+            "sets": 3,
+            "repRange": [
+              8,
+              12
+            ],
+            "restSec": 90,
+            "rir": 2
+          },
+          {
+            "exId": "0085",
+            "name": "barbell romanian deadlift",
+            "sets": 3,
+            "repRange": [
+              8,
+              10
+            ],
+            "restSec": 120,
+            "rir": 2
+          },
+          {
+            "exId": "0472",
+            "name": "hanging leg raise",
+            "sets": 3,
+            "repRange": [
+              10,
+              15
+            ],
+            "restSec": 60,
+            "rir": 2
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "arnold-split",
+    "name_sl": "Arnoldov razcep (Prsa/Hrbet, Ramena/Roke, Noge)",
+    "name_en": "Arnold Split (Chest/Back, Shoulders/Arms, Legs)",
+    "source_url": "https://www.muscleandstrength.com/workouts/arnold-schwarzenegger-volume-workout-routines",
+    "days": [
+      {
+        "name": "Prsa in hrbet / Chest & Back",
+        "exercises": [
+          {
+            "exId": "0025",
+            "name": "barbell bench press",
+            "sets": 4,
+            "repRange": [
+              6,
+              10
+            ],
+            "restSec": 120,
+            "rir": 1
+          },
+          {
+            "exId": "0047",
+            "name": "barbell incline bench press",
+            "sets": 3,
+            "repRange": [
+              8,
+              10
+            ],
+            "restSec": 90,
+            "rir": 1
+          },
+          {
+            "exId": "0308",
+            "name": "dumbbell fly",
+            "sets": 3,
+            "repRange": [
+              10,
+              12
+            ],
+            "restSec": 60,
+            "rir": 1
+          },
+          {
+            "exId": "0652",
+            "name": "pull-up",
+            "sets": 4,
+            "repRange": [
+              6,
+              10
+            ],
+            "restSec": 120,
+            "rir": 1
+          },
+          {
+            "exId": "0027",
+            "name": "barbell bent over row",
+            "sets": 4,
+            "repRange": [
+              8,
+              10
+            ],
+            "restSec": 90,
+            "rir": 1
+          },
+          {
+            "exId": "0861",
+            "name": "cable seated row",
+            "sets": 3,
+            "repRange": [
+              10,
+              12
+            ],
+            "restSec": 60,
+            "rir": 1
+          }
+        ]
+      },
+      {
+        "name": "Ramena in roke / Shoulders & Arms",
+        "exercises": [
+          {
+            "exId": "1162",
+            "name": "barbell standing military press",
+            "sets": 4,
+            "repRange": [
+              6,
+              10
+            ],
+            "restSec": 120,
+            "rir": 1
+          },
+          {
+            "exId": "0334",
+            "name": "dumbbell lateral raise",
+            "sets": 4,
+            "repRange": [
+              10,
+              12
+            ],
+            "restSec": 60,
+            "rir": 1
+          },
+          {
+            "exId": "5609",
+            "name": "cable standing face pull",
+            "sets": 3,
+            "repRange": [
+              12,
+              15
+            ],
+            "restSec": 60,
+            "rir": 1
+          },
+          {
+            "exId": "0031",
+            "name": "barbell curl",
+            "sets": 4,
+            "repRange": [
+              8,
+              10
+            ],
+            "restSec": 90,
+            "rir": 1
+          },
+          {
+            "exId": "0318",
+            "name": "dumbbell incline curl",
+            "sets": 3,
+            "repRange": [
+              10,
+              12
+            ],
+            "restSec": 60,
+            "rir": 1
+          },
+          {
+            "exId": "0061",
+            "name": "barbell lying triceps extension",
+            "sets": 4,
+            "repRange": [
+              8,
+              12
+            ],
+            "restSec": 90,
+            "rir": 1
+          },
+          {
+            "exId": "0241",
+            "name": "cable triceps pushdown (v-bar)",
+            "sets": 3,
+            "repRange": [
+              10,
+              15
+            ],
+            "restSec": 60,
+            "rir": 1
+          }
+        ]
+      },
+      {
+        "name": "Noge in trup / Legs & Core",
+        "exercises": [
+          {
+            "exId": "0043",
+            "name": "barbell full squat",
+            "sets": 4,
+            "repRange": [
+              8,
+              10
+            ],
+            "restSec": 150,
+            "rir": 1
+          },
+          {
+            "exId": "0085",
+            "name": "barbell romanian deadlift",
+            "sets": 4,
+            "repRange": [
+              8,
+              10
+            ],
+            "restSec": 120,
+            "rir": 1
+          },
+          {
+            "exId": "0585",
+            "name": "lever leg extension",
+            "sets": 3,
+            "repRange": [
+              10,
+              15
+            ],
+            "restSec": 60,
+            "rir": 1
+          },
+          {
+            "exId": "0586",
+            "name": "lever lying leg curl",
+            "sets": 3,
+            "repRange": [
+              10,
+              15
+            ],
+            "restSec": 60,
+            "rir": 1
+          },
+          {
+            "exId": "3018",
+            "name": "standing calf raise",
+            "sets": 4,
+            "repRange": [
+              12,
+              15
+            ],
+            "restSec": 60,
+            "rir": 1
+          },
+          {
+            "exId": "0472",
+            "name": "hanging leg raise",
+            "sets": 3,
+            "repRange": [
+              12,
+              15
+            ],
+            "restSec": 60,
+            "rir": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "531-bbb",
+    "name_sl": "5/3/1 Boring But Big (glavni dvigi)",
+    "name_en": "5/3/1 Boring But Big (Main Lifts)",
+    "source_url": "https://www.jimwendler.com/blogs/jimwendler-com/101077382-boring-but-big",
+    "days": [
+      {
+        "name": "Dan 1: Vojaški potisk / Military Press",
+        "exercises": [
+          {
+            "exId": "1162",
+            "name": "barbell standing military press",
+            "sets": 3,
+            "repRange": [
+              5,
+              5
+            ],
+            "restSec": 180,
+            "rir": 1
+          },
+          {
+            "exId": "1162",
+            "name": "barbell standing military press",
+            "sets": 5,
+            "repRange": [
+              10,
+              10
+            ],
+            "restSec": 90,
+            "rir": 3
+          },
+          {
+            "exId": "0652",
+            "name": "pull-up",
+            "sets": 5,
+            "repRange": [
+              8,
+              10
+            ],
+            "restSec": 90,
+            "rir": 2
+          }
+        ]
+      },
+      {
+        "name": "Dan 2: Mrtvi dvig / Deadlift",
+        "exercises": [
+          {
+            "exId": "0032",
+            "name": "barbell deadlift",
+            "sets": 3,
+            "repRange": [
+              5,
+              5
+            ],
+            "restSec": 180,
+            "rir": 1
+          },
+          {
+            "exId": "0032",
+            "name": "barbell deadlift",
+            "sets": 5,
+            "repRange": [
+              10,
+              10
+            ],
+            "restSec": 120,
+            "rir": 3
+          },
+          {
+            "exId": "0472",
+            "name": "hanging leg raise",
+            "sets": 5,
+            "repRange": [
+              12,
+              15
+            ],
+            "restSec": 60,
+            "rir": 2
+          }
+        ]
+      },
+      {
+        "name": "Dan 3: Potisk s prsi / Bench Press",
+        "exercises": [
+          {
+            "exId": "0025",
+            "name": "barbell bench press",
+            "sets": 3,
+            "repRange": [
+              5,
+              5
+            ],
+            "restSec": 180,
+            "rir": 1
+          },
+          {
+            "exId": "0025",
+            "name": "barbell bench press",
+            "sets": 5,
+            "repRange": [
+              10,
+              10
+            ],
+            "restSec": 90,
+            "rir": 3
+          },
+          {
+            "exId": "0292",
+            "name": "dumbbell one arm bent-over row",
+            "sets": 5,
+            "repRange": [
+              10,
+              10
+            ],
+            "restSec": 90,
+            "rir": 2
+          }
+        ]
+      },
+      {
+        "name": "Dan 4: Počep / Squat",
+        "exercises": [
+          {
+            "exId": "0043",
+            "name": "barbell full squat",
+            "sets": 3,
+            "repRange": [
+              5,
+              5
+            ],
+            "restSec": 180,
+            "rir": 1
+          },
+          {
+            "exId": "0043",
+            "name": "barbell full squat",
+            "sets": 5,
+            "repRange": [
+              10,
+              10
+            ],
+            "restSec": 120,
+            "rir": 3
+          },
+          {
+            "exId": "0586",
+            "name": "lever lying leg curl",
+            "sets": 5,
+            "repRange": [
+              10,
+              10
+            ],
+            "restSec": 60,
+            "rir": 2
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "stronglifts-5x5",
+    "name_sl": "Starting Strength / StrongLifts 5x5",
+    "name_en": "Starting Strength / StrongLifts 5x5",
+    "source_url": "https://stronglifts.com/stronglifts-5x5/",
+    "days": [
+      {
+        "name": "Trening A / Workout A",
+        "exercises": [
+          {
+            "exId": "0043",
+            "name": "barbell full squat",
+            "sets": 5,
+            "repRange": [
+              5,
+              5
+            ],
+            "restSec": 180,
+            "rir": 2
+          },
+          {
+            "exId": "0025",
+            "name": "barbell bench press",
+            "sets": 5,
+            "repRange": [
+              5,
+              5
+            ],
+            "restSec": 180,
+            "rir": 2
+          },
+          {
+            "exId": "0027",
+            "name": "barbell bent over row",
+            "sets": 5,
+            "repRange": [
+              5,
+              5
+            ],
+            "restSec": 180,
+            "rir": 2
+          }
+        ]
+      },
+      {
+        "name": "Trening B / Workout B",
+        "exercises": [
+          {
+            "exId": "0043",
+            "name": "barbell full squat",
+            "sets": 5,
+            "repRange": [
+              5,
+              5
+            ],
+            "restSec": 180,
+            "rir": 2
+          },
+          {
+            "exId": "1162",
+            "name": "barbell standing military press",
+            "sets": 5,
+            "repRange": [
+              5,
+              5
+            ],
+            "restSec": 180,
+            "rir": 2
+          },
+          {
+            "exId": "0032",
+            "name": "barbell deadlift",
+            "sets": 1,
+            "repRange": [
+              5,
+              5
+            ],
+            "restSec": 180,
+            "rir": 2
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "minimalist-2day",
+    "name_sl": "Minimalistični 2-dnevni program",
+    "name_en": "Minimalist 2-Day Routine",
+    "source_url": "https://thefitness.wiki/routines/strength-training-muscle-building/",
+    "days": [
+      {
+        "name": "Dan 1 (Celotno telo A / Full Body A)",
+        "exercises": [
+          {
+            "exId": "0043",
+            "name": "barbell full squat",
+            "sets": 3,
+            "repRange": [
+              5,
+              8
+            ],
+            "restSec": 180,
+            "rir": 2
+          },
+          {
+            "exId": "0025",
+            "name": "barbell bench press",
+            "sets": 3,
+            "repRange": [
+              6,
+              8
+            ],
+            "restSec": 150,
+            "rir": 2
+          },
+          {
+            "exId": "0027",
+            "name": "barbell bent over row",
+            "sets": 3,
+            "repRange": [
+              6,
+              8
+            ],
+            "restSec": 120,
+            "rir": 2
+          },
+          {
+            "exId": "0472",
+            "name": "hanging leg raise",
+            "sets": 3,
+            "repRange": [
+              10,
+              15
+            ],
+            "restSec": 60,
+            "rir": 2
+          }
+        ]
+      },
+      {
+        "name": "Dan 2 (Celotno telo B / Full Body B)",
+        "exercises": [
+          {
+            "exId": "0032",
+            "name": "barbell deadlift",
+            "sets": 3,
+            "repRange": [
+              5,
+              5
+            ],
+            "restSec": 180,
+            "rir": 2
+          },
+          {
+            "exId": "1162",
+            "name": "barbell standing military press",
+            "sets": 3,
+            "repRange": [
+              6,
+              8
+            ],
+            "restSec": 150,
+            "rir": 2
+          },
+          {
+            "exId": "0652",
+            "name": "pull-up",
+            "sets": 3,
+            "repRange": [
+              6,
+              10
+            ],
+            "restSec": 120,
+            "rir": 2
+          },
+          {
+            "exId": "3018",
+            "name": "standing calf raise",
+            "sets": 3,
+            "repRange": [
+              12,
+              15
+            ],
+            "restSec": 60,
+            "rir": 1
+          }
+        ]
+      }
+    ]
+  }
+]

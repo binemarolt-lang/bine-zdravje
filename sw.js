@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bine-zdravje-v5';
+const CACHE_NAME = 'bine-zdravje-v6';
 const ASSETS = [
   './',
   './index.html',
@@ -9,7 +9,15 @@ const ASSETS = [
   './food-match.js',
   './food-vision-ui.js',
   './food-db.json',
-  './food-aliases.json'
+  './food-aliases.json',
+  './exercise-db.json',
+  './workout-templates.json',
+  './exercise-match.js',
+  './workout-engine.js',
+  './recovery-engine.js',
+  './workout-parser.js',
+  './workout-io.js',
+  './workout-ui.js'
 ];
 
 self.addEventListener('install', (event) => {
