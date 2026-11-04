@@ -1518,6 +1518,213 @@
       border-radius: 4px;
       display: block;
     }
+
+    /* =========================================================================
+       SKIN & HAIR (ESTETIKA) SLIDER & COMPONENT STYLES
+       ========================================================================= */
+    .sh-subtabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .sh-tab-btn {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: var(--surface-2);
+      border: 1px solid var(--edge-1);
+      color: var(--text-2);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .sh-tab-btn.active {
+      background: rgba(0, 230, 118, 0.15);
+      color: var(--rec-green);
+      border-color: var(--rec-green);
+    }
+    .sh-ring-card {
+      background: var(--surface-2);
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+      border: 1px solid var(--edge-1);
+    }
+    .sh-score-circle {
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      border: 4px solid var(--rec-green);
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.35);
+      box-shadow: 0 0 12px rgba(0, 230, 118, 0.12);
+    }
+    .sh-score-num {
+      font-size: 1.35rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .sh-score-lbl {
+      font-size: 0.62rem;
+      color: var(--text-3);
+    }
+    .sh-cat-chip {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 20px;
+      background: var(--surface-2);
+      border: 1px solid var(--edge-1);
+      color: var(--text-3);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .sh-cat-chip.active {
+      background: var(--rec-green);
+      color: #06070a;
+      border-color: var(--rec-green);
+    }
+    .sh-compare-wrapper {
+      position: relative;
+      width: 100%;
+      height: 280px;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #000;
+    }
+    .sh-split-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      user-select: none;
+      touch-action: pan-y;
+    }
+    .sh-split-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .sh-split-top {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      will-change: clip-path;
+    }
+    .sh-split-divider {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: var(--rec-green);
+      cursor: ew-resize;
+      transform: translateX(-50%);
+      z-index: 10;
+      touch-action: none;
+    }
+    .sh-divider-handle {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: var(--rec-green);
+      color: #06070a;
+      font-weight: 900;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 14px rgba(0, 0, 0, 0.7);
+    }
+    .sh-split-label {
+      position: absolute;
+      bottom: 10px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 5;
+    }
+    .sh-split-label.left { left: 10px; }
+    .sh-split-label.right { right: 10px; }
+    .sh-blend-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    .sh-blend-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: opacity 0.08s ease;
+    }
+    .sh-photo-thumb-card {
+      background: var(--surface-2);
+      border: 2px solid transparent;
+      border-radius: 8px;
+      padding: 4px;
+      cursor: pointer;
+      text-align: center;
+      transition: border-color 0.15s ease;
+    }
+    .sh-photo-thumb-card.selected-a {
+      border-color: #60a5fa;
+    }
+    .sh-photo-thumb-card.selected-b {
+      border-color: var(--rec-green);
+    }
+    .sh-grade-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      border: 1px solid var(--edge-1);
+      background: var(--surface-1);
+      color: var(--text-2);
+      font-weight: 700;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .sh-grade-btn.active {
+      background: var(--rec-green);
+      color: #06070a;
+      border-color: var(--rec-green);
+    }
+    .sh-nw-btn {
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--edge-1);
+      background: var(--surface-1);
+      color: var(--text-2);
+      font-weight: 600;
+      font-size: 0.72rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .sh-nw-btn.active {
+      background: #60a5fa;
+      color: #06070a;
+      border-color: #60a5fa;
+    }
   </style>
 </head>
 <body>
@@ -1543,7 +1750,7 @@
 
   <header>
     <div class="brand">
-      🧬 BINE <span>ZDRAVJE</span> <small style="font-size: 0.65rem; color: var(--rec-green); font-weight: 700; border: 1px solid rgba(0,230,118,0.3); padding: 2px 6px; border-radius: 6px; margin-left: 6px;">v2.8</small>
+      🧬 BINE <span>ZDRAVJE</span> <small style="font-size: 0.65rem; color: var(--rec-green); font-weight: 700; border: 1px solid rgba(0,230,118,0.3); padding: 2px 6px; border-radius: 6px; margin-left: 6px;">v2.9</small>
     </div>
     <div style="display: flex; align-items: center; gap: 8px;">
       <button class="status-pill" onclick="cycleAnimeVibe()" id="vibeBtn" style="cursor: pointer; background: var(--surface-3); border-color: var(--edge-3); color: var(--text-1);" title="Nastavi glasnost anime ozadja">⚡ Vibe: 16%</button>
@@ -2219,6 +2426,9 @@
       </div>
     </div>
 
+    <!-- ZAVIHEK 6: KOŽA, AKNE & LASJE (ESTETIKA) -->
+    <div id="view-estetika" class="view"></div>
+
   </div>
 
   <!-- BOTTOM NAVBAR -->
@@ -2242,6 +2452,10 @@
     <button class="nav-tab" onclick="switchNav('trening')">
       <svg viewBox="0 0 24 24"><path d="M6 5v14M18 5v14M2 9v6M22 9v6M6 12h12"></path></svg>
       <span>Trening</span>
+    </button>
+    <button class="nav-tab" onclick="switchNav('estetika')">
+      <svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 0 1 5 5v1a5 5 0 0 1-10 0V7a5 5 0 0 1 5-5z"></path><path d="M12 14c-4.42 0-8 2.69-8 6v1h16v-1c0-3.31-3.58-6-8-6z"></path><circle cx="17.5" cy="4.5" r="1.5"></circle></svg>
+      <span>Koža/Lasje</span>
     </button>
     <button class="nav-tab" onclick="switchNav('vault')">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
@@ -2674,6 +2888,11 @@
         renderBodyMap();
         if (window.WorkoutUI && typeof window.WorkoutUI.renderBodyMapColors === 'function') {
           window.WorkoutUI.renderBodyMapColors();
+        }
+      }
+      if (id === 'estetika') {
+        if (window.SkinHairUI && typeof window.SkinHairUI.render === 'function') {
+          window.SkinHairUI.render();
         }
       }
       window.scrollTo(0,0);
@@ -4740,5 +4959,13 @@
   <script src="./workout-parser.js?v=28"></script>
   <script src="./workout-io.js?v=28"></script>
   <script src="./workout-ui.js?v=28"></script>
+  <script src="./skin-storage.js?v=29"></script>
+  <script src="./skinhair-engine.js?v=29"></script>
+  <script src="./skinhair-ui.js?v=29"></script>
+  <script>
+    if (window.SkinHairUI && typeof window.SkinHairUI.mount === 'function') {
+      window.SkinHairUI.mount();
+    }
+  </script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bine-zdravje-v7';
+const CACHE_NAME = 'bine-zdravje-v29';
 const ASSETS = [
   './',
   './index.html',
@@ -18,7 +18,10 @@ const ASSETS = [
   './recovery-engine.js',
   './workout-parser.js',
   './workout-io.js',
-  './workout-ui.js'
+  './workout-ui.js',
+  './skin-storage.js',
+  './skinhair-engine.js',
+  './skinhair-ui.js'
 ];
 
 self.addEventListener('install', (event) => {
