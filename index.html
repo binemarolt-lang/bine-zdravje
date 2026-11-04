@@ -1,0 +1,4588 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Bine Zdravje v2 — Enotni Kineziološki Sistem</title>
+  <script src="./nutrition-engine.js"></script>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <meta name="theme-color" content="#08090A">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <style>
+    :root {
+      --bg: #08090A;
+      --surface-1: #0E1012;
+      --surface-2: #14171A;
+      --surface-3: #1B1F23;
+      --glass: rgba(20, 23, 26, 0.72);
+      --edge-1: rgba(255, 255, 255, 0.06);
+      --edge-2: rgba(255, 255, 255, 0.10);
+      --edge-3: rgba(255, 255, 255, 0.18);
+      --text-1: #F4F5F6;
+      --text-2: #A1A7B0;
+      --text-3: #71767B;
+      
+      /* Semantika Whoop & Oura & Kineziologija */
+      --rec-green: #00E676;
+      --rec-green-glow: rgba(0, 230, 118, 0.22);
+      --rec-yellow: #FFD600;
+      --rec-yellow-glow: rgba(255, 214, 0, 0.22);
+      --rec-red: #FF3D00;
+      --rec-red-glow: rgba(255, 61, 0, 0.22);
+      --strain-blue: #00E5FF;
+      --strain-blue-glow: rgba(0, 229, 255, 0.25);
+      --sleep-purple: #7C4DFF;
+      --sleep-purple-glow: rgba(124, 77, 255, 0.25);
+      --c-kinetics: #E040FB;
+      --c-nutrition: #00E676;
+      --c-training: #FF9100;
+      --c-blood: #FF1744;
+    }
+    
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html {
+      min-height: 100%;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text-1);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-feature-settings: "cv01", "ss03";
+      line-height: 1.45;
+      min-height: 100%;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Ambient Lighting */
+    .ambient {
+      position: fixed;
+      top: -120px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 440px;
+      height: 340px;
+      background: radial-gradient(circle, var(--rec-green-glow) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+      transition: background 0.6s ease;
+    }
+
+    /* Header */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(8, 9, 10, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--edge-1);
+      padding: 12px 18px env(safe-area-inset-top, 12px);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .brand {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .brand span { color: var(--rec-green); }
+    .status-pill {
+      background: var(--surface-2);
+      border: 1px solid var(--edge-2);
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-2);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--rec-green);
+      box-shadow: 0 0 8px var(--rec-green);
+    }
+
+    /* Container & Layout */
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 16px 16px 160px 16px;
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .view { display: none; flex-direction: column; gap: 14px; }
+    .view.active { display: flex; }
+
+    /* Surface Cards */
+    .card {
+      background: var(--surface-1);
+      border: 1px solid var(--edge-1);
+      box-shadow: inset 0 1px 0 var(--edge-1);
+      border-radius: 18px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .card-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-2);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Hero Twin Rings Section (Whoop 5.0) */
+    .hero-rings-card {
+      background: linear-gradient(180deg, var(--surface-1) 0%, rgba(14, 16, 18, 0.6) 100%);
+      padding: 20px 16px;
+      align-items: center;
+      text-align: center;
+    }
+    .rings-wrapper {
+      position: relative;
+      width: 220px;
+      height: 220px;
+      margin: 10px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .rings-center {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .recovery-score {
+      font-size: 3.2rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      color: var(--rec-green);
+      text-shadow: 0 0 24px var(--rec-green-glow);
+    }
+    .recovery-sub {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-2);
+      margin-top: 4px;
+    }
+
+    /* Bento Grid */
+    .bento-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .bento-cell {
+      background: var(--surface-2);
+      border: 1px solid var(--edge-1);
+      border-radius: 14px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .bento-cell.full { grid-column: span 2; }
+    .bento-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-3);
+    }
+    .bento-val {
+      font-size: 1.45rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-1);
+    }
+    .bento-sub {
+      font-size: 0.72rem;
+      color: var(--text-2);
+    }
+
+    /* Hypnogram */
+    .hypno-bar {
+      width: 100%;
+      height: 14px;
+      background: var(--surface-3);
+      border-radius: 6px;
+      display: flex;
+      overflow: hidden;
+      margin: 6px 0;
+    }
+    .hypno-deep { background: #304FFE; }
+    .hypno-rem { background: #00B0FF; }
+    .hypno-light { background: #536DFE; opacity: 0.7; }
+    .hypno-awake { background: #FF3D00; }
+
+    /* Interactive Drsniki & Form */
+    .slider-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      color: var(--text-2);
+    }
+    .slider-header strong { color: var(--text-1); font-variant-numeric: tabular-nums; }
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      background: var(--surface-3);
+      border-radius: 4px;
+      outline: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #fff;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    }
+
+    /* Alarmi */
+    .alert-banner {
+      background: rgba(255, 214, 0, 0.1);
+      border: 1px solid rgba(255, 214, 0, 0.3);
+      color: #FFD600;
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-size: 0.82rem;
+      display: flex;
+      gap: 10px;
+      line-height: 1.4;
+    }
+    .alert-banner.danger {
+      background: rgba(255, 61, 0, 0.12);
+      border-color: rgba(255, 61, 0, 0.35);
+      color: #FF6E40;
+    }
+    .alert-banner.success {
+      background: rgba(0, 230, 118, 0.1);
+      border-color: rgba(0, 230, 118, 0.3);
+      color: #00E676;
+    }
+
+    
+    /* Prehrana, MacroFactor & Kiwi stili */
+    .macro-progress-track {
+      height: 8px;
+      background: var(--surface-3);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+      margin-top: 4px;
+    }
+    .macro-progress-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .goal-chip {
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: var(--surface-2);
+      border: 1px solid var(--edge-2);
+      color: var(--text-2);
+      font-size: 0.76rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .goal-chip.active {
+      background: rgba(0, 230, 118, 0.15);
+      border-color: var(--rec-green);
+      color: #fff;
+      box-shadow: 0 0 10px var(--rec-green-glow);
+    }
+    .food-chip {
+      padding: 5px 10px;
+      border-radius: 6px;
+      background: var(--surface-2);
+      border: 1px solid var(--edge-2);
+      color: var(--text-1);
+      font-size: 0.72rem;
+      cursor: pointer;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: transform 0.1s, background 0.2s;
+    }
+    .food-chip:hover {
+      background: var(--surface-3);
+      border-color: var(--rec-green);
+      transform: translateY(-1px);
+    }
+    .ratio-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 8px 10px;
+      background: var(--surface-2);
+      border: 1px solid var(--edge-1);
+      border-radius: 8px;
+    }
+    .status-pill.suboptimal {
+      background: rgba(255, 214, 0, 0.15);
+      color: var(--rec-yellow);
+      border-color: var(--rec-yellow);
+    }
+    .status-pill.critical {
+      background: rgba(255, 61, 0, 0.15);
+      color: var(--rec-red);
+      border-color: var(--rec-red);
+    }
+    .status-pill.optimal {
+      background: rgba(0, 230, 118, 0.15);
+      color: var(--rec-green);
+      border-color: var(--rec-green);
+    }
+    .meal-item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 10px;
+      background: var(--surface-2);
+      border-radius: 8px;
+      border: 1px solid var(--edge-1);
+      transition: border-color 0.2s;
+    }
+    .meal-item-row:hover {
+      border-color: var(--edge-3);
+    }
+
+    /* Buttons */
+    .btn {
+      background: var(--text-1);
+      color: #08090A;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.88rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: transform 0.1s, opacity 0.15s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn.secondary {
+      background: var(--surface-2);
+      color: var(--text-1);
+      border: 1px solid var(--edge-2);
+    }
+    .btn.accent {
+      background: var(--strain-blue);
+      color: #08090A;
+    }
+
+    /* Slot groups */
+    .slot-card {
+      background: var(--surface-2);
+      border: 1px solid var(--edge-1);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .slot-head {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--strain-blue);
+    }
+    .sub-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(8, 9, 10, 0.5);
+      border: 1px solid var(--edge-1);
+      padding: 8px 12px;
+      border-radius: 8px;
+    }
+    .check-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid var(--text-3);
+      background: none;
+      cursor: pointer;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      transition: all 0.15s;
+    }
+    .check-btn.checked {
+      background: var(--rec-green);
+      border-color: var(--rec-green);
+      box-shadow: 0 0 10px var(--rec-green-glow);
+    }
+
+    /* Bottom Navigation */
+    .nav-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(14, 16, 18, 0.92);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-top: 1px solid var(--edge-1);
+      display: flex;
+      justify-content: space-around;
+      padding: 8px 6px env(safe-area-inset-bottom, 8px);
+      z-index: 200;
+    }
+    .nav-tab {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      background: none;
+      border: none;
+      color: var(--text-3);
+      font-size: 0.7rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: 10px;
+      transition: color 0.15s, transform 0.1s;
+    }
+    .nav-tab.active {
+      color: var(--text-1);
+    }
+    .nav-tab.active svg {
+      stroke: var(--rec-green);
+      filter: drop-shadow(0 0 6px var(--rec-green-glow));
+    }
+    .nav-tab svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+    }
+
+    /* Body Scroll-Lock za mobilni iOS in Android */
+    html.modal-open,
+    body.modal-open {
+      overflow: hidden !important;
+      height: 100% !important;
+      touch-action: none !important;
+      overscroll-behavior: none !important;
+    }
+
+    /* Modal & Bottom Sheet Arhitektura (100dvh, Touch-Action & Contain) */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100vh;
+      height: 100dvh;
+      background: rgba(0, 0, 0, 0.82);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 1000;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      touch-action: pan-y;
+      align-items: flex-end; /* Privzeto na mobilnih: Bottom Sheet */
+      justify-content: center;
+      padding: 0;
+    }
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--surface-1);
+      border: 1px solid var(--edge-2);
+      border-bottom: none;
+      border-radius: 24px 24px 0 0;
+      width: 100%;
+      max-width: 100% !important;
+      max-height: 90vh;
+      max-height: 90dvh !important;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      touch-action: pan-y;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.7);
+      position: relative;
+      margin: 0;
+      padding: 0;
+      animation: modalSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes modalSlideUp {
+      from {
+        opacity: 0;
+        transform: translateY(32px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .modal-header {
+      position: sticky;
+      top: 0;
+      z-index: 25;
+      background: rgba(14, 16, 18, 0.96);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--edge-1);
+      padding: 12px 18px 12px 18px;
+      flex-shrink: 0;
+    }
+    .modal-sheet-handle {
+      display: block;
+      width: 38px;
+      height: 4px;
+      background: var(--edge-3);
+      border-radius: 999px;
+      margin: 0 auto 10px auto;
+    }
+    .modal-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      gap: 12px;
+    }
+    .modal-header h2,
+    .modal-header h3 {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #fff;
+      margin: 0;
+      letter-spacing: -0.01em;
+      line-height: 1.3;
+    }
+    .modal-close {
+      background: var(--surface-2);
+      border: 1px solid var(--edge-2);
+      color: var(--text-2);
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      line-height: 1;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.15s ease;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .modal-close:hover,
+    .modal-close:active {
+      background: var(--surface-3);
+      color: #fff;
+      border-color: var(--edge-3);
+    }
+    .modal-body {
+      padding: 16px 18px calc(24px + env(safe-area-inset-bottom, 16px));
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      touch-action: pan-y;
+      flex: 1;
+    }
+    .modal-scroll-sub {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      touch-action: pan-y;
+    }
+
+    /* Namizna prilagoditev (Center Dialog) */
+    @media (min-width: 641px) {
+      .modal-overlay {
+        align-items: center;
+        padding: 24px 16px;
+      }
+      .modal {
+        border-radius: 20px;
+        border-bottom: 1px solid var(--edge-2);
+        max-width: 500px !important;
+        max-height: 85vh;
+        max-height: 85dvh !important;
+        margin: auto;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 1px 1px var(--edge-2);
+        animation: modalScaleUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      @keyframes modalScaleUp {
+        from {
+          opacity: 0;
+          transform: scale(0.96);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+      .modal-sheet-handle {
+        display: none;
+      }
+      .modal-body {
+        padding: 18px 20px 24px;
+      }
+    }
+
+    /* RESPONZIVNI BOTTOM-SHEET ZA PODROBNOSTI SNOVI (VAULT) */
+    .snov-sheet-overlay {
+      align-items: flex-end !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+    }
+    @media (min-width: 641px) {
+      .snov-sheet-overlay {
+        align-items: center !important;
+        padding: 24px 16px !important;
+      }
+    }
+
+    .snov-bottom-sheet {
+      background: var(--surface-1);
+      border: 1px solid var(--edge-2);
+      border-bottom: none;
+      border-radius: 24px 24px 0 0;
+      width: 100%;
+      max-width: 640px;
+      height: 90vh;
+      max-height: 90dvh !important;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.85);
+      animation: snovSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    @keyframes snovSlideUp {
+      from {
+        opacity: 0;
+        transform: translateY(100%);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (min-width: 641px) {
+      .snov-bottom-sheet {
+        border-radius: 20px;
+        border-bottom: 1px solid var(--edge-2);
+        height: auto;
+        max-height: 86vh;
+        max-height: 86dvh !important;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.75), 0 0 1px 1px var(--edge-2);
+        animation: snovPop 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      @keyframes snovPop {
+        from {
+          opacity: 0;
+          transform: scale(0.96);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+    }
+
+    /* Lepljiva glava (Sticky Header) */
+    .snov-sheet-header {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: rgba(14, 16, 18, 0.96);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--edge-1);
+      padding: 10px 18px 12px;
+      flex-shrink: 0;
+    }
+    .snov-drag-handle {
+      width: 40px;
+      height: 4px;
+      background: var(--edge-3);
+      border-radius: 999px;
+      margin: 0 auto 10px auto;
+    }
+    @media (min-width: 641px) {
+      .snov-drag-handle {
+        display: none;
+      }
+    }
+    .snov-header-main {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .snov-title-group {
+      flex: 1;
+      min-width: 0;
+    }
+    .snov-category-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+      flex-wrap: wrap;
+    }
+    .snov-class-tags {
+      font-size: 0.72rem;
+      color: var(--strain-blue);
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .snov-sheet-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.01em;
+      line-height: 1.25;
+      margin: 0;
+      word-break: break-word;
+    }
+    .snov-close-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--surface-2);
+      border: 1px solid var(--edge-2);
+      color: var(--text-2);
+      font-size: 1.15rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.15s ease;
+      line-height: 1;
+      padding: 0;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .snov-close-btn:hover,
+    .snov-close-btn:active {
+      background: var(--surface-3);
+      color: #fff;
+      border-color: var(--edge-3);
+      transform: scale(1.06);
+    }
+
+    /* Tekoče skrolabilno telo */
+    .snov-sheet-body {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      touch-action: pan-y;
+      padding: 16px 18px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Bento Stats Row */
+    .snov-bento-stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    @media (min-width: 480px) {
+      .snov-bento-stats {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+    .snov-stat-chip {
+      background: var(--surface-2);
+      border: 1px solid var(--edge-1);
+      border-radius: 12px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      text-decoration: none;
+      min-width: 0;
+    }
+    .snov-stat-chip.link:hover {
+      border-color: var(--strain-blue);
+      background: var(--surface-3);
+    }
+    .snov-stat-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-3);
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .snov-stat-val {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #fff;
+      font-variant-numeric: tabular-nums;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Evidence Badges */
+    .evidence-pill {
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 6px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+    }
+    .ev-a { background: rgba(0, 230, 118, 0.16); color: #00E676; border: 1px solid rgba(0, 230, 118, 0.35); }
+    .ev-b { background: rgba(0, 176, 255, 0.16); color: #00B0FF; border: 1px solid rgba(0, 176, 255, 0.35); }
+    .ev-c { background: rgba(255, 214, 0, 0.16); color: #FFD600; border: 1px solid rgba(255, 214, 0, 0.35); }
+    .ev-d { background: rgba(255, 82, 82, 0.16); color: #FF5252; border: 1px solid rgba(255, 82, 82, 0.35); }
+
+    /* Risk Warning Alert Box */
+    .snov-risk-alert {
+      background: rgba(255, 61, 0, 0.08);
+      border: 1px solid rgba(255, 61, 0, 0.32);
+      border-radius: 12px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .snov-risk-heading {
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: #FF5252;
+      letter-spacing: 0.06em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .snov-risk-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .snov-risk-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      background: rgba(255, 82, 82, 0.2);
+      color: #FFA4A4;
+      border: 1px solid rgba(255, 82, 82, 0.35);
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+
+    /* Vsebinske sekcije in berljiva tipografija */
+    .snov-section-card {
+      background: var(--surface-2);
+      border: 1px solid var(--edge-1);
+      border-radius: 14px;
+      padding: 14px 16px;
+    }
+    .snov-section-warning {
+      background: rgba(255, 61, 0, 0.05);
+      border-color: rgba(255, 61, 0, 0.24);
+    }
+    .snov-section-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.76rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--strain-blue);
+      margin-bottom: 8px;
+    }
+    .snov-prose {
+      font-size: 0.88rem;
+      line-height: 1.62;
+      color: var(--text-1);
+    }
+    .snov-prose .sheet-p {
+      margin: 0 0 10px 0;
+      color: var(--text-1);
+    }
+    .snov-prose .sheet-p:last-child {
+      margin-bottom: 0;
+    }
+    .snov-prose .sheet-strong {
+      color: #FFFFFF;
+      font-weight: 700;
+    }
+    .snov-prose .sheet-code {
+      background: var(--surface-3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.82em;
+      color: var(--rec-green);
+      font-family: monospace;
+    }
+    .snov-prose .sheet-ul,
+    .snov-prose .sheet-ol {
+      margin: 0 0 10px 0;
+      padding-left: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .snov-prose .sheet-ul:last-child,
+    .snov-prose .sheet-ol:last-child {
+      margin-bottom: 0;
+    }
+    .snov-prose .sheet-ul li,
+    .snov-prose .sheet-ol li {
+      color: var(--text-1);
+      line-height: 1.55;
+    }
+    .snov-prose .sheet-ul li::marker {
+      color: var(--rec-green);
+    }
+    .snov-prose .sheet-ol li::marker {
+      color: var(--strain-blue);
+      font-weight: 700;
+    }
+    .snov-aliases-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .snov-alias-badge {
+      font-size: 0.74rem;
+      background: var(--surface-3);
+      color: var(--text-2);
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--edge-1);
+    }
+
+    /* Fiksni spodnji del (Sticky Footer) */
+    .snov-sheet-footer {
+      position: sticky;
+      bottom: 0;
+      z-index: 30;
+      background: rgba(14, 16, 18, 0.97);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-top: 1px solid var(--edge-1);
+      padding: 12px 18px calc(12px + env(safe-area-inset-bottom, 0px));
+      flex-shrink: 0;
+    }
+    .snov-footer-content {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .snov-slot-select-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 140px;
+    }
+    .snov-slot-select-wrap label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--text-3);
+    }
+    .snov-slot-select {
+      background: var(--surface-2);
+      border: 1px solid var(--edge-2);
+      color: #fff;
+      padding: 9px 10px;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+    }
+    .snov-add-protocol-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--rec-green);
+      color: #041008;
+      font-size: 0.94rem;
+      font-weight: 800;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 16px var(--rec-green-glow);
+      min-height: 46px;
+      transition: transform 0.15s ease, filter 0.15s ease;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .snov-add-protocol-btn:active {
+      transform: scale(0.98);
+      filter: brightness(0.92);
+    }
+
+    /* Vault Grid & Brez scroll-traps */
+    .vault-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    @media (max-width: 360px) {
+      .vault-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .vault-card {
+      cursor: pointer;
+      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .vault-card:hover {
+      border-color: var(--edge-3);
+      transform: translateY(-2px);
+    }
+    .vault-card:active {
+      transform: scale(0.98);
+      background: var(--surface-2);
+    }
+    #catFilterButtons {
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    #catFilterButtons::-webkit-scrollbar {
+      display: none;
+    }
+    #catFilterButtons .status-pill.active {
+      border-color: var(--rec-green);
+      color: #fff;
+      background: var(--surface-3);
+      box-shadow: 0 0 8px rgba(0, 230, 118, 0.25);
+    }
+
+    /* Anime Estetika & Maskota */
+    .mascot-badge {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 1.5px solid var(--rec-green);
+      box-shadow: 0 0 10px var(--rec-green-glow);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface-2);
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+      flex-shrink: 0;
+    }
+    .mascot-badge:hover, .mascot-badge:active {
+      transform: scale(1.18) rotate(6deg);
+    }
+    .mascot-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .anime-watermark {
+      position: absolute;
+      right: -8px;
+      bottom: -8px;
+      width: 88px;
+      height: 88px;
+      opacity: 0.12;
+      pointer-events: none;
+      mix-blend-mode: screen;
+      border-radius: 14px;
+      object-fit: cover;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      z-index: 1;
+    }
+    .card:hover .anime-watermark {
+      opacity: 0.22;
+      transform: scale(1.06);
+    }
+    .mascot-toast {
+      position: fixed;
+      top: 60px;
+      right: 16px;
+      max-width: 290px;
+      background: rgba(14, 16, 18, 0.94);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--edge-2);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.5), 0 0 14px var(--rec-green-glow);
+      border-radius: 14px;
+      padding: 10px 14px;
+      font-size: 0.78rem;
+      color: var(--text-1);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      animation: toastIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+    .mascot-toast img {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 1px solid var(--edge-2);
+    }
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(-8px) scale(0.95); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* Fullscreen Anime Ambient Ozadje */
+    .fullscreen-anime-bg {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.16;
+      transition: opacity 0.4s ease;
+    }
+    .fullscreen-anime-bg img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: saturate(1.3) contrast(1.15);
+      mix-blend-mode: screen;
+    }
+    .bg-vignette {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 25%, rgba(8, 9, 10, 0.45) 0%, rgba(8, 9, 10, 0.94) 80%);
+    }
+
+    /* Hero Ring Chibi Avatar */
+    .ring-chibi {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1.5px solid var(--rec-green);
+      margin-bottom: 2px;
+      box-shadow: 0 0 12px var(--rec-green-glow);
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .rings-center:hover .ring-chibi {
+      transform: scale(1.22) rotate(-6deg);
+    }
+
+    /* Micro Stickers */
+    .micro-sticker {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      object-fit: cover;
+      display: inline-block;
+      vertical-align: middle;
+      margin-left: 6px;
+      box-shadow: 0 0 8px rgba(255, 255, 255, 0.15);
+      border: 1px solid var(--edge-2);
+    }
+
+    /* Beast Mode Fullscreen Modal */
+    .beast-overlay {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100vh;
+      height: 100dvh;
+      background: rgba(8, 9, 10, 0.94);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      cursor: pointer;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      touch-action: pan-y;
+    }
+    .beast-overlay.open {
+      display: flex;
+      animation: beastFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes beastFade {
+      from { opacity: 0; transform: scale(0.94); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .beast-card {
+      background: linear-gradient(180deg, var(--surface-1) 0%, rgba(20, 23, 26, 0.98) 100%);
+      border: 1.5px solid var(--rec-green);
+      box-shadow: 0 0 60px var(--rec-green-glow), inset 0 1px 0 rgba(255,255,255,0.2);
+      border-radius: 28px;
+      padding: 24px 20px calc(24px + env(safe-area-inset-bottom, 12px));
+      text-align: center;
+      max-width: 400px;
+      width: 100%;
+      max-height: 90vh;
+      max-height: 90dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      position: relative;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      touch-action: pan-y;
+      margin: auto;
+    }
+    .beast-badge {
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--rec-green);
+      background: rgba(0, 230, 118, 0.15);
+      padding: 5px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--rec-green);
+      box-shadow: 0 0 14px var(--rec-green-glow);
+    }
+    .beast-gif {
+      width: 260px;
+      height: 190px;
+      object-fit: cover;
+      border-radius: 20px;
+      border: 1.5px solid var(--edge-2);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.7), 0 0 20px var(--rec-green-glow);
+    }
+    .beast-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #fff;
+    }
+    .beast-quote {
+      font-size: 0.88rem;
+      color: var(--text-2);
+      line-height: 1.5;
+    }
+    .beast-dismiss {
+      font-size: 0.74rem;
+      color: var(--text-3);
+      margin-top: 6px;
+    }
+
+    /* Varen, skrolabilen foto predogled in kompresor */
+    .photo-preview-card {
+      background: var(--surface-2);
+      border: 1px solid var(--edge-2);
+      border-radius: 10px;
+      padding: 8px 10px;
+      margin-top: 8px;
+      text-align: left;
+    }
+    .photo-preview-topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .photo-meta-info {
+      font-size: 0.72rem;
+      color: var(--rec-green);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .photo-action-group {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+    .photo-btn-action {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--edge-2);
+      background: var(--surface-1);
+      color: var(--text-2);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      transition: all 0.15s ease;
+    }
+    .photo-btn-action:hover {
+      background: var(--surface-3);
+      color: #fff;
+      border-color: var(--edge-3);
+    }
+    .photo-btn-action.danger {
+      color: #ff6b6b;
+      border-color: rgba(255, 107, 107, 0.35);
+    }
+    .photo-btn-action.danger:hover {
+      background: rgba(255, 107, 107, 0.15);
+      color: #ff4d4d;
+    }
+    .photo-scroll-container {
+      max-height: 200px;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      border-radius: 8px;
+      background: #090b10;
+      border: 1px solid var(--edge-1);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      cursor: zoom-in;
+    }
+    .photo-scroll-img {
+      max-width: 100%;
+      max-height: 200px;
+      height: auto;
+      width: auto;
+      object-fit: contain;
+      display: block;
+    }
+    .photo-lightbox-modal {
+      width: 94vw;
+      max-width: 760px;
+      max-height: 88vh;
+      display: flex;
+      flex-direction: column;
+      background: #11141c;
+      border: 1px solid var(--edge-2);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.85);
+      z-index: 1001;
+    }
+    .photo-lightbox-header {
+      padding: 10px 14px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--edge-2);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .photo-lightbox-body {
+      flex: 1;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #06070a;
+      min-height: 220px;
+      touch-action: pan-x pan-y pinch-zoom;
+    }
+    .photo-lightbox-img {
+      max-width: 100%;
+      max-height: 70vh;
+      height: auto;
+      width: auto;
+      object-fit: contain;
+      border-radius: 4px;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="ambient" id="ambientLight"></div>
+
+  <!-- Fullscreen Anime Ozadje čez cel zaslon -->
+  <div class="fullscreen-anime-bg" id="fsAnimeBg">
+    <img src="./assets/anime/bg_ambient.gif" id="fsAnimeImg" alt="ambient-anime">
+    <div class="bg-vignette"></div>
+  </div>
+
+  <!-- Celozaslonski BEAST MODE Modal (ob kliku na obroč) -->
+  <div id="beastModeOverlay" class="beast-overlay" onclick="closeBeastMode()">
+    <div class="beast-card">
+      <div class="beast-badge">🔥 BEAST MODE AKTIVEN</div>
+      <img src="./assets/anime/celebrate.gif" class="beast-gif" alt="powerup">
+      <div class="beast-title">82% RECOVERY · MAXIMUM ENERGY</div>
+      <div class="beast-quote">»Telo je spočito, centralni živčni sistem je na vrhuncu. Danes je dan za rušenje rekordov!«</div>
+      <div class="beast-dismiss">Dotakni se kjerkoli za izhod</div>
+    </div>
+  </div>
+
+  <header>
+    <div class="brand">
+      🧬 BINE <span>ZDRAVJE</span> <small style="font-size: 0.65rem; color: var(--rec-green); font-weight: 700; border: 1px solid rgba(0,230,118,0.3); padding: 2px 6px; border-radius: 6px; margin-left: 6px;">v2.5</small>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <button class="status-pill" onclick="cycleAnimeVibe()" id="vibeBtn" style="cursor: pointer; background: var(--surface-3); border-color: var(--edge-3); color: var(--text-1);" title="Nastavi glasnost anime ozadja">⚡ Vibe: 16%</button>
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        <span>Porto</span>
+      </div>
+      <div class="mascot-badge" id="headerMascot" onclick="triggerMascotQuote()" title="Klikni za energijo!">
+        <img id="mascotAvatar" src="./assets/anime/happy.gif" alt="mascot" class="mascot-img">
+      </div>
+    </div>
+  </header>
+
+  <!-- Plavajoči oblaček za motivacijo / maskoto -->
+  <div class="mascot-toast" id="mascotToast" onclick="triggerMascotQuote()">
+    <img id="mascotToastImg" src="./assets/anime/happy.gif" alt="mascot">
+    <div id="mascotToastText">8h spanja = naravni anabolik!</div>
+  </div>
+
+  <div class="container">
+
+    <!-- ZAVIHEK 1: DANES (WHOOP 5.0 + RECOVERY + SLOTS) -->
+    <div id="view-danes" class="view active">
+      
+      <!-- HERO TWIN RINGS -->
+      <div class="card hero-rings-card">
+        <img src="./assets/anime/happy.gif" class="anime-watermark" style="width: 120px; height: 120px; opacity: 0.16;" alt="">
+        <div class="rings-wrapper">
+          <svg width="220" height="220" viewBox="0 0 220 220">
+            <!-- Ozadja obročev -->
+            <circle cx="110" cy="110" r="95" stroke="rgba(255,255,255,0.06)" stroke-width="12" fill="none"/>
+            <circle cx="110" cy="110" r="76" stroke="rgba(255,255,255,0.06)" stroke-width="10" fill="none"/>
+            
+            <!-- Zunanji: Day Strain (0-21) -->
+            <circle id="ringStrain" cx="110" cy="110" r="95" stroke="var(--strain-blue)" stroke-width="12" fill="none"
+                    stroke-dasharray="596.9" stroke-dashoffset="240" stroke-linecap="round"
+                    transform="rotate(-90 110 110)" style="filter: drop-shadow(0 0 8px var(--strain-blue-glow)); transition: stroke-dashoffset 0.8s ease;"/>
+
+            <!-- Notranji: Recovery % (0-100) -->
+            <circle id="ringRecovery" cx="110" cy="110" r="76" stroke="var(--rec-green)" stroke-width="10" fill="none"
+                    stroke-dasharray="477.5" stroke-dashoffset="85" stroke-linecap="round"
+                    transform="rotate(-90 110 110)" style="filter: drop-shadow(0 0 10px var(--rec-green-glow)); transition: stroke-dashoffset 0.8s ease;"/>
+          </svg>
+          <div class="rings-center" onclick="triggerSuperSaiyan()" style="cursor: pointer;" title="Klikni za Beast Mode!">
+            <img id="ringCenterChibi" src="./assets/anime/wink.gif" class="ring-chibi" alt="chibi">
+            <span class="recovery-score" id="heroRecoveryNum">82%</span>
+            <span class="recovery-sub">Regeneracija</span>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-around; width: 100%; border-top: 1px solid var(--edge-1); padding-top: 12px; margin-top: 4px;">
+          <div>
+            <div class="bento-label">Day Strain <img src="./assets/anime/laugh.gif" class="micro-sticker" alt=""></div>
+            <div style="font-size: 1.4rem; font-weight: 800; color: var(--strain-blue); font-variant-numeric: tabular-nums;" id="heroStrainNum">12.6</div>
+            <div style="font-size: 0.7rem; color: var(--text-3);">Cilj: 10.5 – 14.0</div>
+          </div>
+          <div>
+            <div class="bento-label">HRV / RHR <img src="./assets/anime/happy.gif" class="micro-sticker" alt=""></div>
+            <div style="font-size: 1.4rem; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums;">74 <span style="font-size: 0.8rem; color: var(--text-3);">ms</span> / 54</div>
+            <div style="font-size: 0.7rem; color: var(--rec-green);">+8% nad osnovo</div>
+          </div>
+          <div>
+            <div class="bento-label">Spanje <img src="./assets/anime/wink.gif" class="micro-sticker" alt=""></div>
+            <div style="font-size: 1.4rem; font-weight: 800; color: var(--sleep-purple); font-variant-numeric: tabular-nums;">7h 42m</div>
+            <div style="font-size: 0.7rem; color: var(--text-3);">94% potrebe</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- INTERAKCIJSKA OPOZORILA V ŽIVO -->
+      <div id="liveAlertsContainer"></div>
+
+      <!-- HYPNOGRAM SPANJA -->
+      <div class="card">
+        <img src="./assets/anime/wink.gif" class="anime-watermark" style="opacity: 0.11;" alt="">
+        <div class="card-header">
+          <div class="card-title">🌙 Arhitektura Spanja (Fitbit Air)</div>
+          <span style="font-size: 0.75rem; color: var(--text-2);">Dolg spanec: 1h 48m</span>
+        </div>
+        <div class="hypno-bar">
+          <div class="hypno-awake" style="width: 8%;" title="Budnost (36m)"></div>
+          <div class="hypno-light" style="width: 48%;" title="Lahko (3h 40m)"></div>
+          <div class="hypno-deep" style="width: 24%;" title="Globoko (1h 48m)"></div>
+          <div class="hypno-rem" style="width: 20%;" title="REM (1h 38m)"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-3);">
+          <span><b style="color: #FF3D00;">■</b> Budno 8%</span>
+          <span><b style="color: #536DFE;">■</b> Lahko 48%</span>
+          <span><b style="color: #304FFE;">■</b> Globoko 24%</span>
+          <span><b style="color: #00B0FF;">■</b> REM 20%</span>
+        </div>
+      </div>
+
+      <!-- DNEVNI PROTOKOL PO REŽAH -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🕒 Današnji Urnik Dopolnil & Spojin</div>
+          <button class="btn secondary" style="padding: 4px 8px; font-size: 0.72rem;" onclick="switchNav('vault')">+ Dodaj</button>
+        </div>
+        <div id="danesSlotsContainer" style="display: flex; flex-direction: column; gap: 8px;"></div>
+      </div>
+
+      <!-- DNEVNI VNOS TEŽE, TLAKA IN FOTOGRAFIJE FORME -->
+      <div class="card" style="border-top: 2px solid var(--rec-green);">
+        <img src="./assets/anime/happy.gif" class="anime-watermark" style="opacity: 0.12;" alt="">
+        <div class="card-header">
+          <div class="card-title">📝 Dnevni Vnos: Teža & Počutje</div>
+          <span class="status-pill" id="lastVnosBadge">Brez vnosa</span>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div>
+            <label style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Teža (kg)</label>
+            <input type="number" id="vnosTeza" step="0.1" placeholder="npr. 84.5" style="width: 100%; padding: 8px 10px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 8px; color: #fff; font-size: 0.95rem; font-weight: 700;">
+          </div>
+          <div>
+            <label style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Krvni Tlak (RR)</label>
+            <input type="text" id="vnosTlak" placeholder="npr. 120/75" style="width: 100%; padding: 8px 10px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 8px; color: #fff; font-size: 0.95rem;">
+          </div>
+        </div>
+
+        <div style="margin-top: 4px;">
+          <label style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Počutje & Opomba</label>
+          <input type="text" id="vnosOpomba" placeholder="npr. Dober spanec, trening potiskov v Aspreli" style="width: 100%; padding: 8px 10px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 8px; color: #fff; font-size: 0.85rem;">
+        </div>
+
+        <!-- Foto Vnos za Formo / Težo -->
+        <div style="background: var(--surface-2); border: 1px dashed var(--edge-2); border-radius: 10px; padding: 12px; text-align: center; margin-top: 4px;">
+          <input type="file" id="physiquePhotoInput" accept="image/*" style="display: none;" onchange="handlePhysiquePhotoUpload(this)">
+          <button type="button" class="btn secondary" style="width: 100%; padding: 8px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;" onclick="document.getElementById('physiquePhotoInput').click()">
+            📷 Naloži ali posnemi fotografijo forme
+          </button>
+          <div class="photo-preview-card" id="physiquePreview" style="display: none;">
+            <div class="photo-preview-topbar">
+              <span class="photo-meta-info" id="physiquePhotoMeta">✓ Slika forme</span>
+              <div class="photo-action-group">
+                <button type="button" class="photo-btn-action" onclick="openPhotoModal('physiquePreviewImg', 'Fotografija forme', 'physique')">🔍 Povečaj</button>
+                <button type="button" class="photo-btn-action" onclick="replacePhoto('physique')">🔄 Zamenjaj</button>
+                <button type="button" class="photo-btn-action danger" onclick="removePhoto('physique')">🗑️ Odstrani</button>
+              </div>
+            </div>
+            <div class="photo-scroll-container" onclick="openPhotoModal('physiquePreviewImg', 'Fotografija forme', 'physique')">
+              <img id="physiquePreviewImg" src="" alt="Fotografija forme" class="photo-scroll-img">
+            </div>
+          </div>
+        </div>
+
+        <button type="button" class="btn" style="width: 100%; padding: 10px; font-weight: 700; cursor: pointer;" onclick="saveDanesVnos()">
+          💾 Shrani Današnje Stanje
+        </button>
+
+        <div id="danesZgodovina" style="font-size: 0.74rem; color: var(--text-3); display: flex; justify-content: space-between; border-top: 1px solid var(--edge-1); padding-top: 8px;">
+          <span>Zadnja teža: <strong id="histTeza" style="color: #fff;">84.2 kg</strong></span>
+          <span>Tlak: <strong id="histTlak" style="color: #fff;">122/74</strong></span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ZAVIHEK 2: CIKEL & FARMAKOKINETIKA -->
+    <div id="view-cikel" class="view">
+      <div class="card">
+        <img id="cikelWatermark" src="./assets/anime/laugh.gif" class="anime-watermark" style="opacity: 0.12;" alt="">
+        <div class="card-header">
+          <div class="card-title">💉 Aktivno Hormonsko Stanje</div>
+          <span class="status-pill" id="pkStatusPill">Razmerje 2.67:1 (Varno)</span>
+        </div>
+        
+        <div class="bento-grid">
+          <div class="bento-cell">
+            <span class="bento-label">Aktivni Testosteron <img src="./assets/anime/wink.gif" class="micro-sticker" alt=""></span>
+            <span class="bento-val" style="color: var(--strain-blue);" id="statActiveTest">~57 mg/dan</span>
+            <span class="bento-sub">400 mg/teden s.c.</span>
+          </div>
+          <div class="bento-cell">
+            <span class="bento-label">Aktivni Boldenon (EQ) <img src="./assets/anime/laugh.gif" class="micro-sticker" alt=""></span>
+            <span class="bento-val" style="color: var(--c-kinetics);" id="statActiveEq">~21 mg/dan</span>
+            <span class="bento-sub">150 mg/teden</span>
+          </div>
+        </div>
+
+        <!-- 16-tedenski SVG graf simulacije -->
+        <div style="margin-top: 6px;">
+          <div class="slider-header" style="margin-bottom: 6px;">
+            <span class="bento-label">16-tedenski Kinetični Profil (Batemanov model)</span>
+            <span style="font-size: 0.7rem; color: var(--text-3);">t½: Test 6d, EQ 14d</span>
+          </div>
+          <div style="background: var(--surface-2); border: 1px solid var(--edge-1); border-radius: 12px; height: 190px; padding: 8px; position: relative;">
+            <svg id="cikelSvgChart" width="100%" height="100%"></svg>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-3); margin-top: 4px;">
+            <span style="color: var(--strain-blue);">— Testosteron cipionat</span>
+            <span style="color: var(--c-kinetics);">— Boldenon undecilenat</span>
+            <span style="color: var(--rec-red);">--- E2 Crash meja (&lt;2:1)</span>
+          </div>
+        </div>
+
+        <!-- Drsnik za načrtovanje odmerkov -->
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+          <div class="slider-row">
+            <div class="slider-header">
+              <span>Testosteron cipionat:</span>
+              <strong id="sliderValTest">400 mg / teden</strong>
+            </div>
+            <input type="range" id="rangeTest" min="100" max="600" step="25" value="400" oninput="handleCikelSliders()">
+          </div>
+
+          <div class="slider-row">
+            <div class="slider-header">
+              <span>Boldenon undecilenat (EQ):</span>
+              <strong id="sliderValEq">150 mg / teden</strong>
+            </div>
+            <input type="range" id="rangeEq" min="0" max="350" step="25" value="150" oninput="handleCikelSliders()">
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; background: var(--surface-2); border: 1px solid var(--edge-1); padding: 10px 14px; border-radius: 10px;">
+            <div>
+              <div style="font-size: 0.82rem; font-weight: 700;">Simuliraj Front-Load Boldenona</div>
+              <div style="font-size: 0.72rem; color: var(--text-3);">1.95× začetni odmerek (MaxPharma)</div>
+            </div>
+            <input type="checkbox" id="chkFrontload" style="width: 20px; height: 20px;" onchange="handleCikelSliders()">
+          </div>
+        </div>
+
+        <div id="cikelWarningBanner" class="alert-banner"></div>
+      </div>
+    </div>
+
+    <!-- ZAVIHEK 3: PREHRANA & KIWI & TDEE -->
+        <!-- ZAVIHEK 3: PREHRANA & KIWI & TDEE -->
+    <div id="view-prehrana" class="view">
+      
+      <!-- ⚡ MacroFactor Dinamični TDEE & Coaching Barometer -->
+      <div class="card" style="border-top: 2px solid var(--rec-green);">
+        <img src="./assets/anime/thumbsup.gif" class="anime-watermark" style="opacity: 0.12;" alt="">
+        <div class="card-header">
+          <div class="card-title">⚡ Dinamični TDEE (MacroFactor algoritem)</div>
+          <span class="status-pill optimal" id="mfTdeeBadge">2.888 kcal poraba</span>
+        </div>
+        
+        <!-- Cilj izbira (Hujšanje / Vzdrževanje / Masa) -->
+        <div style="display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto;">
+          <button type="button" class="goal-chip active" id="goalBtnFatLoss" onclick="setMacroGoal('FAT_LOSS')">🔥 Hujšanje (-450 kcal)</button>
+          <button type="button" class="goal-chip" id="goalBtnMaint" onclick="setMacroGoal('MAINTENANCE')">⚖️ Vzdrževanje (0 kcal)</button>
+          <button type="button" class="goal-chip" id="goalBtnBulk" onclick="setMacroGoal('MUSCLE_GAIN')">💪 Pusta masa (+250 kcal)</button>
+        </div>
+
+        <!-- Bento povzetek: Kalorije in Beljakovine -->
+        <div class="bento-grid">
+          <div class="bento-cell">
+            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+              <span class="bento-label">Kalorije (Zaužito / Cilj)</span>
+              <span style="font-size: 0.7rem; color: var(--text-3);" id="mfCalRemaining">Preostalo: 2.438 kcal</span>
+            </div>
+            <div style="display: flex; align-items: baseline; gap: 6px;">
+              <span class="bento-val" id="mfCaloriesVal">0</span>
+              <span style="color: var(--text-3); font-size: 0.85rem;" id="mfCaloriesTarget">/ 2.438 kcal</span>
+            </div>
+            <div class="macro-progress-track">
+              <div class="macro-progress-fill" id="mfCaloriesBar" style="width: 0%; background: var(--text-1);"></div>
+            </div>
+          </div>
+          <div class="bento-cell">
+            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+              <span class="bento-label">Beljakovine <img src="./assets/anime/thumbsup.gif" class="micro-sticker" alt=""></span>
+              <span style="font-size: 0.7rem; color: var(--rec-green);" id="mfProtPerKg">2.2 g/kg</span>
+            </div>
+            <div style="display: flex; align-items: baseline; gap: 6px;">
+              <span class="bento-val" style="color: var(--rec-green);" id="mfProteinVal">0 g</span>
+              <span style="color: var(--text-3); font-size: 0.85rem;" id="mfProteinTarget">/ 178 g</span>
+            </div>
+            <div class="macro-progress-track">
+              <div class="macro-progress-fill" id="mfProteinBar" style="width: 0%; background: var(--rec-green);"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Makro razdelitev: OH, Maščobe, Voda -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px;">
+          <div class="bento-cell">
+            <span class="bento-label">Ogljikovi hidrati</span>
+            <div style="font-size: 1rem; font-weight: 700;" id="mfCarbVal">0 / 285 g</div>
+            <div class="macro-progress-track">
+              <div class="macro-progress-fill" id="mfCarbBar" style="width: 0%; background: var(--strain-blue);"></div>
+            </div>
+          </div>
+          <div class="bento-cell">
+            <span class="bento-label">Maščobe</span>
+            <div style="font-size: 1rem; font-weight: 700;" id="mfFatVal">0 / 65 g</div>
+            <div class="macro-progress-track">
+              <div class="macro-progress-fill" id="mfFatBar" style="width: 0%; background: var(--rec-yellow);"></div>
+            </div>
+          </div>
+          <div class="bento-cell">
+            <span class="bento-label">Voda</span>
+            <div style="font-size: 1rem; font-weight: 700; color: var(--strain-blue);" id="mfWaterTarget">3.6 L</div>
+            <span class="bento-sub">45 ml / kg</span>
+          </div>
+        </div>
+
+        <!-- 14-dnevni simulator / teža drsnik -->
+        <div style="background: var(--surface-2); border: 1px solid var(--edge-1); border-radius: 10px; padding: 10px 12px; margin-top: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <span style="font-size: 0.8rem; font-weight: 700;">Zglajena teža (EMA): <span id="mfSmoothedWeight" style="color: var(--rec-green);">81.59 kg</span></span>
+              <div style="font-size: 0.7rem; color: var(--text-3);">Tehtnica: <span id="mfRawWeight">81.1 kg</span> · 14-dnevni trend brez vodnega šuma</div>
+            </div>
+            <button type="button" class="btn secondary" style="font-size: 0.72rem; padding: 5px 10px;" onclick="openTdeeHistoryModal()">
+              📈 14-dnevni vnos
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 🍽️ VNOS HRANE: QUICK-ADD, ČRTNA KODA & OFF BAZA -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🍽️ Dnevnik Obrokov & Hitri Vnos</div>
+          <span class="status-pill" id="mealCountBadge">Danes: 0 obrokov</span>
+        </div>
+
+        <!-- Hitre akcije -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <button type="button" class="btn" style="padding: 10px; font-size: 0.82rem;" onclick="openQuickAddModal()">
+            ⚡ Hitri vnos (Atwater)
+          </button>
+          <button type="button" class="btn secondary" style="padding: 10px; font-size: 0.82rem;" onclick="openOffSearchModal()">
+            🔍 Open Food Facts / 📷
+          </button>
+        </div>
+
+        <!-- Predpripravljeni obroki (1-klik vnos) -->
+        <div style="margin-top: 10px;">
+          <div style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">
+            1-Klik Bogata Živila z Mikronutrienti:
+          </div>
+          <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;" id="presetFoodsChips">
+            <!-- Dinamično naloženi chips iz PRESET_FOODS -->
+          </div>
+        </div>
+
+        <!-- Seznam vnesenih obrokov -->
+        <div style="margin-top: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-2); text-transform: uppercase;">Zaužiti obroki danes:</span>
+            <button type="button" class="btn secondary" style="font-size: 0.68rem; padding: 3px 8px;" onclick="clearAllMeals()">Počisti vse</button>
+          </div>
+          <div id="mealEntriesList" style="display: flex; flex-direction: column; gap: 6px;">
+            <!-- Seznam obrokov -->
+          </div>
+        </div>
+      </div>
+
+      <!-- 🥝 Kiwi 8 Funkcionalnih Ocen (0-100) -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🥝 Kiwi 8 Funkcionalnih Ocen</div>
+          <span class="status-pill optimal" id="kiwiAverageBadge">Skupaj: 0 / 100</span>
+        </div>
+        <p style="font-size: 0.74rem; color: var(--text-3); margin-bottom: 10px;">
+          Asimetrično sigmoidno točkovanje mikronutrientov z optimalnim platojem in kaznijo za presežek UL.
+        </p>
+        <div class="bento-grid" style="grid-template-columns: 1fr 1fr; gap: 8px;" id="kiwiCategoriesGrid">
+          <!-- Dinamično generirane kartice za vseh 8 domen -->
+        </div>
+      </div>
+
+      <!-- ⚖️ Cronometer 6 Ključnih Biokemijskih Razmerij -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">⚖️ Ključna Biokemijska Razmerja</div>
+          <span class="status-pill optimal">Cronometer model</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px;" id="cronometerRatiosContainer">
+          <!-- Dinamično izračunana razmerja Na:K, Zn:Cu, Ca:Mg, O6:O3, Fe:Zn, Ca:P -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ZAVIHEK 4: IZVIDI & PORTO LAB -->
+    <div id="view-bloodwork" class="view">
+      
+      <!-- Naročilnica za Dr. Luís Marinho v Portu -->
+      <div class="card" style="border-left: 4px solid var(--rec-green);">
+        <img src="./assets/anime/wave.gif" class="anime-watermark" style="opacity: 0.11;" alt="">
+        <div class="card-header">
+          <div class="card-title">📍 Laboratório Dr. Luís Marinho (Porto)</div>
+          <span class="status-pill" style="color: var(--rec-green);">Sem P1 (Brez napotnice)</span>
+        </div>
+        <p style="font-size: 0.8rem; color: var(--text-2);">
+          Rua Sá da Bandeira 819 (metro rumena linija D: <em>Pólo Universitário → Trindade</em>, 6 postaj, 300 m peš).
+        </p>
+
+        <select id="portoSelectType" style="margin-top: 6px;" onchange="updatePortoCard()">
+          <option value="baseline">1. Celovit Baseline (Pack Homem + Hormoni) — ~110–125 €</option>
+          <option value="nadzor">2. Nadzor v ciklu (Pack Dislipidémias + Hct + E2 + T) — ~32–42 €</option>
+          <option value="mini">3. Hitri HCT Varnostni test (Samo Hemogram) — ~5,00–8,00 €</option>
+        </select>
+
+        <div style="background: #000; border: 1px solid var(--edge-1); border-radius: 10px; padding: 12px; font-family: monospace; font-size: 0.8rem; color: #E2E8F0; white-space: pre-wrap;" id="portoCardText"></div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 0.82rem; color: var(--text-2);">Izračunan prosti T brezplačno!</span>
+          <button class="btn" onclick="copyPortoText()">📋 Kopiraj za telefon</button>
+        </div>
+      </div>
+
+      <!-- 🔬 FOTO SKENER & VNOS KRVNIH IZVIDOV -->
+      <div class="card" style="border-top: 2px solid var(--strain-blue);">
+        <img src="./assets/anime/wink.gif" class="anime-watermark" style="opacity: 0.12;" alt="">
+        <div class="card-header">
+          <div class="card-title">🔬 Vnos Krvnih Izvidov & Foto Skener</div>
+          <span class="status-pill" id="bloodworkStatusBadge">Porto OCR</span>
+        </div>
+
+        <!-- Foto Vnos za Izvid & Hitri OCR / Tekstovni Uvoz -->
+        <div style="background: var(--surface-2); border: 1px dashed var(--edge-2); border-radius: 10px; padding: 12px; text-align: center;">
+          <input type="file" id="labPhotoInput" accept="image/*,.pdf" style="display: none;" onchange="handleLabPhotoUpload(this)">
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn secondary" style="flex: 1; padding: 8px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;" onclick="document.getElementById('labPhotoInput').click()">
+              📷 Naloži sliko/PDF izvida
+            </button>
+            <button type="button" class="btn secondary" style="padding: 8px 12px; font-size: 0.8rem; cursor: pointer;" onclick="toggleLabTextPaste()">
+              📋 Prilepi izvid
+            </button>
+          </div>
+          <div id="labPasteContainer" style="display: none; margin-top: 10px; text-align: left;">
+            <textarea id="txtLabPaste" placeholder="Prilepi sem besedilo ali surove vrstice izvida (npr. zVEM ali PDF kopijo)..." style="width: 100%; height: 90px; background: var(--surface-3); border: 1px solid var(--edge-1); border-radius: 6px; color: #fff; font-family: monospace; font-size: 0.75rem; padding: 8px; box-sizing: border-box;"></textarea>
+            <button type="button" class="btn" style="width: 100%; margin-top: 6px; padding: 6px; font-size: 0.78rem;" onclick="parseAndApplyBloodworkText()">⚡ Preberi in samodejno izpolni polja</button>
+          </div>
+          <div class="photo-preview-card" id="labPreview" style="display: none;">
+            <div class="photo-preview-topbar">
+              <span class="photo-meta-info" id="labPhotoMeta">✓ Dokument naložen</span>
+              <div class="photo-action-group">
+                <button type="button" class="photo-btn-action" id="labViewBtn" onclick="openPhotoModal('labPreviewImg', 'Izvid laboratorija', 'lab')">🔍 Povečaj</button>
+                <button type="button" class="photo-btn-action" onclick="replacePhoto('lab')">🔄 Zamenjaj</button>
+                <button type="button" class="photo-btn-action danger" onclick="removePhoto('lab')">🗑️ Odstrani</button>
+              </div>
+            </div>
+            <div class="photo-scroll-container" onclick="openPhotoModal('labPreviewImg', 'Izvid laboratorija', 'lab')">
+              <img id="labPreviewImg" src="" alt="Izvid laboratorija" class="photo-scroll-img">
+            </div>
+          </div>
+        </div>
+
+        <!-- Polja za vnos biomarkerjev -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;">
+          <div>
+            <label style="font-size: 0.7rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Hematokrit (%)</label>
+            <input type="number" id="inpBioHct" step="0.1" value="48.5" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;">
+          </div>
+          <div>
+            <label style="font-size: 0.7rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">17-Beta E2 (pg/mL)</label>
+            <input type="number" id="inpBioE2" step="1" value="28" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;">
+          </div>
+          <div>
+            <label style="font-size: 0.7rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Skupni T (ng/dL)</label>
+            <input type="number" id="inpBioTotalT" value="950" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;" oninput="document.getElementById('vermT').value=this.value; runVermeulen();">
+          </div>
+          <div>
+            <label style="font-size: 0.7rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">SHBG (nmol/L)</label>
+            <input type="number" id="inpBioSHBG" value="32" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;" oninput="document.getElementById('vermSHBG').value=this.value; runVermeulen();">
+          </div>
+          <div>
+            <label style="font-size: 0.7rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">ApoB (mg/dL)</label>
+            <input type="number" id="inpBioApoB" value="72" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;">
+          </div>
+          <div>
+            <label style="font-size: 0.7rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">GGT (Jetrni encim U/L)</label>
+            <input type="number" id="inpBioGGT" value="19" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;">
+          </div>
+          <div>
+            <label style="font-size: 0.7rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Kreatinin (mg/dL)</label>
+            <input type="number" id="inpBioKreatinin" step="0.01" value="1.05" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;">
+          </div>
+          <div>
+            <label style="font-size: 0.7rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">AST / ALT (U/L)</label>
+            <div style="display: flex; gap: 4px;">
+              <input type="number" id="inpBioAST" value="26" placeholder="AST" style="width: 50%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;">
+              <input type="number" id="inpBioALT" value="28" placeholder="ALT" style="width: 50%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;">
+            </div>
+          </div>
+        </div>
+
+        <button type="button" class="btn" style="width: 100%; padding: 10px; font-weight: 700; margin-top: 6px; cursor: pointer;" onclick="saveBloodworkVnos()">
+          💾 Shrani Izvid & Posodobi Barometre
+        </button>
+      </div>
+
+      <!-- Vermeulen kalkulator -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🧮 Vermeulen Kalkulator Prostega T</div>
+          <span class="status-pill" style="color: var(--strain-blue);">Prihranek 10,20 €</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+          <div>
+            <label style="font-size: 0.72rem; color: var(--text-3);">Skupni T (ng/dL)</label>
+            <input type="number" id="vermT" value="950" oninput="runVermeulen()">
+          </div>
+          <div>
+            <label style="font-size: 0.72rem; color: var(--text-3);">SHBG (nmol/L)</label>
+            <input type="number" id="vermSHBG" value="32" oninput="runVermeulen()">
+          </div>
+          <div>
+            <label style="font-size: 0.72rem; color: var(--text-3);">Albumin (g/dL)</label>
+            <input type="number" id="vermAlb" value="4.4" step="0.1" oninput="runVermeulen()">
+          </div>
+        </div>
+        <div style="background: var(--surface-2); border: 1px solid var(--edge-1); border-radius: 10px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-size: 0.7rem; color: var(--text-3);">IZRAČUNAN PROSTI TESTOSTERON:</div>
+            <div style="font-size: 1.35rem; font-weight: 800; color: var(--rec-green);" id="vermResVal">21.84 ng/dL</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 0.7rem; color: var(--text-3);">DELEŽ CELOTNEGA:</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: #fff;" id="vermResPct">2.30 %</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Guava-style biomarker range monitor -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📊 Klinični Biomarkerji & Alarmi</div>
+        </div>
+        
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
+              <span>Hematokrit (HCT)</span>
+              <strong id="hctDisplayVal">48.5 % <span style="color: var(--rec-green);">(Varno)</span></strong>
+            </div>
+            <div style="height: 8px; background: var(--surface-3); border-radius: 4px; overflow: hidden; margin-top: 4px; position: relative;">
+              <div id="hctBar" style="position: absolute; left: 0; width: 65%; height: 100%; background: var(--rec-green); transition: width 0.4s ease;"></div>
+              <div style="position: absolute; left: 80%; width: 2px; height: 100%; background: #FF3D00;" title="Meja 54%"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-3); margin-top: 2px;">
+              <span>Optimum: 42–50%</span>
+              <span style="color: #FF3D00;">Alarm: ≥54%</span>
+            </div>
+          </div>
+
+          <div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
+              <span>GGT (Jetrni encim)</span>
+              <strong id="ggtDisplayVal">18 U/L <span style="color: var(--rec-green);">(Odlično)</span></strong>
+            </div>
+            <div style="height: 8px; background: var(--surface-3); border-radius: 4px; overflow: hidden; margin-top: 4px;">
+              <div id="ggtBar" style="width: 35%; height: 100%; background: var(--rec-green); transition: width 0.4s ease;"></div>
+            </div>
+          </div>
+
+          <div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
+              <span>ApoB (Aterogeni delci)</span>
+              <strong id="apobDisplayVal">64 mg/dL <span style="color: var(--rec-green);">(Optimalno)</span></strong>
+            </div>
+            <div style="height: 8px; background: var(--surface-3); border-radius: 4px; overflow: hidden; margin-top: 4px;">
+              <div id="apobBar" style="width: 50%; height: 100%; background: var(--rec-green); transition: width 0.4s ease;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ZAVIHEK 4B: TRENING & BODY MAP HIGHLIGHTER -->
+    <div id="view-trening" class="view">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🏋️ Anatomski Body Map & Regeneracija</div>
+          <div style="display: flex; gap: 4px;">
+            <button class="status-pill active" id="btnBodyAnt" onclick="setBodyMapView('anterior')">Spredaj</button>
+            <button class="status-pill" id="btnBodyPost" onclick="setBodyMapView('posterior')">Zadaj</button>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 16px; align-items: center; justify-content: center; flex-wrap: wrap; margin: 12px 0;">
+          <!-- SVG Body Model Container -->
+          <div style="width: 220px; height: 380px; background: var(--surface-2); border: 1px solid var(--edge-1); border-radius: 12px; padding: 10px; display: flex; align-items: center; justify-content: center;">
+            <svg id="bodyMapSvg" viewBox="0 0 1000 2200" style="width: 100%; height: 100%; filter: drop-shadow(0 0 12px rgba(48, 209, 88, 0.15));"></svg>
+          </div>
+
+          <!-- Info o izbrani mišici / statusu -->
+          <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 8px;">
+            <div style="background: var(--surface-2); border: 1px solid var(--edge-1); border-radius: 8px; padding: 10px;">
+              <div style="font-size: 0.7rem; color: var(--text-3); text-transform: uppercase; font-weight: 700;">Izbrana mišična skupina:</div>
+              <div style="font-size: 1.1rem; font-weight: 800; color: #fff; margin-top: 2px;" id="selectedMuscleName">Prsne mišice (Chest)</div>
+              <div style="font-size: 0.75rem; color: var(--rec-green); margin-top: 4px;" id="selectedMuscleStatus">Status: Pripravljeno na stimulacijo (100% regeneracija)</div>
+            </div>
+
+            <div style="background: var(--surface-2); border: 1px solid var(--edge-1); border-radius: 8px; padding: 10px;">
+              <div style="font-size: 0.7rem; color: var(--text-3); text-transform: uppercase; font-weight: 700;">RP Hipertrofijski Volumen (Ta teden):</div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-top: 4px;">
+                <span>Trenutno serij:</span>
+                <strong id="muscleWeekSets">12 delovnih serij</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
+                <span>Ciljni prag (MAV):</span>
+                <strong style="color: var(--strain-blue);">14–18 serij</strong>
+              </div>
+            </div>
+
+            <!-- Legenda regeneracije -->
+            <div style="display: flex; gap: 8px; font-size: 0.68rem; color: var(--text-3); justify-content: space-between;">
+              <span style="display: flex; align-items: center; gap: 4px;"><span style="width:8px; height:8px; border-radius:50%; background:#2A313A;"></span> Počiva</span>
+              <span style="display: flex; align-items: center; gap: 4px;"><span style="width:8px; height:8px; border-radius:50%; background:#30D158;"></span> Sveže</span>
+              <span style="display: flex; align-items: center; gap: 4px;"><span style="width:8px; height:8px; border-radius:50%; background:#FF9F0A;"></span> Obremenjeno</span>
+              <span style="display: flex; align-items: center; gap: 4px;"><span style="width:8px; height:8px; border-radius:50%; background:#FF3D00;"></span> Utrujeno</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- OpenGym Hitri izbiralnik vaj -->
+        <div style="margin-top: 10px; border-top: 1px solid var(--edge-1); padding-top: 12px;">
+          <div style="font-size: 0.75rem; color: var(--text-3); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">Priporočene vaje za aktivacijo:</div>
+          <div style="display: flex; flex-direction: column; gap: 6px;" id="muscleExerciseList">
+            <div style="display: flex; justify-content: space-between; align-items: center; background: var(--surface-3); padding: 8px 12px; border-radius: 8px; font-size: 0.82rem;">
+              <span>Potisk s prsi na poševni klopi z ročkami</span>
+              <span class="status-pill" style="color: var(--rec-green);">Prsa · Triceps</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; background: var(--surface-3); padding: 8px 12px; border-radius: 8px; font-size: 0.82rem;">
+              <span>Križanje na škripcih (Cable Crossover)</span>
+              <span class="status-pill" style="color: var(--rec-green);">Izolacija prsi</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ZAVIHEK 5: VAULT ENCIKLOPEDIJA (133 SNOVI) -->
+    <div id="view-vault" class="view">
+      <div class="card">
+        <img src="./assets/anime/shrug.gif" class="anime-watermark" style="opacity: 0.10;" alt="">
+        <div class="card-header">
+          <div class="card-title">📚 Vault Enciklopedija (133 Snovi · 239 Trditev)</div>
+        </div>
+        <input type="text" id="vaultSearchBox" placeholder="Išči po snoveh, peptidih, nootropikih, hormonih..." oninput="filterVaultList()" style="margin-top: 4px;">
+        
+        <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;" id="catFilterButtons"></div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 0.72rem; color: var(--text-3);">
+          <span id="vaultStatsCount">Prikazano: 133 snovi</span>
+          <span style="color: var(--rec-green);">⚡ Celotna Enciklopedija</span>
+        </div>
+
+        <div class="vault-grid" id="vaultGrid"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- BOTTOM NAVBAR -->
+  <nav class="nav-bar">
+    <button class="nav-tab active" onclick="switchNav('danes')">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+      <span>Danes</span>
+    </button>
+    <button class="nav-tab" onclick="switchNav('cikel')">
+      <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+      <span>Cikel & PK</span>
+    </button>
+    <button class="nav-tab" onclick="switchNav('prehrana')">
+      <svg viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+      <span>Prehrana</span>
+    </button>
+    <button class="nav-tab" onclick="switchNav('bloodwork')">
+      <svg viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
+      <span>Izvidi/Porto</span>
+    </button>
+    <button class="nav-tab" onclick="switchNav('trening')">
+      <svg viewBox="0 0 24 24"><path d="M6 5v14M18 5v14M2 9v6M22 9v6M6 12h12"></path></svg>
+      <span>Trening</span>
+    </button>
+    <button class="nav-tab" onclick="switchNav('vault')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+      <span>Vault (133)</span>
+    </button>
+  </nav>
+
+
+  <!-- MODAL ZA HITRI VNOS (ATWATER QUICK ADD) -->
+  <div class="modal-overlay" id="quickAddModalOverlay" onclick="if(event.target.id==='quickAddModalOverlay') closeQuickAddModal()">
+    <div class="modal" style="max-width: 440px;">
+      <div class="modal-header">
+        <div class="modal-sheet-handle"></div>
+        <div class="modal-header-row">
+          <h3>⚡ Hitri Vnos Obroka (Atwater)</h3>
+          <button type="button" class="modal-close" onclick="closeQuickAddModal()">✕</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div>
+          <label style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Naziv obroka / živila</label>
+          <input type="text" id="qaFoodName" placeholder="npr. Piščanec z rižem" style="width: 100%; padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 8px; color: #fff; font-weight: 600;">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div>
+            <label style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Kalorije (kcal)</label>
+            <input type="number" id="qaCalories" placeholder="0" style="width: 100%; padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 8px; color: #fff; font-weight: 700;">
+          </div>
+          <div>
+            <label style="font-size: 0.72rem; color: var(--rec-green); font-weight: 700; text-transform: uppercase;">Beljakovine (g)</label>
+            <input type="number" id="qaProtein" placeholder="0" oninput="autoSyncAtwater()" style="width: 100%; padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 8px; color: var(--rec-green); font-weight: 700;">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div>
+            <label style="font-size: 0.72rem; color: var(--strain-blue); font-weight: 700; text-transform: uppercase;">Ogljikovi hidrati (g)</label>
+            <input type="number" id="qaCarbs" placeholder="0" oninput="autoSyncAtwater()" style="width: 100%; padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 8px; color: var(--strain-blue); font-weight: 700;">
+          </div>
+          <div>
+            <label style="font-size: 0.72rem; color: var(--rec-yellow); font-weight: 700; text-transform: uppercase;">Maščobe (g)</label>
+            <input type="number" id="qaFat" placeholder="0" oninput="autoSyncAtwater()" style="width: 100%; padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 8px; color: var(--rec-yellow); font-weight: 700;">
+          </div>
+        </div>
+
+        <div style="background: var(--surface-2); border: 1px solid var(--edge-1); padding: 8px 12px; border-radius: 8px; font-size: 0.74rem; color: var(--text-2); display: flex; justify-content: space-between; align-items: center;">
+          <span>Atwater izračun: <strong id="qaAtwaterSum" style="color: #fff;">0 kcal</strong></span>
+          <button type="button" class="btn secondary" style="font-size: 0.68rem; padding: 4px 8px;" onclick="applyAtwaterCalories()">Uporabi Atwater</button>
+        </div>
+
+        <!-- Foto Vnos za Obrok -->
+        <div style="background: var(--surface-2); border: 1px dashed var(--edge-2); border-radius: 10px; padding: 10px; text-align: center;">
+          <input type="file" id="mealPhotoInput" accept="image/*" style="display: none;" onchange="handleMealPhotoUpload(this)">
+          <button type="button" class="btn secondary" style="width: 100%; padding: 8px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;" onclick="document.getElementById('mealPhotoInput').click()">
+            📷 Posnemi ali naloži fotografijo obroka
+          </button>
+          <div class="photo-preview-card" id="mealPreview" style="display: none;">
+            <div class="photo-preview-topbar">
+              <span class="photo-meta-info" id="mealPhotoMeta">✓ Slika obroka</span>
+              <div class="photo-action-group">
+                <button type="button" class="photo-btn-action" onclick="openPhotoModal('mealPreviewImg', 'Fotografija obroka', 'meal')">🔍 Povečaj</button>
+                <button type="button" class="photo-btn-action" onclick="replacePhoto('meal')">🔄 Zamenjaj</button>
+                <button type="button" class="photo-btn-action danger" onclick="removePhoto('meal')">🗑️ Odstrani</button>
+              </div>
+            </div>
+            <div class="photo-scroll-container" onclick="openPhotoModal('mealPreviewImg', 'Fotografija obroka', 'meal')">
+              <img id="mealPreviewImg" src="" alt="Predogled obroka" class="photo-scroll-img">
+            </div>
+          </div>
+        </div>
+
+        <button type="button" class="btn" style="width: 100%; padding: 12px; margin-top: 6px;" onclick="submitQuickAddMeal()">
+          + Dodaj v Dnevnik
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL ZA OPEN FOOD FACTS ISKANJE IN ČRTNO KODO -->
+  <div class="modal-overlay" id="offSearchModalOverlay" onclick="if(event.target.id==='offSearchModalOverlay') closeOffSearchModal()">
+    <div class="modal" style="max-width: 480px;">
+      <div class="modal-header">
+        <div class="modal-sheet-handle"></div>
+        <div class="modal-header-row">
+          <h3>🔍 Open Food Facts & Črtna Koda</h3>
+          <button type="button" class="modal-close" onclick="closeOffSearchModal()">✕</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div style="display: flex; gap: 6px;">
+          <input type="text" id="offSearchInput" placeholder="Vnesi ime ali črtno kodo (EAN-13)..." onkeydown="if(event.key==='Enter') executeOffSearch()" style="flex: 1; padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 8px; color: #fff; font-size: 0.82rem;">
+          <button type="button" class="btn" style="padding: 8px 14px;" onclick="executeOffSearch()">Išči</button>
+          <button type="button" class="btn secondary" title="Skeniraj s kamero" style="padding: 8px 12px;" onclick="toggleBarcodeCamera()">📷</button>
+        </div>
+
+        <!-- Video okvir za skener črtnih kod -->
+        <div id="barcodeCameraBox" style="display: none; position: relative; background: #000; border-radius: 10px; overflow: hidden; height: 180px; flex-shrink: 0;">
+          <video id="barcodeVideo" style="width: 100%; height: 100%; object-fit: cover;" autoplay playsinline></video>
+          <div style="position: absolute; inset: 0; border: 2px solid var(--rec-green); opacity: 0.6; pointer-events: none;"></div>
+          <div style="position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; font-size: 0.72rem; color: #fff; background: rgba(0,0,0,0.6); padding: 4px;">
+            Kamero usmeri v črtno kodo
+          </div>
+        </div>
+
+        <div id="offSearchResults" class="modal-scroll-sub" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; min-height: 150px;">
+          <div style="text-align: center; color: var(--text-3); font-size: 0.8rem; margin: auto; padding: 20px 0;">
+            Vpiši živilo ali klikni na 📷 za branje črtne kode.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL ZA 14-DNEVNI TDEE SIMULATOR -->
+  <div class="modal-overlay" id="tdeeHistoryModalOverlay" onclick="if(event.target.id==='tdeeHistoryModalOverlay') closeTdeeHistoryModal()">
+    <div class="modal" style="max-width: 440px; max-height: 85vh; display: flex; flex-direction: column;">
+      <div class="modal-header">
+        <div class="modal-sheet-handle"></div>
+        <div class="modal-header-row">
+          <h3>📈 14-Dnevni TDEE & EMA Zgodovina</h3>
+          <button type="button" class="modal-close" onclick="closeTdeeHistoryModal()">✕</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.75rem; color: var(--text-2); margin: 0 0 4px;">
+          Termodinamični izračun porabe energije iz tehtanja in kalorij po Forbes/Wishnofsky modelu.
+        </p>
+
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn secondary" style="flex: 1; font-size: 0.74rem; padding: 8px;" onclick="loadDemo14Days()">
+            ⚡ Naloži Kineziološki Test (82.2→81.1kg)
+          </button>
+        </div>
+
+        <div id="tdeeHistoryTable" class="modal-scroll-sub" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;">
+          <!-- Dinamična tabela zadnjih 14 dni -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESPONZIVNI BOTTOM-SHEET ZA PODROBNOSTI SNOVI -->
+  <div class="modal-overlay snov-sheet-overlay" id="snovModalOverlay" onclick="closeSnovModal(event)" role="dialog" aria-modal="true" aria-label="Podrobnosti snovi">
+    <div class="snov-bottom-sheet" id="snovModalBody"></div>
+  </div>
+
+  <!-- MODAL ZA VAREN PREGLED FOTOGRAFIJE S SKROLANJEM IN ZAPIRANJEM -->
+  <div class="modal-overlay" id="photoModalOverlay" onclick="if(event.target.id==='photoModalOverlay') closePhotoModal()">
+    <div class="photo-lightbox-modal">
+      <div class="photo-lightbox-header">
+        <span id="photoModalTitle" style="font-weight: 700; color: #fff; font-size: 0.92rem;">Predogled fotografije</span>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <button type="button" class="photo-btn-action" id="photoModalReplaceBtn" onclick="modalReplacePhoto()">🔄 Zamenjaj</button>
+          <button type="button" class="photo-btn-action danger" id="photoModalRemoveBtn" onclick="modalRemovePhoto()">🗑️ Odstrani</button>
+          <button type="button" class="modal-close" onclick="closePhotoModal()" style="font-size: 1.1rem; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer;" title="Zapri predogled">✕</button>
+        </div>
+      </div>
+      <div class="photo-lightbox-body" onclick="if(event.target===this) closePhotoModal()">
+        <img id="photoModalImg" src="" alt="Povečan predogled" class="photo-lightbox-img">
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- MOBILNI BODY SCROLL-LOCK IN MODALNI UPRAVLJALNIK ---
+    let __savedBodyScrollY = 0;
+
+    function lockBodyScroll() {
+      if (!document.body.classList.contains('modal-open')) {
+        __savedBodyScrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${__savedBodyScrollY}px`;
+        document.body.style.width = '100%';
+        document.body.classList.add('modal-open');
+        document.documentElement.classList.add('modal-open');
+      }
+    }
+
+    function unlockBodyScroll() {
+      const openModals = document.querySelectorAll('.modal-overlay.open, .beast-overlay.open');
+      if (openModals.length === 0 && document.body.classList.contains('modal-open')) {
+        document.body.classList.remove('modal-open');
+        document.documentElement.classList.remove('modal-open');
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        window.scrollTo(0, __savedBodyScrollY);
+      }
+    }
+
+    // Prepreči iOS ozadje touchmove, ki bi ukradlo touch geste
+    document.addEventListener('touchmove', function(e) {
+      if (document.body.classList.contains('modal-open')) {
+        const isInside = e.target.closest('.modal, .snov-bottom-sheet, .beast-card, .photo-lightbox-modal');
+        if (!isInside) {
+          e.preventDefault();
+        }
+      }
+    }, { passive: false });
+
+    // Globalna tipka Escape za zapiranje vseh modalov
+    window.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeQuickAddModal();
+        closeOffSearchModal();
+        closeTdeeHistoryModal();
+        closeSnovModalDirect();
+        if (typeof closePhotoModal === 'function') closePhotoModal();
+        closeBeastMode();
+      }
+    });
+
+    // Varnostni MutationObserver za avtomatski scroll-lock ob spremembi razredov
+    const __modalObserver = new MutationObserver(() => {
+      const hasOpen = !!document.querySelector('.modal-overlay.open, .beast-overlay.open');
+      if (hasOpen && !document.body.classList.contains('modal-open')) {
+        lockBodyScroll();
+      } else if (!hasOpen && document.body.classList.contains('modal-open')) {
+        unlockBodyScroll();
+      }
+    });
+    __modalObserver.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['class'] });
+
+    // --- STANJE APLIKACIJE ---
+    let vaultStore = { snovi: [], trditve: [] };
+    let appState = {
+      protocols: [
+        { id: "test-cyp", name: "Testosteron cipionat (s.c.)", dose: "28.5 mg", slot: "MORNING_FASTED", category: "AAS" },
+        { id: "vit-d3", name: "Vitamin D3 + K2", dose: "5000 IU", slot: "WITH_BREAKFAST", category: "Suplement" },
+        { id: "omega-3", name: "Omega-3 (EPA/DHA)", dose: "3000 mg", slot: "WITH_BREAKFAST", category: "Suplement" },
+        { id: "citrulline", name: "L-Citrulin malat", dose: "8000 mg", slot: "PRE_WORKOUT", category: "Performance" },
+        { id: "mag-bisglycinate", name: "Magnezijev bisglicinat", dose: "400 mg", slot: "BEFORE_BED", category: "Mineral" },
+        { id: "l-theanine", name: "L-Teanin", dose: "200 mg", slot: "BEFORE_BED", category: "Nootropik" }
+      ],
+      checks: {},
+      cikel: {
+        testMg: 400,
+        eqMg: 150,
+        frontload: false
+      }
+    };
+
+    // ==========================================\n    // BODY MAP & MUSCLE HIGHLIGHTER (Vanilla SVG)\n    // ==========================================\n    let bodyMapStore = { anterior: [], posterior: [] };
+    let currentBodyView = 'anterior';
+    let selectedMuscle = 'chest';
+
+    const muscleTranslations = {
+      'chest': 'Prsne mišice (Chest)',
+      'abs': 'Trebušne mišice (Abs)',
+      'obliques': 'Stranske trebušne (Obliques)',
+      'biceps': 'Biceps',
+      'triceps': 'Triceps',
+      'forearm': 'Podlahti (Forearms)',
+      'front-deltoids': 'Sprednje rame (Front Delts)',
+      'back-deltoids': 'Zadnje rame (Rear Delts)',
+      'quadriceps': 'Sprednje stegenske (Kvadrici)',
+      'hamstring': 'Zadnje stegenske (Hamstrings)',
+      'calves': 'Mečne mišice (Calves)',
+      'gluteal': 'Gluteusi (Zadnjica)',
+      'trapezius': 'Trapezi (Traps)',
+      'upper-back': 'Zgornji hrbet (Lats/Rhomboids)',
+      'lower-back': 'Spodnji hrbet (Erectors)',
+      'neck': 'Vratne mišice',
+      'abductors': 'Abduktorji',
+      'adductors': 'Adduktorji',
+      'knees': 'Kolenski sklepi'
+    };
+
+    const muscleExercises = {
+      'chest': [
+        { name: 'Potisk s prsi na poševni klopi z ročkami', tag: 'Prsa · Triceps' },
+        { name: 'Križanje na škripcih (Cable Crossover)', tag: 'Izolacija prsi' },
+        { name: 'Dips (Skleki na bradlji)', tag: 'Spodnji del prsi' }
+      ],
+      'abs': [
+        { name: 'Dvigovanje nog v visi (Hanging Leg Raise)', tag: 'Spodnji abs' },
+        { name: 'Kabel crunches (Upogib trupa na škripcu)', tag: 'Rektus abdominis' }
+      ],
+      'back-deltoids': [
+        { name: 'Odmik ročk v predklonu (Rear Delt Flyes)', tag: 'Zadnja rama' },
+        { name: 'Face Pulls na škripcu', tag: 'Zadnja rama · Trapezi' }
+      ],
+      'upper-back': [
+        { name: 'Veslanje z drogom v predklonu (Barbell Row)', tag: 'Hrbet · Biceps' },
+        { name: 'Poteg na prsa na škripcu (Lat Pulldown)', tag: 'Širina hrbta' }
+      ],
+      'quadriceps': [
+        { name: 'Počep s palico zadaj (Barbell Back Squat)', tag: 'Kvadriceps · Gluteus' },
+        { name: 'Nožni izteg (Leg Extension)', tag: 'Izolacija kvadric' }
+      ],
+      'hamstring': [
+        { name: 'Romunski mrtvi dvig (RDL)', tag: 'Zadnja loža · Gluteus' },
+        { name: 'Ležeči nožni pregib (Hamstring Curl)', tag: 'Izolacija lože' }
+      ]
+    };
+
+    async function loadBodyMapData() {
+      try {
+        const res = await fetch('./body-map-data.json');
+        bodyMapStore = await res.json();
+        renderBodyMap();
+      } catch(e) {
+        console.error('[Body Map] Napaka pri nalaganju:', e);
+      }
+    }
+
+    function setBodyMapView(view) {
+      currentBodyView = view;
+      document.getElementById('btnBodyAnt')?.classList.toggle('active', view === 'anterior');
+      document.getElementById('btnBodyPost')?.classList.toggle('active', view === 'posterior');
+      renderBodyMap();
+    }
+
+    function renderBodyMap() {
+      const svg = document.getElementById('bodyMapSvg');
+      if (!svg || !bodyMapStore[currentBodyView]) return;
+
+      const data = bodyMapStore[currentBodyView];
+      let html = '';
+
+      // Barve glede na regeneracijo
+      const muscleStatusColors = {
+        'chest': '#30D158',
+        'quadriceps': '#FF9F0A',
+        'upper-back': '#30D158',
+        'biceps': '#2A313A',
+        'triceps': '#30D158',
+        'hamstring': '#FF3D00'
+      };
+
+      data.forEach(item => {
+        const m = item.muscle;
+        const color = muscleStatusColors[m] || '#2A313A';
+        const isSelected = selectedMuscle === m;
+        const strokeColor = isSelected ? '#fff' : '#14181D';
+        const strokeWidth = isSelected ? '14' : '4';
+
+        item.svgPoints.forEach(pts => {
+          html += `<polygon points="${pts}" fill="${color}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-linejoin="round" style="cursor: pointer; transition: fill 0.2s, stroke 0.2s;" onclick="selectMuscleGroup('${m}')" />`;
+        });
+      });
+
+      svg.innerHTML = html;
+    }
+
+    function selectMuscleGroup(m) {
+      selectedMuscle = m;
+      renderBodyMap();
+
+      const nameEl = document.getElementById('selectedMuscleName');
+      const statusEl = document.getElementById('selectedMuscleStatus');
+      const setsEl = document.getElementById('muscleWeekSets');
+      const listEl = document.getElementById('muscleExerciseList');
+
+      if (nameEl) nameEl.textContent = muscleTranslations[m] || m;
+      
+      const statuses = {
+        'chest': { status: 'Sveže (92% regenerirano) · Zadnji trening: pred 3 dnevi', sets: '12 delovnih serij' },
+        'quadriceps': { status: 'Zmerna utrujenost (65% regenerirano) · DOMS faza', sets: '16 delovnih serij' },
+        'hamstring': { status: 'Močna obremenitev (42% regenerirano) · Potreben počitek', sets: '14 delovnih serij' },
+        'upper-back': { status: 'Optimalno pripravljeno (100% regenerirano)', sets: '8 delovnih serij' }
+      };
+
+      const cur = statuses[m] || { status: 'Počiva (100% regenerirano)', sets: '0 delovnih serij' };
+      if (statusEl) statusEl.textContent = cur.status;
+      if (setsEl) setsEl.textContent = cur.sets;
+
+      if (listEl) {
+        const exs = muscleExercises[m] || [
+          { name: `Aktivacijska vaja za ${muscleTranslations[m] || m}`, tag: 'Glavni gib' },
+          { name: 'Izolacijsko gibanje s škripcem ali ročkami', tag: 'Hipertrofija' }
+        ];
+        listEl.innerHTML = exs.map(e => `
+          <div style="display: flex; justify-content: space-between; align-items: center; background: var(--surface-3); padding: 8px 12px; border-radius: 8px; font-size: 0.82rem;">
+            <span>${e.name}</span>
+            <span class="status-pill" style="color: var(--rec-green);">${e.tag}</span>
+          </div>
+        `).join('');
+      }
+    }
+
+    async function initApp() {
+      try {
+        const res = await fetch('./baza-znanja-vault.json');
+        vaultStore = await res.json();
+      } catch (e) {
+        console.warn('Lokalni fallback');
+      }
+
+      renderDanesSlots();
+      handleCikelSliders();
+      runVermeulen();
+      updatePortoCard();
+      renderVaultCategories();
+      renderVaultCards(vaultStore.snovi || []);
+      checkInteractions();
+      loadDanesVnos();
+      loadBloodworkVnos();
+      loadBodyMapData();
+      initPrehrana();
+    }
+
+    function switchNav(id) {
+      document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      const tabBtn = Array.from(document.querySelectorAll('.nav-tab')).find(b => b.getAttribute('onclick')?.includes(id));
+      if (tabBtn) tabBtn.classList.add('active');
+      else if (typeof event !== 'undefined' && event && event.currentTarget) event.currentTarget.classList.add('active');
+      const view = document.getElementById('view-' + id);
+      if (view) view.classList.add('active');
+      if (id === 'prehrana' && typeof renderPrehranaView === 'function') renderPrehranaView();
+      if (id === 'trening') renderBodyMap();
+      window.scrollTo(0,0);
+    }
+
+    // DANES SLOTS
+    function renderDanesSlots() {
+      const container = document.getElementById('danesSlotsContainer');
+      container.innerHTML = '';
+
+      const slots = [
+        { id: "MORNING_FASTED", title: "Zjutraj na tešče" },
+        { id: "WITH_BREAKFAST", title: "Z zajtrkom (Lipidi D3/Omega)" },
+        { id: "PRE_WORKOUT", title: "Pred treningom (-30 min)" },
+        { id: "BEFORE_BED", title: "Pred spanjem (GABA / pomiritev)" }
+      ];
+
+      slots.forEach(s => {
+        const items = appState.protocols.filter(p => p.slot === s.id);
+        if (items.length === 0) return;
+
+        const el = document.createElement('div');
+        el.className = 'slot-card';
+        el.innerHTML = `
+          <div class="slot-head">${s.title}</div>
+          ${items.map(it => {
+            const isChecked = !!appState.checks[it.id];
+            return `
+              <div class="sub-item">
+                <div>
+                  <div style="font-weight: 700; font-size: 0.88rem; color: #fff;">${it.name}</div>
+                  <div style="font-size: 0.72rem; color: var(--text-3);">${it.dose} · ${it.category}</div>
+                </div>
+                <button class="check-btn ${isChecked ? 'checked' : ''}" onclick="toggleCheck('${it.id}')">
+                  ${isChecked ? '✓' : ''}
+                </button>
+              </div>
+            `;
+          }).join('')}
+        `;
+        container.appendChild(el);
+      });
+    }
+
+    function toggleCheck(id) {
+      appState.checks[id] = !appState.checks[id];
+      renderDanesSlots();
+    }
+
+    // BIOCIJELI INTERAKCIJSKI MOTOR (Usklajeno z Raziskavo v2)
+    function checkInteractions() {
+      const box = document.getElementById('liveAlertsContainer');
+      box.innerHTML = '';
+      const alerts = [];
+
+      const eqDose = appState.cikel.eqMg;
+      const testDose = appState.cikel.testMg;
+      if (eqDose > 0 && (testDose / eqDose) < 2.0) {
+        alerts.push({ type: 'danger', text: 'TVEGANJE MOČNEGA PADCA E2! Razmerje Testosteron : EQ je pod 2:1. Presnovki boldenona (1,4-dien metaboliti) delujejo kot močni inhibitorji aromataze (v2 dokazi: stopnja B presnova / D praksa).' });
+      }
+
+      alerts.forEach(a => {
+        const el = document.createElement('div');
+        el.className = `alert-banner ${a.type === 'danger' ? 'danger' : ''}`;
+        el.innerHTML = '⚠️ ' + a.text;
+        box.appendChild(el);
+      });
+    }
+
+    // CIKEL & PK MODEL (Bateman 1-kompartment)
+    function handleCikelSliders() {
+      const testMg = parseInt(document.getElementById('rangeTest').value);
+      const eqMg = parseInt(document.getElementById('rangeEq').value);
+      const fl = document.getElementById('chkFrontload').checked;
+
+      appState.cikel.testMg = testMg;
+      appState.cikel.eqMg = eqMg;
+      appState.cikel.frontload = fl;
+
+      document.getElementById('sliderValTest').innerText = testMg + ' mg / teden';
+      document.getElementById('sliderValEq').innerText = eqMg + ' mg / teden';
+      document.getElementById('statActiveTest').innerText = '~' + (testMg / 7).toFixed(1) + ' mg/dan';
+      document.getElementById('statActiveEq').innerText = eqMg > 0 ? '~' + (eqMg / 7).toFixed(1) + ' mg/dan' : '0 mg';
+
+      const ratio = eqMg > 0 ? (testMg / eqMg).toFixed(2) : "N/A";
+      const pill = document.getElementById('pkStatusPill');
+      const warn = document.getElementById('cikelWarningBanner');
+
+      const cw = document.getElementById('cikelWatermark');
+      const ma = document.getElementById('mascotAvatar');
+
+      if (ratio === "N/A") {
+        pill.innerText = "TRT samo";
+        pill.style.color = "var(--text-1)";
+        warn.style.display = "none";
+        if (cw) cw.src = "./assets/anime/thumbsup.gif";
+      } else if (parseFloat(ratio) >= 2.5 && !fl) {
+        pill.innerText = `Razmerje ${ratio}:1 (Optimalno)`;
+        pill.style.color = "var(--rec-green)";
+        warn.className = "alert-banner success";
+        warn.style.display = "flex";
+        warn.innerHTML = "<strong>Varno območje:</strong> Razmerje 2.5:1 do 3:1 ohranja zdrav E2 in preprečuje ginekomastijo brez sesutja estrogena.";
+        if (cw) cw.src = "./assets/anime/wink.gif";
+        if (ma) ma.src = "./assets/anime/happy.gif";
+      } else {
+        pill.innerText = `Razmerje ${ratio}:1 (TVEGANJE!)`;
+        pill.style.color = "var(--rec-red)";
+        warn.className = "alert-banner danger";
+        warn.style.display = "flex";
+        warn.innerHTML = "<strong>OPOZORILO:</strong> Razmerje T:EQ pod 2:1 po podatkih uporabnikov močno zbije estradiol (tveganje za suhe sklepe, letargijo in padec libida).";
+        if (cw) cw.src = "./assets/anime/facepalm.gif";
+        if (ma) ma.src = "./assets/anime/facepalm.gif";
+      }
+
+      if (fl) {
+        warn.className = "alert-banner danger";
+        warn.style.display = "flex";
+        warn.innerHTML = "<strong>OPOZORILO FRONT-LOAD:</strong> 14-dnevni razpolovni čas boldenona ustvari depo za 6 tednov. Če pride do anksioznosti ali skoka hematokrita, odmerka ni mogoče znižati!";
+        if (cw) cw.src = "./assets/anime/cry.gif";
+        if (ma) ma.src = "./assets/anime/cry.gif";
+      }
+
+      // Kinetični izris (112 dni)
+      renderPkChart(testMg, eqMg, fl);
+      checkInteractions();
+    }
+
+    function renderPkChart(testDose, eqDose, frontload) {
+      const svg = document.getElementById('cikelSvgChart');
+      const w = svg.clientWidth || 320;
+      const h = svg.clientHeight || 170;
+
+      const days = 112;
+      const k_test = Math.log(2) / 6.0;
+      const k_eq = Math.log(2) / 14.0;
+
+      let testVals = new Array(days).fill(0);
+      let eqVals = new Array(days).fill(0);
+
+      const dTest = testDose / 7.0;
+      const dEq = eqDose / 7.0;
+
+      for (let i = 0; i < days; i++) {
+        let curEq = dEq;
+        if (frontload && i < 14) {
+          curEq = dEq * (1.95 - (i / 14.0) * 0.95);
+        }
+        testVals[i] = (i > 0 ? testVals[i-1] : 0) * Math.exp(-k_test) + dTest;
+        eqVals[i] = (i > 0 ? eqVals[i-1] : 0) * Math.exp(-k_eq) + curEq;
+      }
+
+      const max = Math.max(...testVals, ...eqVals, 40) * 1.15;
+      const sx = (d) => (d / (days - 1)) * (w - 16) + 8;
+      const sy = (v) => h - 16 - (v / max) * (h - 32);
+
+      const pTest = testVals.map((v, i) => `${i === 0 ? 'M' : 'L'} ${sx(i).toFixed(1)} ${sy(v).toFixed(1)}`).join(' ');
+      const pEq = eqVals.map((v, i) => `${i === 0 ? 'M' : 'L'} ${sx(i).toFixed(1)} ${sy(v).toFixed(1)}`).join(' ');
+
+      svg.innerHTML = `
+        <line x1="8" y1="${h-16}" x2="${w-8}" y2="${h-16}" stroke="rgba(255,255,255,0.1)"/>
+        <line x1="8" y1="${sy(max*0.5)}" x2="${w-8}" y2="${sy(max*0.5)}" stroke="rgba(255,255,255,0.06)" stroke-dasharray="4"/>
+        <path d="${pEq}" fill="none" stroke="var(--c-kinetics)" stroke-width="2.5"/>
+        <path d="${pTest}" fill="none" stroke="var(--strain-blue)" stroke-width="2.5"/>
+      `;
+    }
+
+    // VERMEULEN FORMULA
+    function runVermeulen() {
+      const t = parseFloat(document.getElementById('vermT').value) || 0;
+      const shbg = parseFloat(document.getElementById('vermSHBG').value) || 0;
+      const alb = parseFloat(document.getElementById('vermAlb').value) || 4.4;
+
+      const T = t * 0.03467 * 1e-9;
+      const SHBG = shbg * 1e-9;
+      const Alb = (alb / 69000) * 1e-2;
+
+      const Ka = 3.6e4;
+      const Kt = 1.0e9;
+
+      const a = Kt;
+      const b = 1 + Kt * SHBG + Ka * Alb - Kt * T;
+      const c = -T;
+
+      const root = (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a);
+      const freeT = root / (0.03467 * 1e-9);
+      const pct = (freeT / t) * 100;
+
+      document.getElementById('vermResVal').innerText = freeT.toFixed(2) + ' ng/dL';
+      document.getElementById('vermResPct').innerText = pct.toFixed(2) + ' %';
+    }
+
+    // PORTO CARD NAROČILNICA
+    function updatePortoCard() {
+      const type = document.getElementById('portoSelectType').value;
+      const box = document.getElementById('portoCardText');
+      if (type === 'baseline') {
+        box.innerText = `Bom dia,\nQuero fazer análises a título particular (Sem P1):\n\n1. PACK HOMEM (29,50 €):\n   - Hemograma completo, Glucose, Colesterol Total, HDL, LDL, Triglicéridos, TGO, PSA Total, Urina sumária.\n\n2. ANÁLISES AVULSAS ADICIONAIS:\n   - Testosterona Total\n   - SHBG\n   - Albumina\n   - Estradiol (17-Beta)\n   - GGT\n   - Creatinina + Ureia\n   - Ferritina\n   - Apolipoproteína B (ApoB)\n\n(Odvzem zjutraj na tešče, Sá da Bandeira 819).`;
+      } else if (type === 'nadzor') {
+        box.innerText = `Bom dia,\nAnálises a título particular (Sem P1) - Controlo de Ciclo:\n\n1. PACK DISLIPIDÉMIAS (6,50 €):\n   - Colesterol Total, HDL, LDL, Triglicéridos.\n\n2. ADICIONAIS:\n   - Hemograma completo\n   - Testosterona Total\n   - Estradiol (17-Beta)\n   - GGT + Creatinina.`;
+      } else {
+        box.innerText = `Bom dia,\nQuero pedir apenas Hemograma completo a título particular (Sem P1)\npara controlo de hematócrito e hemoglobina.`;
+      }
+    }
+
+    function copyPortoText() {
+      const text = document.getElementById('portoCardText').innerText;
+      navigator.clipboard.writeText(text);
+      alert('Kopirano v odložišče!');
+    }
+
+    // --- VAULT ENCIKLOPEDIJA IN PODROBNOSTI SNOVI ---
+    function formatVaultMarkdown(text) {
+      if (!text) return '';
+      const lines = text.split('\n');
+      let html = '';
+      let inList = null;
+      let currentLi = null;
+
+      function formatInline(str) {
+        return str
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/\*\*(.*?)\*\*/g, '<strong class="sheet-strong">$1</strong>')
+          .replace(/\*(.*?)\*/g, '<em>$1</em>')
+          .replace(/`([^`]+)`/g, '<code class="sheet-code">$1</code>');
+      }
+
+      function flushLi() {
+        if (currentLi !== null) {
+          html += `<li>${formatInline(currentLi.trim())}</li>`;
+          currentLi = null;
+        }
+      }
+
+      function closeList() {
+        flushLi();
+        if (inList) {
+          html += inList === 'ul' ? '</ul>' : '</ol>';
+          inList = null;
+        }
+      }
+
+      for (let i = 0; i < lines.length; i++) {
+        const rawLine = lines[i];
+        const trimmed = rawLine.trim();
+
+        if (!trimmed) {
+          closeList();
+          continue;
+        }
+
+        const ulMatch = rawLine.match(/^\s*[-*]\s+(.*)/);
+        const olMatch = rawLine.match(/^\s*(\d+)\.\s+(.*)/);
+
+        if (ulMatch) {
+          flushLi();
+          if (inList !== 'ul') {
+            closeList();
+            html += '<ul class="sheet-ul">';
+            inList = 'ul';
+          }
+          currentLi = ulMatch[1];
+        } else if (olMatch) {
+          flushLi();
+          if (inList !== 'ol') {
+            closeList();
+            html += '<ol class="sheet-ol">';
+            inList = 'ol';
+          }
+          currentLi = olMatch[2];
+        } else if (inList && (/^\s{2,}/.test(rawLine) || currentLi !== null)) {
+          currentLi += ' ' + trimmed;
+        } else {
+          closeList();
+          html += `<p class="sheet-p">${formatInline(trimmed)}</p>`;
+        }
+      }
+
+      closeList();
+      return html;
+    }
+
+    let currentVaultCat = 'Vse';
+
+    function renderVaultCategories() {
+      const cats = ['Vse', 'AAS', 'Peptid', 'Nootropik', 'SARM', 'Suplement', 'Adaptogen'];
+      const bar = document.getElementById('catFilterButtons');
+      bar.innerHTML = cats.map(c => `
+        <button class="status-pill ${c === currentVaultCat ? 'active' : ''}" style="cursor: pointer; white-space: nowrap;" onclick="filterVaultByCat('${c}', this)">${c}</button>
+      `).join('');
+    }
+
+    function filterVaultByCat(c, btn) {
+      currentVaultCat = c;
+      if (btn) {
+        document.querySelectorAll('#catFilterButtons .status-pill').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      }
+      applyVaultFilters();
+    }
+
+    function filterVaultList() {
+      applyVaultFilters();
+    }
+
+    function applyVaultFilters() {
+      const q = (document.getElementById('vaultSearchBox')?.value || '').toLowerCase().trim();
+      let list = vaultStore.snovi || [];
+
+      if (currentVaultCat !== 'Vse') {
+        list = list.filter(s => s.razred && s.razred.some(r => r.toLowerCase().includes(currentVaultCat.toLowerCase())));
+      }
+
+      if (q) {
+        list = list.filter(s =>
+          (s.title && s.title.toLowerCase().includes(q)) ||
+          (s.razred && s.razred.some(r => r.toLowerCase().includes(q))) ||
+          (s.znano_kot && s.znano_kot.some(z => z.toLowerCase().includes(q))) ||
+          (s.povzetek && s.povzetek.toLowerCase().includes(q))
+        );
+      }
+
+      renderVaultCards(list);
+    }
+
+    function renderVaultCards(items) {
+      const grid = document.getElementById('vaultGrid');
+      const countEl = document.getElementById('vaultStatsCount');
+      const totalCount = vaultStore.snovi ? vaultStore.snovi.length : 133;
+
+      if (countEl) {
+        countEl.textContent = `Prikazano: ${items.length} od ${totalCount} snovi`;
+      }
+
+      if (!items || items.length === 0) {
+        grid.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 36px 16px; color: var(--text-3); font-size: 0.85rem;">
+            🔍 Ni najdenih snovi za izbrani iskalni niz ali kategorijo.
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = items.map(s => {
+        const ev = (s.evidence_level || 'C').toUpperCase();
+        const evClass = ev.toLowerCase();
+        const humanStudies = s.cloveske_studije || 0;
+
+        return `
+          <div class="bento-cell vault-card" onclick="openSnovDetails('${s.id}')">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 6px;">
+              <div style="font-weight: 700; color: #fff; font-size: 0.88rem; line-height: 1.25;">${s.title}</div>
+              <span class="evidence-pill ev-${evClass}" style="flex-shrink: 0; font-size: 0.62rem; padding: 2px 5px;" title="Evidenca razred ${ev}">
+                ${ev}
+              </span>
+            </div>
+            <div style="font-size: 0.7rem; color: var(--text-3); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              ${s.razred ? s.razred.slice(0, 2).join(' · ') : ''}
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 0.68rem; border-top: 1px solid var(--edge-1); padding-top: 6px;">
+              <span style="color: ${humanStudies > 0 ? 'var(--rec-green)' : 'var(--text-3)'};">
+                ${humanStudies > 0 ? '🔬 ' + humanStudies + ' študij' : 'Predklinično'}
+              </span>
+              <span style="color: var(--strain-blue); font-weight: 600;">Podrobnosti →</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openSnovDetails(id) {
+      const s = vaultStore.snovi.find(x => x.id === id);
+      if (!s) return;
+      const b = document.getElementById('snovModalBody');
+      const ev = (s.evidence_level || 'C').toUpperCase();
+      const evClass = ev.toLowerCase();
+
+      // Opozorilni indikatorji tveganja (Risk flags)
+      let riskHtml = '';
+      if (s.risk_flags && s.risk_flags.length > 0) {
+        const flagLabels = {
+          'wada': '⛔ WADA Prepovedano',
+          'brez-cloveskih-podatkov': '⚠️ Brez podatkov na ljudeh',
+          'opozorilo-v-besedilu': '⚠️ Kritično varnostno opozorilo',
+          'tveganje-zasvojenosti': '⚠️ Možnost dependence',
+          'ozko-terapevtsko-okno': '⚠️ Ozko terapevtsko okno'
+        };
+        riskHtml = `
+          <div class="snov-risk-alert">
+            <div class="snov-risk-heading">
+              <span>⚠️</span>
+              <span>Opozorilni Indikatorji Tveganja</span>
+            </div>
+            <div class="snov-risk-badges">
+              ${s.risk_flags.map(f => `<span class="snov-risk-tag">${flagLabels[f] || ('⚠️ ' + f)}</span>`).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      b.innerHTML = `
+        <!-- 1. LEPLJIVA GLAVA (Sticky Header z gumbom ✕) -->
+        <div class="snov-sheet-header">
+          <div class="snov-drag-handle"></div>
+          <div class="snov-header-main">
+            <div class="snov-title-group">
+              <div class="snov-category-row">
+                <span class="evidence-pill ev-${evClass}">Razred evidence: ${ev}</span>
+                <span class="snov-class-tags">${(s.razred || []).join(' · ')}</span>
+              </div>
+              <h2 class="snov-sheet-title">${s.title}</h2>
+            </div>
+            <button class="snov-close-btn" onclick="closeSnovModalDirect()" aria-label="Zapri podrobnosti snovi" title="Zapri (Esc)">✕</button>
+          </div>
+        </div>
+
+        <!-- 2. TEKOČE SKROLABILNO TELO Z BERLJIVO TIPOGRAFIJO -->
+        <div class="snov-sheet-body">
+          <!-- Bento Stats Grid -->
+          <div class="snov-bento-stats">
+            <div class="snov-stat-chip">
+              <span class="snov-stat-label">Človeške študije</span>
+              <span class="snov-stat-val" style="color: ${s.cloveske_studije > 0 ? 'var(--rec-green)' : 'var(--text-3)'};">
+                ${s.cloveske_studije > 0 ? s.cloveske_studije + ' študij' : '0 (predklinično)'}
+              </span>
+            </div>
+            <div class="snov-stat-chip">
+              <span class="snov-stat-label">Citirani članki</span>
+              <span class="snov-stat-val">${s.citiranih_clankov || 0}</span>
+            </div>
+            <div class="snov-stat-chip">
+              <span class="snov-stat-label">Razpolovni čas</span>
+              <span class="snov-stat-val">${s.razpolovni_cas || 'Ni navedeno'}</span>
+            </div>
+            ${s.pubchem ? `
+            <a class="snov-stat-chip link" href="https://pubchem.ncbi.nlm.nih.gov/compound/${s.pubchem}" target="_blank" rel="noopener" title="Odpri PubChem zapis">
+              <span class="snov-stat-label" style="color: var(--strain-blue);">PubChem CID ↗</span>
+              <span class="snov-stat-val" style="color: var(--strain-blue);">#${s.pubchem}</span>
+            </a>` : `
+            <div class="snov-stat-chip">
+              <span class="snov-stat-label">Tip</span>
+              <span class="snov-stat-val">${s.tip || 'Snov'}</span>
+            </div>`}
+          </div>
+
+          ${riskHtml}
+
+          <!-- Sekcija 1: O snovi & Povzetek -->
+          <div class="snov-section-card">
+            <div class="snov-section-header">
+              <span>🧬</span>
+              <span>O Snovi & Delovanje</span>
+            </div>
+            <div class="snov-prose">
+              ${formatVaultMarkdown((s.deli && s.deli.kaj_je) ? s.deli.kaj_je : (s.povzetek || 'Brez podrobnega opisa.'))}
+            </div>
+          </div>
+
+          <!-- Sekcija 2: Mehanizem delovanja -->
+          ${s.deli && s.deli.mehanizem ? `
+          <div class="snov-section-card">
+            <div class="snov-section-header" style="color: var(--rec-green);">
+              <span>⚙️</span>
+              <span>Biološki Mehanizem</span>
+            </div>
+            <div class="snov-prose">
+              ${formatVaultMarkdown(s.deli.mehanizem)}
+            </div>
+          </div>` : ''}
+
+          <!-- Sekcija 3: Varnost, Toksičnost & Regulacija -->
+          ${s.deli && s.deli.varnost ? `
+          <div class="snov-section-card snov-section-warning">
+            <div class="snov-section-header" style="color: var(--rec-red);">
+              <span>🛡️</span>
+              <span>Varnost, Tveganja & Regulacija</span>
+            </div>
+            <div class="snov-prose">
+              ${formatVaultMarkdown(s.deli.varnost)}
+            </div>
+          </div>` : ''}
+
+          <!-- Sekcija 4: Človek vs. Žival -->
+          ${s.deli && s.deli.clovek_vs_zival ? `
+          <div class="snov-section-card">
+            <div class="snov-section-header">
+              <span>📊</span>
+              <span>Primerjava: Ljudje vs. Živalski Modeli</span>
+            </div>
+            <div class="snov-prose">
+              ${formatVaultMarkdown(s.deli.clovek_vs_zival)}
+            </div>
+          </div>` : ''}
+
+          <!-- Sekcija 5: Interakcije -->
+          ${s.deli && s.deli.interakcije ? `
+          <div class="snov-section-card">
+            <div class="snov-section-header" style="color: var(--rec-yellow);">
+              <span>⚠️</span>
+              <span>Znane Interakcije & Kontraindikacije</span>
+            </div>
+            <div class="snov-prose">
+              ${formatVaultMarkdown(s.deli.interakcije)}
+            </div>
+          </div>` : ''}
+
+          <!-- Sekcija 6: Sinonimi -->
+          ${s.znano_kot && s.znano_kot.length > 0 ? `
+          <div class="snov-section-card">
+            <div class="snov-section-header">
+              <span>🏷️</span>
+              <span>Sinonimi & Druga Imena</span>
+            </div>
+            <div class="snov-aliases-wrap">
+              ${s.znano_kot.map(a => `<span class="snov-alias-badge">${a}</span>`).join('')}
+            </div>
+          </div>` : ''}
+        </div>
+
+        <!-- 3. FIKSNI GUMB NA DNU (Sticky Footer) -->
+        <div class="snov-sheet-footer">
+          <div class="snov-footer-content">
+            <div class="snov-slot-select-wrap">
+              <label for="sheetSlotSelect">Urnik jemanja:</label>
+              <select id="sheetSlotSelect" class="snov-slot-select">
+                <option value="MORNING_FASTED">🌅 Na tešče</option>
+                <option value="WITH_BREAKFAST" selected>🍳 Z zajtrkom</option>
+                <option value="PRE_WORKOUT">⚡ Pred treningom</option>
+                <option value="BEFORE_BED">🌙 Pred spanjem</option>
+              </select>
+            </div>
+            <button type="button" class="snov-add-protocol-btn" onclick="submitAddFromSheet('${s.id}')">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              <span>+ Dodaj v protokol</span>
+            </button>
+          </div>
+        </div>
+      `;
+
+      const overlay = document.getElementById('snovModalOverlay');
+      if (overlay) {
+        overlay.classList.add('open');
+      }
+      lockBodyScroll();
+      const sheetBody = document.querySelector('.snov-sheet-body');
+      if (sheetBody) sheetBody.scrollTop = 0;
+    }
+
+    function submitAddFromSheet(id) {
+      const s = vaultStore.snovi.find(x => x.id === id);
+      if (!s) return;
+      const select = document.getElementById('sheetSlotSelect');
+      const chosenSlot = select ? select.value : 'WITH_BREAKFAST';
+      const primaryCat = (s.razred && s.razred[0]) ? s.razred[0] : 'Dopolnilo';
+
+      addSnovToProtocol(s.id, s.title, primaryCat, chosenSlot);
+    }
+
+    function addSnovToProtocol(id, title, cat, slot) {
+      const targetSlot = slot || 'WITH_BREAKFAST';
+      appState.protocols.push({
+        id: id + '-' + Date.now(),
+        name: title,
+        dose: "standard",
+        slot: targetSlot,
+        category: cat
+      });
+      closeSnovModalDirect();
+      renderDanesSlots();
+
+      const slotLabels = {
+        'MORNING_FASTED': 'Zjutraj na tešče',
+        'WITH_BREAKFAST': 'Z zajtrkom',
+        'PRE_WORKOUT': 'Pred treningom',
+        'BEFORE_BED': 'Pred spanjem'
+      };
+      const label = slotLabels[targetSlot] || targetSlot;
+      showAppToast(`✓ ${title} dodano v protokol (${label})!`, './assets/anime/celebrate.gif');
+    }
+
+    function closeSnovModal(e) { if (e.target.id === 'snovModalOverlay') closeSnovModalDirect(); }
+    function closeSnovModalDirect() {
+      const overlay = document.getElementById('snovModalOverlay');
+      if (overlay) overlay.classList.remove('open');
+      unlockBodyScroll();
+    }
+
+    // Escape tipka za zapiranje bottom-sheeta
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const overlay = document.getElementById('snovModalOverlay');
+        if (overlay && overlay.classList.contains('open')) {
+          closeSnovModalDirect();
+        }
+      }
+    });
+
+    // Service worker & Auto-Update
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js?v=3').then((reg) => {
+          reg.update();
+          reg.onupdatefound = () => {
+            const installingWorker = reg.installing;
+            if (installingWorker) {
+              installingWorker.onstatechange = () => {
+                if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  showMascotNotification('Nova verzija je pripravljena!');
+                  setTimeout(() => window.location.reload(), 1000);
+                }
+              };
+            }
+          };
+        }).catch(err => console.log('SW error', err));
+      });
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        console.log('[SW] Nova verzija aktivirana');
+      });
+    }
+
+    // Interaktivna maskota & motivacija
+    const MASCOT_QUOTES = [
+      { text: "8h spanja = naravni anabolik. Regeneracija je danes vrhunska!", gif: "./assets/anime/happy.gif" },
+      { text: "Pazi razmerje Test:EQ (2.5:1 do 3:1), da estradiol ostane zdrav!", gif: "./assets/anime/wink.gif" },
+      { text: "Pred odvzemom krvi v Portu spij 0.5L vode za točen hematokrit!", gif: "./assets/anime/thumbsup.gif" },
+      { text: "Mehanska napetost gradi mišico, ne le začasni pump!", gif: "./assets/anime/laugh.gif" },
+      { text: "Soja ali jajčni beljak: najcenejši vir čistih beljakovin v Portu.", gif: "./assets/anime/happy.gif" },
+      { text: "Če čutiš preutrujenost, raje izberi deload kot preobremenitev tetive.", gif: "./assets/anime/shrug.gif" }
+    ];
+    let quoteIdx = 0;
+    function triggerMascotQuote() {
+      const q = MASCOT_QUOTES[quoteIdx % MASCOT_QUOTES.length];
+      quoteIdx++;
+      const toast = document.getElementById('mascotToast');
+      const toastText = document.getElementById('mascotToastText');
+      const toastImg = document.getElementById('mascotToastImg');
+      const avatar = document.getElementById('mascotAvatar');
+      
+      if (toast && toastText && toastImg) {
+        toastText.textContent = q.text;
+        toastImg.src = q.gif;
+        if (avatar) avatar.src = q.gif;
+        toast.style.display = 'flex';
+        clearTimeout(window._toastTimeout);
+        window._toastTimeout = setTimeout(() => {
+          toast.style.display = 'none';
+        }, 4500);
+      }
+    }
+
+    function showAppToast(msg, gifUrl) {
+      const toast = document.getElementById('mascotToast');
+      const toastText = document.getElementById('mascotToastText');
+      const toastImg = document.getElementById('mascotToastImg');
+      if (toast && toastText) {
+        toastText.textContent = msg;
+        if (toastImg && gifUrl) toastImg.src = gifUrl;
+        toast.style.display = 'flex';
+        clearTimeout(window._toastTimeout);
+        window._toastTimeout = setTimeout(() => {
+          toast.style.display = 'none';
+        }, 4000);
+      }
+    }
+
+    // Celozaslonski Beast Mode
+    function triggerSuperSaiyan() {
+      const overlay = document.getElementById('beastModeOverlay');
+      if (overlay) {
+        overlay.classList.add('open');
+        lockBodyScroll();
+      }
+    }
+    function closeBeastMode() {
+      const overlay = document.getElementById('beastModeOverlay');
+      if (overlay) {
+        overlay.classList.remove('open');
+        unlockBodyScroll();
+      }
+    }
+
+    // Nastavitev intenzivnosti ozadja (Vibe switch)
+    const VIBE_LEVELS = [
+      { opacity: 0.16, label: "⚡ Vibe: 16%" },
+      { opacity: 0.32, label: "🔥 Vibe: 32%" },
+      { opacity: 0.52, label: "🚀 Vibe: 52%" },
+      { opacity: 0.05, label: "🌙 Vibe: 5%" }
+    ];
+    let vibeIdx = 0;
+    function cycleAnimeVibe() {
+      vibeIdx = (vibeIdx + 1) % VIBE_LEVELS.length;
+      const v = VIBE_LEVELS[vibeIdx];
+      const bg = document.getElementById('fsAnimeBg');
+      const btn = document.getElementById('vibeBtn');
+      if (bg) bg.style.opacity = v.opacity;
+      if (btn) btn.innerText = v.label;
+    }
+
+    // --- FOTO IN PODATKOVNI VNOSI ---
+
+    /**
+     * Zanesljivo stiskanje in pomanjšanje slik prek HTML5 Canvas
+     * - Omeji max dimenzijo na max 1200px (ohranja razmerje, ne povečuje)
+     * - JPEG kompresija 0.75 - 0.8
+     * - Zagotovljena velikost < 150 KB za varno shrambo v localStorage
+     * - Čiščenje pomnilnika (URL.revokeObjectURL, canvas.width=0) za stabilnost WebKita
+     */
+    async function compressAndResizeImage(file, options = {}) {
+      const maxDim = options.maxDim || 1200;
+      const initialQuality = options.initialQuality || 0.78;
+      const targetMaxKB = options.maxSizeKB || 150;
+      const originalSizeKB = Math.round((file.size || 0) / 1024);
+
+      return new Promise((resolve, reject) => {
+        if (!file || !file.type.startsWith('image/')) {
+          return reject(new Error('Datoteka ni veljavna slika (type: ' + (file?.type || 'neznan') + ')'));
+        }
+
+        const objectUrl = URL.createObjectURL(file);
+        const img = new Image();
+
+        img.onload = () => {
+          URL.revokeObjectURL(objectUrl);
+
+          const origWidth = img.naturalWidth || img.width;
+          const origHeight = img.naturalHeight || img.height;
+
+          if (!origWidth || !origHeight) {
+            return reject(new Error('Neveljavne dimenzije slike'));
+          }
+
+          // 1. Proporcionalno pomanjšanje (nikoli ne povečuj)
+          let currentMax = maxDim;
+          let scale = Math.min(1, currentMax / Math.max(origWidth, origHeight));
+          let targetW = Math.round(origWidth * scale);
+          let targetH = Math.round(origHeight * scale);
+
+          // 2. Ustvari Canvas
+          const canvas = document.createElement('canvas');
+          canvas.width = targetW;
+          canvas.height = targetH;
+          const ctx = canvas.getContext('2d', { alpha: false });
+          if (!ctx) {
+            return reject(new Error('Canvas 2D context ni na voljo'));
+          }
+
+          // Belo ozadje za prosojne PNG/WebP formate
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, targetW, targetH);
+          ctx.drawImage(img, 0, 0, targetW, targetH);
+
+          // 3. Iterativno prilagajanje kakovosti za < targetMaxKB (150 KB)
+          let quality = initialQuality;
+          let dataUrl = canvas.toDataURL('image/jpeg', quality);
+
+          function calcKB(b64) {
+            const headIdx = b64.indexOf(',');
+            const b64Data = headIdx !== -1 ? b64.substring(headIdx + 1) : b64;
+            return Math.round((b64Data.length * 3) / 4 / 1024);
+          }
+
+          let currentKB = calcKB(dataUrl);
+
+          // Stopnje zniževanja kakovosti, če slika presega 150 KB
+          const qualitySteps = [0.72, 0.65, 0.58, 0.50];
+          let step = 0;
+          while (currentKB > targetMaxKB && step < qualitySteps.length) {
+            quality = qualitySteps[step];
+            dataUrl = canvas.toDataURL('image/jpeg', quality);
+            currentKB = calcKB(dataUrl);
+            step++;
+          }
+
+          // Če je slika še vedno > 150 KB (visoko šumen posnetek), dodatno zmanjšaj dimenzije na 950px
+          if (currentKB > targetMaxKB) {
+            currentMax = 950;
+            scale = Math.min(1, currentMax / Math.max(origWidth, origHeight));
+            targetW = Math.round(origWidth * scale);
+            targetH = Math.round(origHeight * scale);
+            canvas.width = targetW;
+            canvas.height = targetH;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, targetW, targetH);
+            ctx.drawImage(img, 0, 0, targetW, targetH);
+            quality = 0.62;
+            dataUrl = canvas.toDataURL('image/jpeg', quality);
+            currentKB = calcKB(dataUrl);
+          }
+
+          // Sprostitev pomnilnika canvasa (ključno za mobilni Safari/WebKit)
+          canvas.width = 0;
+          canvas.height = 0;
+
+          resolve({
+            dataUrl,
+            width: targetW,
+            height: targetH,
+            quality,
+            sizeKB: currentKB,
+            originalSizeKB
+          });
+        };
+
+        img.onerror = (err) => {
+          URL.revokeObjectURL(objectUrl);
+          reject(new Error('Napaka pri nalaganju slike'));
+        };
+
+        img.src = objectUrl;
+      });
+    }
+
+    /**
+     * Varno shranjevanje v localStorage z zaščito pred QuotaExceededError
+     */
+    function saveToLocalStorageSafe(key, value) {
+      try {
+        localStorage.setItem(key, value);
+        return true;
+      } catch (err) {
+        console.warn(`[Storage Safe] Shranjevanje ključa "${key}" ni uspelo:`, err);
+        if (err.name === 'QuotaExceededError' || err.code === 22) {
+          showMascotNotification('Opozorilo: Pomnilnik brskalnika (localStorage) je poln.');
+        }
+        return false;
+      }
+    }
+
+    // Modal Lightbox stanje za pregled fotografije
+    let currentModalPhotoType = null;
+
+    function openPhotoModal(imgElementOrSrc, title = 'Predogled fotografije', type = null) {
+      const modal = document.getElementById('photoModalOverlay');
+      const modalImg = document.getElementById('photoModalImg');
+      const modalTitle = document.getElementById('photoModalTitle');
+      const replaceBtn = document.getElementById('photoModalReplaceBtn');
+      const removeBtn = document.getElementById('photoModalRemoveBtn');
+
+      if (!modal || !modalImg) return;
+
+      let src = '';
+      if (typeof imgElementOrSrc === 'string') {
+        if (imgElementOrSrc.startsWith('data:') || imgElementOrSrc.startsWith('http') || imgElementOrSrc.startsWith('.')) {
+          src = imgElementOrSrc;
+        } else {
+          const el = document.getElementById(imgElementOrSrc);
+          if (el) src = el.src;
+        }
+      } else if (imgElementOrSrc && imgElementOrSrc.src) {
+        src = imgElementOrSrc.src;
+      }
+
+      if (!src) return;
+
+      currentModalPhotoType = type;
+      modalImg.src = src;
+      if (modalTitle) modalTitle.textContent = title;
+
+      if (replaceBtn) replaceBtn.style.display = type ? 'inline-flex' : 'none';
+      if (removeBtn) removeBtn.style.display = type ? 'inline-flex' : 'none';
+
+      modal.classList.add('open');
+      modal.style.display = 'flex';
+      lockBodyScroll();
+    }
+
+    function closePhotoModal() {
+      const modal = document.getElementById('photoModalOverlay');
+      if (modal) {
+        modal.classList.remove('open');
+        modal.style.display = 'none';
+      }
+      const modalImg = document.getElementById('photoModalImg');
+      if (modalImg) modalImg.src = '';
+      currentModalPhotoType = null;
+      unlockBodyScroll();
+    }
+
+    function modalReplacePhoto() {
+      if (currentModalPhotoType) {
+        const t = currentModalPhotoType;
+        closePhotoModal();
+        replacePhoto(t);
+      }
+    }
+
+    function modalRemovePhoto() {
+      if (currentModalPhotoType) {
+        const t = currentModalPhotoType;
+        closePhotoModal();
+        removePhoto(t);
+      }
+    }
+
+    function replacePhoto(type) {
+      const inputId = type + 'PhotoInput';
+      const input = document.getElementById(inputId);
+      if (input) {
+        input.value = '';
+        input.click();
+      }
+    }
+
+    function removePhoto(type, notify = true) {
+      if (type === 'physique') {
+        const img = document.getElementById('physiquePreviewImg');
+        if (img) img.src = '';
+        const preview = document.getElementById('physiquePreview');
+        if (preview) preview.style.display = 'none';
+        const input = document.getElementById('physiquePhotoInput');
+        if (input) input.value = '';
+        try { localStorage.removeItem('bine_zdravje_last_physique_photo'); } catch(e){}
+        if (notify) showMascotNotification('Fotografija forme odstranjena.');
+      } else if (type === 'lab') {
+        const img = document.getElementById('labPreviewImg');
+        if (img) img.src = '';
+        const preview = document.getElementById('labPreview');
+        if (preview) preview.style.display = 'none';
+        const input = document.getElementById('labPhotoInput');
+        if (input) input.value = '';
+        const badge = document.getElementById('bloodworkStatusBadge');
+        if (badge) {
+          badge.textContent = 'Porto OCR';
+          badge.style.color = '';
+        }
+        try {
+          localStorage.removeItem('bine_zdravje_last_lab_photo');
+          localStorage.removeItem('bine_zdravje_last_lab_pdf_name');
+        } catch(e){}
+        if (notify) showMascotNotification('Dokument izvida odstranjen.');
+      } else if (type === 'meal') {
+        const img = document.getElementById('mealPreviewImg');
+        if (img) img.src = '';
+        const preview = document.getElementById('mealPreview');
+        if (preview) preview.style.display = 'none';
+        const input = document.getElementById('mealPhotoInput');
+        if (input) input.value = '';
+        currentMealPhotoDataUrl = null;
+        try { localStorage.removeItem('bine_zdravje_last_meal_photo'); } catch(e){}
+        if (notify) showMascotNotification('Fotografija obroka odstranjena.');
+      }
+
+      if (currentModalPhotoType === type) {
+        closePhotoModal();
+      }
+    }
+
+    // Zapri modal na tipko Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closePhotoModal();
+    });
+
+    // 1. Danes vnos (teža, tlak, opomba, foto forme)
+    function handlePhysiquePhotoUpload(input) {
+      const file = input.files && input.files[0];
+      if (!file) return;
+
+      const meta = document.getElementById('physiquePhotoMeta');
+      if (meta) meta.textContent = '⏳ Stiskam sliko...';
+
+      compressAndResizeImage(file, { maxDim: 1200, initialQuality: 0.78, maxSizeKB: 150 })
+        .then(res => {
+          const img = document.getElementById('physiquePreviewImg');
+          if (img) img.src = res.dataUrl;
+          const preview = document.getElementById('physiquePreview');
+          if (preview) preview.style.display = 'block';
+          if (meta) {
+            meta.innerHTML = `✓ ${res.width}×${res.height} · <strong style="color:var(--rec-green);">${res.sizeKB} KB</strong>`;
+          }
+          saveToLocalStorageSafe('bine_zdravje_last_physique_photo', res.dataUrl);
+          showMascotNotification(`Fotografija forme stisnjena: ${res.sizeKB} KB (<150 KB)`);
+        })
+        .catch(err => {
+          console.error('[Physique Upload]', err);
+          alert('Napaka pri obdelavi slike forme: ' + err.message);
+          if (meta) meta.textContent = 'Napaka pri stiskanju';
+        });
+    }
+
+    function saveDanesVnos() {
+      const teza = document.getElementById('vnosTeza').value;
+      const tlak = document.getElementById('vnosTlak').value;
+      const opomba = document.getElementById('vnosOpomba').value;
+      const data = { teza, tlak, opomba, date: new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' }) };
+      saveToLocalStorageSafe('bine_zdravje_danes_vnos', JSON.stringify(data));
+      loadDanesVnos();
+      
+      const toast = document.getElementById('mascotToast');
+      const toastText = document.getElementById('mascotToastText');
+      const toastImg = document.getElementById('mascotToastImg');
+      if (toast && toastText && toastImg) {
+        toastText.textContent = `Vnos shranjen: ${teza || '84.2'} kg · Tlak ${tlak || '120/75'}!`;
+        toastImg.src = './assets/anime/thumbsup.gif';
+        toast.style.display = 'flex';
+        clearTimeout(window._toastTimeout);
+        window._toastTimeout = setTimeout(() => toast.style.display = 'none', 3500);
+      }
+    }
+
+    function loadDanesVnos() {
+      try {
+        const saved = localStorage.getItem('bine_zdravje_danes_vnos');
+        if (saved) {
+          const d = JSON.parse(saved);
+          if (d.teza) {
+            document.getElementById('vnosTeza').value = d.teza;
+            document.getElementById('histTeza').textContent = d.teza + ' kg';
+          }
+          if (d.tlak) {
+            document.getElementById('vnosTlak').value = d.tlak;
+            document.getElementById('histTlak').textContent = d.tlak;
+          }
+          if (d.opomba) document.getElementById('vnosOpomba').value = d.opomba;
+          if (d.date) document.getElementById('lastVnosBadge').textContent = 'Vpis ob ' + d.date;
+        }
+        const photo = localStorage.getItem('bine_zdravje_last_physique_photo');
+        if (photo) {
+          const img = document.getElementById('physiquePreviewImg');
+          if (img) img.src = photo;
+          const preview = document.getElementById('physiquePreview');
+          if (preview) preview.style.display = 'block';
+          const meta = document.getElementById('physiquePhotoMeta');
+          if (meta) {
+            const kb = Math.round((photo.length * 3) / 4 / 1024);
+            meta.innerHTML = `✓ Shranjena fotografija · <strong style="color:var(--rec-green);">${kb} KB</strong>`;
+          }
+        }
+      } catch(e) {}
+    }
+
+    // 2. Bloodwork foto in ročni vnos
+    function handleLabPhotoUpload(input) {
+      const file = input.files && input.files[0];
+      if (!file) return;
+
+      const meta = document.getElementById('labPhotoMeta');
+      const badge = document.getElementById('bloodworkStatusBadge');
+      const preview = document.getElementById('labPreview');
+      const img = document.getElementById('labPreviewImg');
+
+      // Če je PDF dokument
+      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+        if (img) img.style.display = 'none';
+        if (preview) preview.style.display = 'block';
+        if (meta) meta.innerHTML = `📄 PDF izvid: <strong>${file.name}</strong> (${Math.round(file.size / 1024)} KB)`;
+        if (badge) {
+          badge.textContent = '✓ PDF naložen';
+          badge.style.color = 'var(--rec-green)';
+        }
+        saveToLocalStorageSafe('bine_zdravje_last_lab_pdf_name', file.name);
+        return;
+      }
+
+      // Če je slika
+      if (img) img.style.display = 'block';
+      if (meta) meta.textContent = '⏳ Stiskam izvid...';
+
+      compressAndResizeImage(file, { maxDim: 1200, initialQuality: 0.78, maxSizeKB: 150 })
+        .then(res => {
+          if (img) img.src = res.dataUrl;
+          if (preview) preview.style.display = 'block';
+          if (meta) {
+            meta.innerHTML = `✓ ${res.width}×${res.height} · <strong style="color:var(--rec-green);">${res.sizeKB} KB</strong>`;
+          }
+          saveToLocalStorageSafe('bine_zdravje_last_lab_photo', res.dataUrl);
+          if (badge) {
+            badge.textContent = '✓ Izvid shranjen';
+            badge.style.color = 'var(--rec-green)';
+          }
+          showMascotNotification(`Izvid stisnjen: ${res.sizeKB} KB (<150 KB)`);
+        })
+        .catch(err => {
+          console.error('[Lab Upload]', err);
+          alert('Napaka pri obdelavi slike izvida: ' + err.message);
+          if (meta) meta.textContent = 'Napaka pri stiskanju';
+        });
+    }
+
+    // 3. Foto vnos obroka
+    let currentMealPhotoDataUrl = null;
+
+    function handleMealPhotoUpload(input) {
+      const file = input.files && input.files[0];
+      if (!file) return;
+
+      const meta = document.getElementById('mealPhotoMeta');
+      if (meta) meta.textContent = '⏳ Stiskam sliko...';
+
+      compressAndResizeImage(file, { maxDim: 1200, initialQuality: 0.78, maxSizeKB: 150 })
+        .then(res => {
+          currentMealPhotoDataUrl = res.dataUrl;
+          const img = document.getElementById('mealPreviewImg');
+          if (img) img.src = res.dataUrl;
+          const preview = document.getElementById('mealPreview');
+          if (preview) preview.style.display = 'block';
+          if (meta) {
+            meta.innerHTML = `✓ ${res.width}×${res.height} · <strong style="color:var(--rec-green);">${res.sizeKB} KB</strong>`;
+          }
+          saveToLocalStorageSafe('bine_zdravje_last_meal_photo', res.dataUrl);
+          showMascotNotification(`Slika obroka stisnjena: ${res.sizeKB} KB (<150 KB)`);
+        })
+        .catch(err => {
+          console.error('[Meal Photo Upload]', err);
+          alert('Napaka pri stiskanju slike obroka: ' + err.message);
+          if (meta) meta.textContent = 'Napaka pri stiskanju';
+        });
+    }
+
+    function toggleLabTextPaste() {
+      const el = document.getElementById('labPasteContainer');
+      if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function parseAndApplyBloodworkText() {
+      const raw = (document.getElementById('txtLabPaste')?.value || '').trim();
+      if (!raw) {
+        alert('Najprej prilepi besedilo izvida v polje!');
+        return;
+      }
+
+      let parsedCount = 0;
+      const lower = raw.toLowerCase();
+
+      // Pomožna funkcija za iskanje številke po ključnih besedah
+      function extractVal(regexList) {
+        for (const re of regexList) {
+          const m = raw.match(re);
+          if (m && m[1]) {
+            const num = parseFloat(m[1].replace(',', '.'));
+            if (!isNaN(num)) return num;
+          }
+        }
+        return null;
+      }
+
+      // Hematokrit: HCT, hematocrit, hematokrit
+      const hct = extractVal([
+        /(?:hematokrit|hematocrit|hct)[\s:=]+([0-9]+[.,]?[0-9]*)/i,
+        /([0-9]+[.,]?[0-9]*)\s*%\s*(?:hct|hematokrit)/i
+      ]);
+      if (hct !== null) {
+        document.getElementById('inpBioHct').value = hct;
+        parsedCount++;
+      }
+
+      // Estradiol: E2, estradiol, 17-beta
+      const e2 = extractVal([
+        /(?:17-beta-estradiol|estradiol|17[\s-]beta[\s-]e2|e2)[\s:=]+([0-9]+[.,]?[0-9]*)/i,
+        /([0-9]+[.,]?[0-9]*)\s*(?:pg\/ml|pmol\/l).*?(?:estradiol|e2)/i
+      ]);
+      if (e2 !== null) {
+        document.getElementById('inpBioE2').value = e2;
+        parsedCount++;
+      }
+
+      // Skupni Testosteron: total testosterone, testosterona total, testosteron skupni
+      const totalT = extractVal([
+        /(?:testosteron(?:a)?\s*total|skupni\s*testosteron|total\s*t(?:estosterone)?)[\s:=]+([0-9]+[.,]?[0-9]*)/i,
+        /testosteron[\s:=]+([0-9]+[.,]?[0-9]*)\s*(?:ng\/dl|nmol\/l)/i
+      ]);
+      if (totalT !== null) {
+        // Če je v nmol/L (npr. < 60), pretvori v ng/dL (* 28.84)
+        const finalT = totalT < 70 ? Math.round(totalT * 28.84) : Math.round(totalT);
+        document.getElementById('inpBioTotalT').value = finalT;
+        document.getElementById('vermT').value = finalT;
+        parsedCount++;
+      }
+
+      // SHBG
+      const shbg = extractVal([
+        /(?:shbg|sex\s*hormone)[\s:=]+([0-9]+[.,]?[0-9]*)/i
+      ]);
+      if (shbg !== null) {
+        document.getElementById('inpBioSHBG').value = shbg;
+        document.getElementById('vermSHBG').value = shbg;
+        parsedCount++;
+      }
+
+      // ApoB
+      const apob = extractVal([
+        /(?:apolipoprote[ií]na\s*b|apob)[\s:=]+([0-9]+[.,]?[0-9]*)/i
+      ]);
+      if (apob !== null) {
+        document.getElementById('inpBioApoB').value = apob;
+        parsedCount++;
+      }
+
+      // GGT
+      const ggt = extractVal([
+        /(?:gamma[\s-]gt|ggt|gama[\s-]gt)[\s:=]+([0-9]+[.,]?[0-9]*)/i
+      ]);
+      if (ggt !== null) {
+        document.getElementById('inpBioGGT').value = ggt;
+        parsedCount++;
+      }
+
+      // Kreatinin
+      const creat = extractVal([
+        /(?:creatinina|kreatinin)[\s:=]+([0-9]+[.,]?[0-9]*)/i
+      ]);
+      if (creat !== null) {
+        document.getElementById('inpBioKreatinin').value = creat;
+        parsedCount++;
+      }
+
+      // AST / ALT
+      const ast = extractVal([/(?:tgo|ast)[\s:=]+([0-9]+[.,]?[0-9]*)/i]);
+      if (ast !== null) { document.getElementById('inpBioAST').value = ast; parsedCount++; }
+
+      const alt = extractVal([/(?:tgp|alt)[\s:=]+([0-9]+[.,]?[0-9]*)/i]);
+      if (alt !== null) { document.getElementById('inpBioALT').value = alt; parsedCount++; }
+
+      // Albumin za Vermeulen
+      const alb = extractVal([/(?:albumina|albumin)[\s:=]+([0-9]+[.,]?[0-9]*)/i]);
+      if (alb !== null && document.getElementById('vermAlb')) {
+        document.getElementById('vermAlb').value = alb < 10 ? alb : (alb / 10).toFixed(1);
+        parsedCount++;
+      }
+
+      runVermeulen();
+      saveBloodworkVnos();
+
+      alert(`✓ Samodejno razbranih in vpisanih ${parsedCount} parametrov iz besedila izvida!`);
+      const pasteCont = document.getElementById('labPasteContainer');
+      if (pasteCont) pasteCont.style.display = 'none';
+    }
+
+    function saveBloodworkVnos() {
+      const hct = parseFloat(document.getElementById('inpBioHct').value) || 48.5;
+      const e2 = parseFloat(document.getElementById('inpBioE2').value) || 28;
+      const totalT = parseFloat(document.getElementById('inpBioTotalT').value) || 950;
+      const shbg = parseFloat(document.getElementById('inpBioSHBG').value) || 32;
+      const apob = parseFloat(document.getElementById('inpBioApoB').value) || 72;
+      const ggt = parseFloat(document.getElementById('inpBioGGT').value) || 19;
+      const creat = parseFloat(document.getElementById('inpBioKreatinin')?.value) || 1.05;
+      const ast = parseFloat(document.getElementById('inpBioAST')?.value) || 26;
+      const alt = parseFloat(document.getElementById('inpBioALT')?.value) || 28;
+
+      const bw = { hct, e2, totalT, shbg, apob, ggt, creat, ast, alt, datum: new Date().toISOString().split('T')[0] };
+      saveToLocalStorageSafe('bine_zdravje_bloodwork_data', JSON.stringify(bw));
+      applyBloodworkValues(bw);
+
+      document.getElementById('vermT').value = totalT;
+      document.getElementById('vermSHBG').value = shbg;
+      runVermeulen();
+
+      const toast = document.getElementById('mascotToast');
+      const toastText = document.getElementById('mascotToastText');
+      const toastImg = document.getElementById('mascotToastImg');
+      if (toast && toastText && toastImg) {
+        toastText.textContent = `Izvid shranjen! HCT: ${hct}%, E2: ${e2} pg/mL. Barometri posodobljeni!`;
+        toastImg.src = './assets/anime/wink.gif';
+        toast.style.display = 'flex';
+        clearTimeout(window._toastTimeout);
+        window._toastTimeout = setTimeout(() => toast.style.display = 'none', 4000);
+      }
+    }
+
+    function applyBloodworkValues(bw) {
+      const hctEl = document.getElementById('hctDisplayVal');
+      const hctBar = document.getElementById('hctBar');
+      if (hctEl && hctBar) {
+        const isSafe = bw.hct < 54;
+        hctEl.innerHTML = `${bw.hct}% <span style="color: ${isSafe ? 'var(--rec-green)' : '#FF3D00'};">(${isSafe ? 'Varno' : 'OPOZORILO!'})</span>`;
+        hctBar.style.width = Math.min(100, (bw.hct / 60) * 100) + '%';
+        hctBar.style.background = isSafe ? 'var(--rec-green)' : '#FF3D00';
+      }
+      const ggtEl = document.getElementById('ggtDisplayVal');
+      const ggtBar = document.getElementById('ggtBar');
+      if (ggtEl && ggtBar) {
+        ggtEl.innerHTML = `${bw.ggt} U/L <span style="color: var(--rec-green);">(Odlično)</span>`;
+        ggtBar.style.width = Math.min(100, (bw.ggt / 50) * 100) + '%';
+      }
+      const apobEl = document.getElementById('apobDisplayVal');
+      const apobBar = document.getElementById('apobBar');
+      if (apobEl && apobBar) {
+        const isOptimal = bw.apob < 80;
+        apobEl.innerHTML = `${bw.apob} mg/dL <span style="color: ${isOptimal ? 'var(--rec-green)' : 'var(--rec-yellow);'};">(${isOptimal ? 'Optimalno' : 'Zmerno'})</span>`;
+        apobBar.style.width = Math.min(100, (bw.apob / 120) * 100) + '%';
+      }
+    }
+
+    function loadBloodworkVnos() {
+      try {
+        const saved = localStorage.getItem('bine_zdravje_bloodwork_data');
+        if (saved) {
+          const bw = JSON.parse(saved);
+          if (document.getElementById('inpBioHct')) document.getElementById('inpBioHct').value = bw.hct;
+          if (document.getElementById('inpBioE2')) document.getElementById('inpBioE2').value = bw.e2;
+          if (document.getElementById('inpBioTotalT')) document.getElementById('inpBioTotalT').value = bw.totalT;
+          if (document.getElementById('inpBioSHBG')) document.getElementById('inpBioSHBG').value = bw.shbg;
+          if (document.getElementById('inpBioApoB')) document.getElementById('inpBioApoB').value = bw.apob;
+          if (document.getElementById('inpBioGGT')) document.getElementById('inpBioGGT').value = bw.ggt;
+          applyBloodworkValues(bw);
+        }
+        const labPhoto = localStorage.getItem('bine_zdravje_last_lab_photo');
+        if (labPhoto) {
+          const img = document.getElementById('labPreviewImg');
+          if (img) {
+            img.src = labPhoto;
+            img.style.display = 'block';
+          }
+          const preview = document.getElementById('labPreview');
+          if (preview) preview.style.display = 'block';
+          const meta = document.getElementById('labPhotoMeta');
+          if (meta) {
+            const kb = Math.round((labPhoto.length * 3) / 4 / 1024);
+            meta.innerHTML = `✓ Shranjen izvid · <strong style="color:var(--rec-green);">${kb} KB</strong>`;
+          }
+        }
+      } catch(e) {}
+    }
+
+    
+    // ==========================================
+    // 3. PREHRANA & MACROFACTOR & KIWI REALNI MOTOR
+    // ==========================================
+    let prehranaState = {
+      weightKg: 81.1,
+      goalType: 'FAT_LOSS',
+      weightHistory: (typeof TEST_14DAY_HISTORY !== 'undefined') ? JSON.parse(JSON.stringify(TEST_14DAY_HISTORY)) : [],
+      meals: [],
+      tdee: 2888,
+      coachPlan: null
+    };
+
+    let barcodeStream = null;
+    let barcodeDetector = null;
+    let scanningActive = false;
+
+    function initPrehrana() {
+      // 1. Naloži shranjeno stanje
+      try {
+        const savedMeals = localStorage.getItem('bine_zdravje_meals_v2');
+        if (savedMeals) {
+          prehranaState.meals = JSON.parse(savedMeals);
+        } else {
+          // Začetni bogati obrok za takojšnjo demonstracijo polnih mikronutrientov
+          if (typeof PRESET_FOODS !== 'undefined' && PRESET_FOODS.length >= 2) {
+            prehranaState.meals = [
+              {
+                id: 'm_init_1',
+                name: PRESET_FOODS[0].name,
+                serving: PRESET_FOODS[0].serving,
+                calories: PRESET_FOODS[0].calories,
+                protein: PRESET_FOODS[0].protein,
+                carbs: PRESET_FOODS[0].carbs,
+                fat: PRESET_FOODS[0].fat,
+                micros: PRESET_FOODS[0].micros,
+                time: '08:30'
+              },
+              {
+                id: 'm_init_2',
+                name: PRESET_FOODS[1].name,
+                serving: PRESET_FOODS[1].serving,
+                calories: PRESET_FOODS[1].calories,
+                protein: PRESET_FOODS[1].protein,
+                carbs: PRESET_FOODS[1].carbs,
+                fat: PRESET_FOODS[1].fat,
+                micros: PRESET_FOODS[1].micros,
+                time: '13:15'
+              }
+            ];
+          }
+        }
+
+        const savedGoal = localStorage.getItem('bine_zdravje_macro_goal');
+        if (savedGoal) prehranaState.goalType = savedGoal;
+
+        const savedHistory = localStorage.getItem('bine_zdravje_weight_history');
+        if (savedHistory) prehranaState.weightHistory = JSON.parse(savedHistory);
+      } catch(e) {
+        console.warn('Napaka pri branju prehranaState:', e);
+      }
+
+      renderPresetFoodChips();
+      renderPrehranaView();
+    }
+
+    function renderPresetFoodChips() {
+      const container = document.getElementById('presetFoodsChips');
+      if (!container || typeof PRESET_FOODS === 'undefined') return;
+      container.innerHTML = '';
+
+      PRESET_FOODS.forEach(food => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'food-chip';
+        chip.innerHTML = `<span>+ ${food.name.split('(')[0].trim()}</span> <small style="color:var(--text-3); font-size:0.65rem;">(${food.calories}k)</small>`;
+        chip.onclick = () => addPresetFood(food);
+        container.appendChild(chip);
+      });
+    }
+
+    function addPresetFood(food) {
+      const entry = {
+        id: 'm_' + Date.now(),
+        name: food.name,
+        serving: food.serving,
+        calories: food.calories,
+        protein: food.protein,
+        carbs: food.carbs,
+        fat: food.fat,
+        micros: JSON.parse(JSON.stringify(food.micros || {})),
+        time: new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' })
+      };
+      prehranaState.meals.push(entry);
+      savePrehranaState();
+      renderPrehranaView();
+
+      showMascotNotification(`Dodan obrok: ${food.name.split('(')[0].trim()} (+${food.calories} kcal)`);
+    }
+
+    function setMacroGoal(goal) {
+      prehranaState.goalType = goal;
+      localStorage.setItem('bine_zdravje_macro_goal', goal);
+
+      document.getElementById('goalBtnFatLoss')?.classList.toggle('active', goal === 'FAT_LOSS');
+      document.getElementById('goalBtnMaint')?.classList.toggle('active', goal === 'MAINTENANCE');
+      document.getElementById('goalBtnBulk')?.classList.toggle('active', goal === 'MUSCLE_GAIN');
+
+      renderPrehranaView();
+    }
+
+    function renderPrehranaView() {
+      if (typeof MetabolicEngine === 'undefined' || typeof NutritionEngine === 'undefined') {
+        console.warn('Engine še ni naložen');
+        return;
+      }
+
+      // 1. Izračun TDEE in tedenskega načrta
+      const smoothed = MetabolicEngine.calculateWeightTrend(prehranaState.weightHistory);
+      const latestSmoothed = smoothed.length > 0 ? smoothed[smoothed.length - 1].smoothedWeightKg : prehranaState.weightKg;
+      const latestRaw = prehranaState.weightHistory.length > 0 ? prehranaState.weightHistory[prehranaState.weightHistory.length - 1].weightKg : prehranaState.weightKg;
+      
+      prehranaState.tdee = MetabolicEngine.calculateDynamicTDEE(prehranaState.weightHistory, smoothed);
+      prehranaState.coachPlan = MetabolicEngine.generateMacroCoachPlan(
+        prehranaState.tdee,
+        latestSmoothed,
+        prehranaState.goalType,
+        2.2, // g/kg B
+        0.8  // g/kg M
+      );
+
+      const plan = prehranaState.coachPlan;
+
+      // Posodobi UI za TDEE
+      const badge = document.getElementById('mfTdeeBadge');
+      if (badge) badge.textContent = `${plan.tdee} kcal poraba`;
+
+      const elSmoothed = document.getElementById('mfSmoothedWeight');
+      if (elSmoothed) elSmoothed.textContent = `${latestSmoothed.toFixed(2)} kg`;
+      const elRaw = document.getElementById('mfRawWeight');
+      if (elRaw) elRaw.textContent = `${latestRaw.toFixed(1)} kg`;
+
+      // 2. Seštej zaužito hrano danes
+      let totKcal = 0, totProt = 0, totCarb = 0, totFat = 0;
+      const aggregatedMicros = {};
+
+      prehranaState.meals.forEach(m => {
+        totKcal += Number(m.calories) || 0;
+        totProt += Number(m.protein) || 0;
+        totCarb += Number(m.carbs) || 0;
+        totFat += Number(m.fat) || 0;
+
+        if (m.micros) {
+          for (const [k, v] of Object.entries(m.micros)) {
+            aggregatedMicros[k] = (aggregatedMicros[k] || 0) + Number(v);
+          }
+        }
+      });
+
+      // Posodobi števce in progress bare
+      const elCalVal = document.getElementById('mfCaloriesVal');
+      if (elCalVal) elCalVal.textContent = Math.round(totKcal);
+      const elCalTarget = document.getElementById('mfCaloriesTarget');
+      if (elCalTarget) elCalTarget.textContent = `/ ${plan.targetCalories} kcal`;
+      const elCalRem = document.getElementById('mfCalRemaining');
+      if (elCalRem) {
+        const rem = plan.targetCalories - Math.round(totKcal);
+        elCalRem.textContent = rem >= 0 ? `Preostalo: ${rem} kcal` : `Presežek: +${Math.abs(rem)} kcal`;
+        elCalRem.style.color = rem >= 0 ? 'var(--text-3)' : 'var(--rec-yellow)';
+      }
+      const elCalBar = document.getElementById('mfCaloriesBar');
+      if (elCalBar) {
+        const pct = Math.min(100, Math.round((totKcal / plan.targetCalories) * 100));
+        elCalBar.style.width = pct + '%';
+        elCalBar.style.background = totKcal > plan.targetCalories ? 'var(--rec-yellow)' : 'var(--text-1)';
+      }
+
+      // Beljakovine
+      const elProtVal = document.getElementById('mfProteinVal');
+      if (elProtVal) elProtVal.textContent = `${Math.round(totProt)} g`;
+      const elProtTarget = document.getElementById('mfProteinTarget');
+      if (elProtTarget) elProtTarget.textContent = `/ ${plan.proteinGrams} g`;
+      const elProtBar = document.getElementById('mfProteinBar');
+      if (elProtBar) {
+        const pct = Math.min(100, Math.round((totProt / plan.proteinGrams) * 100));
+        elProtBar.style.width = pct + '%';
+      }
+
+      // OH in Maščobe in Voda
+      const elCarb = document.getElementById('mfCarbVal');
+      if (elCarb) elCarb.textContent = `${Math.round(totCarb)} / ${plan.carbGrams} g`;
+      const elCarbBar = document.getElementById('mfCarbBar');
+      if (elCarbBar) elCarbBar.style.width = Math.min(100, Math.round((totCarb / plan.carbGrams) * 100)) + '%';
+
+      const elFat = document.getElementById('mfFatVal');
+      if (elFat) elFat.textContent = `${Math.round(totFat)} / ${plan.fatGrams} g`;
+      const elFatBar = document.getElementById('mfFatBar');
+      if (elFatBar) elFatBar.style.width = Math.min(100, Math.round((totFat / plan.fatGrams) * 100)) + '%';
+
+      const elWater = document.getElementById('mfWaterTarget');
+      if (elWater) elWater.textContent = `${plan.waterLiters} L`;
+
+      // 3. Render seznama obrokov
+      const mealsList = document.getElementById('mealEntriesList');
+      const countBadge = document.getElementById('mealCountBadge');
+      if (countBadge) countBadge.textContent = `Danes: ${prehranaState.meals.length} obrokov (${Math.round(totKcal)} kcal, ${Math.round(totProt)}g B)`;
+
+      if (mealsList) {
+        mealsList.innerHTML = '';
+        if (prehranaState.meals.length === 0) {
+          mealsList.innerHTML = `<div style="text-align: center; color: var(--text-3); font-size: 0.78rem; padding: 14px;">Danes še ni vnesene hrane. Izberi predlog zgoraj ali dodaj obrok.</div>`;
+        } else {
+          prehranaState.meals.forEach((m, idx) => {
+            const row = document.createElement('div');
+            row.className = 'meal-item-row';
+            const photoThumb = m.photo ? `<img src="${m.photo}" alt="${m.name}" onclick="openPhotoModal('${m.photo}', '${m.name.replace(/'/g, "\\'")}')" style="width: 38px; height: 38px; border-radius: 6px; object-fit: cover; cursor: pointer; border: 1px solid var(--edge-2); flex-shrink: 0;" title="Povečaj sliko obroka">` : '';
+            row.innerHTML = `
+              <div style="display: flex; align-items: center; gap: 10px;">
+                ${photoThumb}
+                <div>
+                  <div style="font-size: 0.82rem; font-weight: 700; color: #fff;">
+                    ${m.name} <small style="color: var(--text-3); font-weight: 400;">(${m.time})</small>
+                  </div>
+                  <div style="font-size: 0.7rem; color: var(--text-2); margin-top: 2px;">
+                    <span style="color: var(--text-1); font-weight: 700;">${m.calories} kcal</span> · 
+                    <span style="color: var(--rec-green);">${m.protein}g B</span> · 
+                    <span style="color: var(--strain-blue);">${m.carbs}g OH</span> · 
+                    <span style="color: var(--rec-yellow);">${m.fat}g M</span>
+                  </div>
+                </div>
+              </div>
+              <button type="button" onclick="deleteMealItem(${idx})" style="background: none; border: none; color: var(--text-3); font-size: 1.1rem; cursor: pointer; padding: 4px 8px;" title="Izbriši">✕</button>
+            `;
+            mealsList.appendChild(row);
+          });
+        }
+      }
+
+      // 4. KIWI 8 FUNKCIONALNIH OCEN
+      const kiwiScores = NutritionEngine.calculateFunctionalHealthScores(aggregatedMicros);
+      const kiwiGrid = document.getElementById('kiwiCategoriesGrid');
+      const kiwiBadge = document.getElementById('kiwiAverageBadge');
+
+      if (kiwiGrid && typeof KIWI_WEIGHTS !== 'undefined') {
+        kiwiGrid.innerHTML = '';
+        let sumScore = 0;
+        let catCount = 0;
+
+        for (const [catKey, catInfo] of Object.entries(KIWI_WEIGHTS)) {
+          const score = kiwiScores[catKey] || 0;
+          sumScore += score;
+          catCount++;
+
+          let barColor = 'var(--rec-green)';
+          if (score < 50) barColor = 'var(--rec-red)';
+          else if (score < 75) barColor = 'var(--rec-yellow)';
+
+          const cell = document.createElement('div');
+          cell.className = 'bento-cell';
+          cell.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span class="bento-label" style="font-size: 0.75rem;">${catInfo.label}</span>
+              <strong style="color: ${barColor}; font-size: 0.88rem;">${score}%</strong>
+            </div>
+            <div class="macro-progress-track">
+              <div class="macro-progress-fill" style="width: ${Math.min(100, score)}%; background: ${barColor};"></div>
+            </div>
+            <span class="bento-sub" style="margin-top: 4px; font-size: 0.65rem;">${catInfo.sub}</span>
+          `;
+          kiwiGrid.appendChild(cell);
+        }
+
+        const avgScore = catCount > 0 ? Math.round(sumScore / catCount) : 0;
+        if (kiwiBadge) {
+          kiwiBadge.textContent = `Skupaj: ${avgScore} / 100`;
+          kiwiBadge.className = 'status-pill ' + (avgScore >= 75 ? 'optimal' : avgScore >= 50 ? 'suboptimal' : 'critical');
+        }
+      }
+
+      // 5. CRONOMETER 6 BIOKEMIJSKIH RAZMERIJ
+      const ratios = NutritionEngine.calculateBiochemicalRatios(aggregatedMicros);
+      const ratiosBox = document.getElementById('cronometerRatiosContainer');
+
+      if (ratiosBox) {
+        ratiosBox.innerHTML = '';
+        const ratioDefs = [
+          { key: 'sodiumPotassium', title: 'Natrij : Kalij (Na : K)', target: 'Cilj: < 0.45 (1 : 2.2+)' },
+          { key: 'zincCopper', title: 'Cink : Baker (Zn : Cu)', target: 'Cilj: 10–15 : 1' },
+          { key: 'calciumMagnesium', title: 'Kalcij : Magnezij (Ca : Mg)', target: 'Cilj: 1.7–2.0 : 1' },
+          { key: 'omega6Omega3', title: 'Omega-6 : Omega-3 (LA : EPA/DHA)', target: 'Cilj: < 4 : 1' },
+          { key: 'ironZinc', title: 'Železo : Cink (Fe : Zn)', target: 'Cilj: 0.8–1.5 : 1' },
+          { key: 'calciumPhosphorus', title: 'Kalcij : Fosfor (Ca : P)', target: 'Cilj: 1.0–1.5 : 1' }
+        ];
+
+        ratioDefs.forEach(r => {
+          const evalData = ratios[r.key];
+          if (!evalData) return;
+
+          let color = 'var(--rec-green)';
+          let fillWidth = '75%';
+          if (evalData.status === 'suboptimal') {
+            color = 'var(--rec-yellow)';
+            fillWidth = '50%';
+          } else if (evalData.status === 'critical') {
+            color = 'var(--rec-red)';
+            fillWidth = '25%';
+          }
+
+          const row = document.createElement('div');
+          row.className = 'ratio-row';
+          row.innerHTML = `
+            <div style="display: flex; justify-content: space-between; font-size: 0.78rem;">
+              <span style="font-weight: 600;">${r.title}</span>
+              <strong style="color: ${color};">${evalData.label}</strong>
+            </div>
+            <div class="macro-progress-track">
+              <div class="macro-progress-fill" style="width: ${fillWidth}; background: ${color};"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-3); margin-top: 2px;">
+              <span>${r.target}</span>
+              <span style="text-transform: uppercase; color: ${color}; font-weight: 700;">${evalData.status}</span>
+            </div>
+          `;
+          ratiosBox.appendChild(row);
+        });
+      }
+    }
+
+    function deleteMealItem(index) {
+      prehranaState.meals.splice(index, 1);
+      savePrehranaState();
+      renderPrehranaView();
+    }
+
+    function clearAllMeals() {
+      if (confirm('Ali res želiš počistiti današnje vnose hrane?')) {
+        prehranaState.meals = [];
+        savePrehranaState();
+        renderPrehranaView();
+      }
+    }
+
+    function savePrehranaState() {
+      try {
+        localStorage.setItem('bine_zdravje_meals_v2', JSON.stringify(prehranaState.meals));
+        localStorage.setItem('bine_zdravje_weight_history', JSON.stringify(prehranaState.weightHistory));
+      } catch(e) {}
+    }
+
+    // --- QUICK ADD ATWATER MODAL ---
+    function openQuickAddModal() {
+      const el = document.getElementById('quickAddModalOverlay');
+      if (el) {
+        el.classList.add('open');
+        lockBodyScroll();
+        const modal = el.querySelector('.modal');
+        if (modal) modal.scrollTop = 0;
+        setTimeout(() => document.getElementById('qaFoodName')?.focus(), 100);
+      }
+    }
+
+    function closeQuickAddModal() {
+      document.getElementById('quickAddModalOverlay')?.classList.remove('open');
+      unlockBodyScroll();
+    }
+
+    function autoSyncAtwater() {
+      const p = parseFloat(document.getElementById('qaProtein')?.value) || 0;
+      const c = parseFloat(document.getElementById('qaCarbs')?.value) || 0;
+      const f = parseFloat(document.getElementById('qaFat')?.value) || 0;
+      const atwater = Math.round((p * 4) + (c * 4) + (f * 9));
+      const el = document.getElementById('qaAtwaterSum');
+      if (el) el.textContent = `${atwater} kcal`;
+    }
+
+    function applyAtwaterCalories() {
+      const p = parseFloat(document.getElementById('qaProtein')?.value) || 0;
+      const c = parseFloat(document.getElementById('qaCarbs')?.value) || 0;
+      const f = parseFloat(document.getElementById('qaFat')?.value) || 0;
+      const atwater = Math.round((p * 4) + (c * 4) + (f * 9));
+      const calInput = document.getElementById('qaCalories');
+      if (calInput) calInput.value = atwater;
+    }
+
+    function submitQuickAddMeal() {
+      const name = document.getElementById('qaFoodName')?.value.trim() || 'Hitri vnos';
+      let kcal = parseInt(document.getElementById('qaCalories')?.value) || 0;
+      const p = parseFloat(document.getElementById('qaProtein')?.value) || 0;
+      const c = parseFloat(document.getElementById('qaCarbs')?.value) || 0;
+      const f = parseFloat(document.getElementById('qaFat')?.value) || 0;
+
+      if (!kcal && (p || c || f)) {
+        kcal = Math.round((p * 4) + (c * 4) + (f * 9));
+      }
+
+      if (kcal <= 0 && p <= 0) {
+        alert('Vnesi vsaj kalorije ali makrohranila.');
+        return;
+      }
+
+      const entry = {
+        id: 'm_' + Date.now(),
+        name,
+        calories: kcal,
+        protein: Math.round(p),
+        carbs: Math.round(c),
+        fat: Math.round(f),
+        time: new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' }),
+        photo: currentMealPhotoDataUrl || null,
+        micros: {}
+      };
+
+      prehranaState.meals.push(entry);
+      savePrehranaState();
+      renderPrehranaView();
+      closeQuickAddModal();
+
+      document.getElementById('qaFoodName').value = '';
+      document.getElementById('qaCalories').value = '';
+      document.getElementById('qaProtein').value = '';
+      document.getElementById('qaCarbs').value = '';
+      document.getElementById('qaFat').value = '';
+      removePhoto('meal', false);
+
+      showMascotNotification(`Uspešno dodano: ${name} (${kcal} kcal)`);
+    }
+
+    // --- OPEN FOOD FACTS SEARCH & BARCODE MODAL ---
+    function openOffSearchModal() {
+      const el = document.getElementById('offSearchModalOverlay');
+      if (el) {
+        el.classList.add('open');
+        lockBodyScroll();
+        const modal = el.querySelector('.modal');
+        if (modal) modal.scrollTop = 0;
+        setTimeout(() => document.getElementById('offSearchInput')?.focus(), 100);
+      }
+    }
+
+    function closeOffSearchModal() {
+      stopBarcodeCamera();
+      document.getElementById('offSearchModalOverlay')?.classList.remove('open');
+      unlockBodyScroll();
+    }
+
+    async function executeOffSearch() {
+      const q = document.getElementById('offSearchInput')?.value.trim();
+      if (!q) return;
+
+      const resBox = document.getElementById('offSearchResults');
+      if (resBox) resBox.innerHTML = '<div style="text-align: center; color: var(--text-2); padding: 20px;">Iščem po bazi 3M+ živil...</div>';
+
+      // Če je številska črtna koda
+      if (/^\d{8,14}$/.test(q)) {
+        const product = await OpenFoodFactsClient.getProductByBarcode(q);
+        renderOffResults(product ? [product] : []);
+      } else {
+        const products = await OpenFoodFactsClient.searchProducts(q, 10);
+        renderOffResults(products);
+      }
+    }
+
+    function renderOffResults(items) {
+      const resBox = document.getElementById('offSearchResults');
+      if (!resBox) return;
+      resBox.innerHTML = '';
+
+      if (!items || items.length === 0) {
+        resBox.innerHTML = '<div style="text-align: center; color: var(--rec-red); font-size: 0.8rem; padding: 20px;">Nobenega izdelka ni bilo mogoče najti. Poskusi z drugim iskalnim nizom ali črtno kodo.</div>';
+        return;
+      }
+
+      items.forEach(item => {
+        const row = document.createElement('div');
+        row.style.cssText = "display: flex; gap: 10px; align-items: center; padding: 10px; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--edge-1);";
+        
+        const imgHtml = item.imageUrl 
+          ? `<img src="${item.imageUrl}" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid var(--edge-2);">`
+          : `<div style="width: 44px; height: 44px; background: var(--surface-3); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">🥗</div>`;
+
+        row.innerHTML = `
+          ${imgHtml}
+          <div style="flex: 1; min-width: 0;">
+            <div style="font-size: 0.82rem; font-weight: 700; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              ${item.name}
+            </div>
+            <div style="font-size: 0.68rem; color: var(--text-3);">${item.brand || 'Brez znamke'} · na 100g:</div>
+            <div style="font-size: 0.72rem; color: var(--text-2); margin-top: 2px;">
+              <strong>${item.per100g.calories} kcal</strong> · 
+              <span style="color: var(--rec-green);">${item.per100g.protein}g B</span> · 
+              <span style="color: var(--strain-blue);">${item.per100g.carbs}g OH</span> · 
+              <span style="color: var(--rec-yellow);">${item.per100g.fat}g M</span>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <input type="number" value="100" id="grams_${item.barcode || Math.random().toString(36).substr(2,5)}" style="width: 52px; padding: 4px; background: var(--surface-3); border: 1px solid var(--edge-2); border-radius: 4px; color: #fff; font-size: 0.75rem; text-align: center;">
+              <span style="font-size: 0.68rem; color: var(--text-3);">g</span>
+            </div>
+            <button type="button" class="btn" style="padding: 4px 10px; font-size: 0.7rem;" onclick='addOffItemToMeals(${JSON.stringify(item).replace(/'/g, "&#39;")}, this)'>
+              + Dodaj
+            </button>
+          </div>
+        `;
+        resBox.appendChild(row);
+      });
+    }
+
+    function addOffItemToMeals(item, btnElement) {
+      const container = btnElement.parentElement;
+      const gramsInput = container.querySelector('input[type="number"]');
+      const grams = parseFloat(gramsInput?.value) || 100;
+      const factor = grams / 100.0;
+
+      const p100 = item.per100g;
+      const entry = {
+        id: 'm_' + Date.now(),
+        name: `${item.name} (${grams}g)`,
+        serving: `${grams}g`,
+        calories: Math.round(p100.calories * factor),
+        protein: Number((p100.protein * factor).toFixed(1)),
+        carbs: Number((p100.carbs * factor).toFixed(1)),
+        fat: Number((p100.fat * factor).toFixed(1)),
+        micros: {
+          sodium: p100.sodium ? p100.sodium * factor : 0,
+          calcium: p100.calcium ? p100.calcium * factor : 0,
+          potassium: p100.potassium ? p100.potassium * factor : 0,
+          iron: p100.iron ? p100.iron * factor : 0
+        },
+        time: new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' })
+      };
+
+      prehranaState.meals.push(entry);
+      savePrehranaState();
+      renderPrehranaView();
+      closeOffSearchModal();
+
+      showMascotNotification(`Dodan izdelek: ${item.name} (${entry.calories} kcal)`);
+    }
+
+    // --- KAMERA / BARCODE DETECTOR ---
+    async function toggleBarcodeCamera() {
+      const box = document.getElementById('barcodeCameraBox');
+      if (box.style.display === 'none') {
+        startBarcodeCamera();
+      } else {
+        stopBarcodeCamera();
+      }
+    }
+
+    async function startBarcodeCamera() {
+      const box = document.getElementById('barcodeCameraBox');
+      const video = document.getElementById('barcodeVideo');
+      if (!box || !video) return;
+
+      try {
+        barcodeStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+        video.srcObject = barcodeStream;
+        await video.play();
+        box.style.display = 'block';
+        scanningActive = true;
+
+        if ('BarcodeDetector' in window) {
+          barcodeDetector = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'qr_code'] });
+          scanBarcodeLoop();
+        } else {
+          console.warn('BarcodeDetector ni nativno podprt v tem brskalniku. Uporabi ročni vnos črtne kode.');
+        }
+      } catch (err) {
+        console.error('Kamera napaka:', err);
+        alert('Dostop do kamere ni na voljo ali je bil zavrnjen. Vnesi črtno kodo ročno.');
+        box.style.display = 'none';
+      }
+    }
+
+    function stopBarcodeCamera() {
+      scanningActive = false;
+      if (barcodeStream) {
+        barcodeStream.getTracks().forEach(t => t.stop());
+        barcodeStream = null;
+      }
+      const box = document.getElementById('barcodeCameraBox');
+      if (box) box.style.display = 'none';
+    }
+
+    async function scanBarcodeLoop() {
+      if (!scanningActive || !barcodeDetector) return;
+      const video = document.getElementById('barcodeVideo');
+
+      if (video && video.readyState >= 2) {
+        try {
+          const barcodes = await barcodeDetector.detect(video);
+          if (barcodes.length > 0) {
+            const code = barcodes[0].rawValue;
+            if (code) {
+              if (navigator.vibrate) navigator.vibrate(50);
+              stopBarcodeCamera();
+              document.getElementById('offSearchInput').value = code;
+              executeOffSearch();
+              return;
+            }
+          }
+        } catch(e) {}
+      }
+
+      if (scanningActive) {
+        requestAnimationFrame(scanBarcodeLoop);
+      }
+    }
+
+    // --- TDEE ZGODOVINA IN KINEZIOLOŠKI DEMO ---
+    function openTdeeHistoryModal() {
+      const el = document.getElementById('tdeeHistoryModalOverlay');
+      if (el) {
+        el.classList.add('open');
+        lockBodyScroll();
+        const modal = el.querySelector('.modal');
+        if (modal) modal.scrollTop = 0;
+        renderTdeeHistoryTable();
+      }
+    }
+
+    function closeTdeeHistoryModal() {
+      document.getElementById('tdeeHistoryModalOverlay')?.classList.remove('open');
+      unlockBodyScroll();
+    }
+
+    function renderTdeeHistoryTable() {
+      const table = document.getElementById('tdeeHistoryTable');
+      if (!table || typeof MetabolicEngine === 'undefined') return;
+      table.innerHTML = '';
+
+      const smoothed = MetabolicEngine.calculateWeightTrend(prehranaState.weightHistory);
+      const smoothedMap = {};
+      smoothed.forEach(s => smoothedMap[s.date] = s.smoothedWeightKg);
+
+      prehranaState.weightHistory.forEach((log, idx) => {
+        const sm = smoothedMap[log.date] || log.weightKg;
+        const row = document.createElement('div');
+        row.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: var(--surface-2); border-radius: 6px; font-size: 0.74rem;";
+        row.innerHTML = `
+          <span style="color: var(--text-3);">${log.date}</span>
+          <span>Tehtnica: <strong>${log.weightKg} kg</strong></span>
+          <span style="color: var(--rec-green);">EMA: ${sm} kg</span>
+          <span style="color: var(--strain-blue);">${log.caloriesIn} kcal</span>
+        `;
+        table.appendChild(row);
+      });
+    }
+
+    function loadDemo14Days() {
+      if (typeof TEST_14DAY_HISTORY !== 'undefined') {
+        prehranaState.weightHistory = JSON.parse(JSON.stringify(TEST_14DAY_HISTORY));
+        savePrehranaState();
+        renderTdeeHistoryTable();
+        renderPrehranaView();
+        showMascotNotification('Naložen realen 14-dnevni kineziološki test! TDEE preračunan na 2.888 kcal.');
+      }
+    }
+
+    function showMascotNotification(msg) {
+      const toast = document.getElementById('mascotToast');
+      const toastText = document.getElementById('mascotToastText');
+      const toastImg = document.getElementById('mascotToastImg');
+      if (toast && toastText && toastImg) {
+        toastText.textContent = msg;
+        toastImg.src = './assets/anime/happy.gif';
+        toast.style.display = 'flex';
+        clearTimeout(window._toastTimeout);
+        window._toastTimeout = setTimeout(() => toast.style.display = 'none', 3500);
+      }
+    }
+
+
+    initApp();
+  </script>
+</body>
+</html>
