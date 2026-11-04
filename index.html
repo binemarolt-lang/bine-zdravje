@@ -1543,7 +1543,7 @@
 
   <header>
     <div class="brand">
-      🧬 BINE <span>ZDRAVJE</span> <small style="font-size: 0.65rem; color: var(--rec-green); font-weight: 700; border: 1px solid rgba(0,230,118,0.3); padding: 2px 6px; border-radius: 6px; margin-left: 6px;">v2.6</small>
+      🧬 BINE <span>ZDRAVJE</span> <small style="font-size: 0.65rem; color: var(--rec-green); font-weight: 700; border: 1px solid rgba(0,230,118,0.3); padding: 2px 6px; border-radius: 6px; margin-left: 6px;">v2.7</small>
     </div>
     <div style="display: flex; align-items: center; gap: 8px;">
       <button class="status-pill" onclick="cycleAnimeVibe()" id="vibeBtn" style="cursor: pointer; background: var(--surface-3); border-color: var(--edge-3); color: var(--text-1);" title="Nastavi glasnost anime ozadja">⚡ Vibe: 16%</button>
@@ -2250,7 +2250,7 @@
   </nav>
 
   <!-- PLAVAJOČI GUMB ZA TRENUTNI FOTO VNOS HRANE (FAB) -->
-  <button type="button" class="fab-photo-food" onclick="triggerDirectFoodPhotoUpload()" title="Fotografiraj obrok za dnevnik">
+  <button type="button" class="fab-photo-food" onclick="triggerDirectFoodPhotoUpload()" title="Slikaj obrok – AI prepozna hrano in hranila">
     <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
     <span>+ Foto Hrana</span>
   </button>
@@ -3268,7 +3268,7 @@
     // Service worker & Auto-Update
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=4').then((reg) => {
+        navigator.serviceWorker.register('./sw.js?v=27&old=4').then((reg) => {
           reg.update();
           reg.onupdatefound = () => {
             const installingWorker = reg.installing;
@@ -4725,5 +4725,7 @@
 
     initApp();
   </script>
+  <script src="./food-match.js?v=27"></script>
+  <script src="./food-vision-ui.js?v=27"></script>
 </body>
 </html>

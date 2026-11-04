@@ -1,11 +1,15 @@
-const CACHE_NAME = 'bine-zdravje-v4';
+const CACHE_NAME = 'bine-zdravje-v5';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './nutrition-engine.js',
   './baza-znanja-vault.json',
-  './body-map-data.json'
+  './body-map-data.json',
+  './food-match.js',
+  './food-vision-ui.js',
+  './food-db.json',
+  './food-aliases.json'
 ];
 
 self.addEventListener('install', (event) => {
@@ -49,6 +53,9 @@ self.addEventListener('fetch', (event) => {
     );
     return;
   }
+
+  // 1b. Endpoint in API klici: vedno omrežje
+  if (req.method !== 'GET' || req.url.includes('food-vision-endpoint.json') || req.url.includes('/api/')) return;
 
   // 2. Za ostale statične vire: Stale-While-Revalidate (takoj iz cache-a, vzporedno posodobi)
   event.respondWith(
