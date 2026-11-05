@@ -677,6 +677,7 @@
   }
 
   function renderRestPill() {
+    if (typeof document === 'undefined') return;
     let pill = document.getElementById('wuiRestPill');
     if (!pill) {
       pill = document.createElement('div');
@@ -700,11 +701,13 @@
   }
 
   function updateRestPillText(rem) {
+    if (typeof document === 'undefined') return;
     const textEl = document.getElementById('wuiRestTimerText');
     if (textEl) textEl.textContent = formatDuration(rem);
   }
 
   function hideRestPill() {
+    if (typeof document === 'undefined') return;
     const pill = document.getElementById('wuiRestPill');
     if (pill) pill.classList.remove('visible');
   }
@@ -1099,6 +1102,9 @@
 
     renderDashboard();
     renderBodyMapColors();
+    ensureExerciseDb().then(() => {
+      renderBodyMapColors();
+    }).catch(() => {});
   }
 
   let historyExpanded = false;
@@ -1150,6 +1156,7 @@
 
   // ========== IZRIS GLAVNEGA ZAVIHKA (DASHBOARD) ==========
   function renderDashboard() {
+    if (typeof document === 'undefined') return;
     const cont = document.getElementById('workoutUiContainer');
     if (!cont) return;
 
@@ -1270,6 +1277,7 @@
 
   // ========== AKTIVNI TRENING (FULL-SCREEN SHEET) ==========
   function openActiveModal() {
+    if (typeof document === 'undefined') return;
     if (!activeWorkout) return;
     let sheet = document.getElementById('wuiActiveSheet');
     if (!sheet) {
@@ -1288,6 +1296,7 @@
   }
 
   function closeActiveModal() {
+    if (typeof document === 'undefined') return;
     const sheet = document.getElementById('wuiActiveSheet');
     if (sheet) sheet.style.display = 'none';
     if (typeof root.unlockBodyScroll === 'function') root.unlockBodyScroll();
@@ -1299,6 +1308,7 @@
   }
 
   function updateActiveTimerUi() {
+    if (typeof document === 'undefined') return;
     if (!activeWorkout) return;
     const elapsed = Math.floor((Date.now() - (activeWorkout.start || Date.now())) / 1000);
     const durStr = formatDuration(elapsed);
@@ -1309,6 +1319,7 @@
   }
 
   function renderActiveWorkoutBody() {
+    if (typeof document === 'undefined') return;
     const sheet = document.getElementById('wuiActiveSheet');
     if (!sheet || !activeWorkout) return;
 
@@ -1577,7 +1588,10 @@
       const history = getWorkouts();
       const prev = previousSets(ex.exId, history);
       const prevSet = prev && prev[sIdx] ? prev[sIdx] : null;
-      fillFromPrevious(s, prevSet);
+      const filled = fillFromPrevious(s, prevSet);
+      Object.assign(s, filled);
+      s.done = true;
+      if (!s.ts) s.ts = Date.now();
 
       // Sproži avtomatski odštevalnik počitka
       const restSec = ex.restSec || getSettings().restDefaultSec;
@@ -1667,18 +1681,32 @@
   }
 
   // ========== IZBIRNIK VAJ (EXERCISE PICKER) ==========
+  let dbPromise = null;
   function ensureExerciseDb() {
-    if (cachedDb) return Promise.resolve(cachedDb);
-    if (typeof window !== 'undefined' && window.ExerciseMatch && window.ExerciseMatch.isLoaded && window.ExerciseMatch.isLoaded()) {
-      return Promise.resolve(null);
+    if (cachedDb && (!root.ExerciseMatch && !window?.ExerciseMatch || (root.ExerciseMatch || window?.ExerciseMatch).isLoaded())) return Promise.resolve(cachedDb);
+    if (!dbPromise) {
+      dbPromise = fetch('./exercise-db.json')
+        .then(r => {
+          if (!r.ok) throw new Error('exercise-db.json ' + r.status);
+          return r.json();
+        })
+        .then(data => {
+          if (data) {
+            cachedDb = data;
+            const matchMod = (typeof window !== 'undefined' && window.ExerciseMatch) || root.ExerciseMatch || null;
+            if (matchMod && typeof matchMod.load === 'function' && !matchMod.isLoaded()) {
+              matchMod.load(data);
+            }
+          }
+          return cachedDb;
+        })
+        .catch(err => {
+          console.warn('[WorkoutUI] Napaka pri nalaganju baze vaj:', err);
+          dbPromise = null;
+          return null;
+        });
     }
-    return fetch('./exercise-db.json')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        cachedDb = data;
-        return data;
-      })
-      .catch(() => null);
+    return dbPromise;
   }
 
   let selectedMuscleFilter = 'vse';
@@ -1692,6 +1720,10 @@
 
     renderPickerChips();
     renderPickerList('');
+    ensureExerciseDb().then(() => {
+      renderPickerList(document.getElementById('wuiPickerSearch')?.value || '');
+    }).catch(() => {});
+
     const searchInput = document.getElementById('wuiPickerSearch');
     if (searchInput) {
       searchInput.value = '';
@@ -1700,6 +1732,7 @@
   }
 
   function closePicker() {
+    if (typeof document === 'undefined') return;
     const modal = document.getElementById('wuiPickerModal');
     if (modal) modal.classList.remove('open');
     if (typeof root.unlockBodyScroll === 'function') root.unlockBodyScroll();
@@ -1751,11 +1784,18 @@
 
     if (typeof window !== 'undefined' && window.ExerciseMatch && typeof window.ExerciseMatch.search === 'function') {
       try {
-        const matchRes = window.ExerciseMatch.search(q, 30);
+        const matchRes = window.ExerciseMatch.search(q, 40);
         if (matchRes && matchRes.length) {
           results = matchRes.map(m => pool.find(e => e.id === m.id) || m);
         }
       } catch (e) {}
+    }
+
+    if (results.length > 0 && selectedMuscleFilter !== 'vse') {
+      results = results.filter(ex => {
+        return (ex.pri && ex.pri.includes(selectedMuscleFilter)) ||
+          (ex.bp && ex.bp.toLowerCase().includes(selectedMuscleFilter));
+      });
     }
 
     if (!results.length) {
@@ -1812,7 +1852,11 @@
   function onExercisePicked(exId) {
     let pool = BUILTIN_EXERCISES;
     if (cachedDb && cachedDb.exercises) pool = cachedDb.exercises;
-    const ex = pool.find(e => e.id === exId) || { id: exId, name: exId, sl: exId };
+    let ex = pool.find(e => e.id === exId);
+    if (!ex && typeof window !== 'undefined' && window.ExerciseMatch && typeof window.ExerciseMatch.get === 'function') {
+      ex = window.ExerciseMatch.get(exId);
+    }
+    if (!ex) ex = { id: exId, name: exId, sl: exId };
     if (typeof lastPickerCallback === 'function') {
       lastPickerCallback(ex);
     }
@@ -2056,7 +2100,9 @@
             ${prs.map(p => {
               const kindLabel = p.kind === 'weight' ? `Teža: ${p.value} kg (prej ${p.prev} kg)` :
                 p.kind === 'e1rm' ? `e1RM: ${p.value} kg (prej ${p.prev} kg)` :
-                `Ponovitve: ${p.value} @ ${p.weight} kg (prej ${p.prev})`;
+                p.kind === 'volume' ? `Volumen vaje: ${p.value} kg (prej ${p.prev} kg)` :
+                p.kind === 'reps@weight' ? `Ponovitve: ${p.value} @ ${p.weight} kg (prej ${p.prev})` :
+                `${p.kind}: ${p.value}`;
               return `<li><b>${esc(p.name)}</b>: ${kindLabel}</li>`;
             }).join('')}
           </ul>
@@ -2092,6 +2138,7 @@
   }
 
   function closeSummaryModal() {
+    if (typeof document === 'undefined') return;
     const modal = document.getElementById('wuiSummaryModal');
     if (modal) modal.classList.remove('open');
     if (typeof root.unlockBodyScroll === 'function') root.unlockBodyScroll();
@@ -2099,7 +2146,7 @@
 
   function saveAndFinishWorkout() {
     if (!activeWorkout) return;
-    const notesEl = document.getElementById('wuiSummaryNotes');
+    const notesEl = typeof document !== 'undefined' ? document.getElementById('wuiSummaryNotes') : null;
     if (notesEl) activeWorkout.notes = notesEl.value.trim();
 
     activeWorkout.end = Date.now();
@@ -2482,6 +2529,8 @@
   }
 
   // ========== PREDLOGE (TEMPLATES) ==========
+  let loadedTemplates = DEFAULT_TEMPLATES;
+
   function openTemplateModal() {
     const modal = document.getElementById('wuiTemplateModal');
     const list = document.getElementById('wuiTemplateList');
@@ -2491,8 +2540,37 @@
 
     fetch('./workout-templates.json')
       .then(r => r.ok ? r.json() : null)
-      .then(data => renderTemplatesList(data && data.templates ? data.templates : DEFAULT_TEMPLATES))
-      .catch(() => renderTemplatesList(DEFAULT_TEMPLATES));
+      .then(data => {
+        let tpls = DEFAULT_TEMPLATES.slice();
+        if (Array.isArray(data)) {
+          const programDays = [];
+          for (const prog of data) {
+            const progName = prog.name_sl || prog.name_en || 'Program';
+            for (const day of (prog.days || [])) {
+              programDays.push({
+                id: `${prog.id || 'p'}_${day.name}`,
+                name: `${day.name} (${progName})`,
+                exercises: (day.exercises || []).map(e => ({
+                  exId: e.exId,
+                  name: e.name,
+                  targetSets: e.sets || 3,
+                  restSec: e.restSec,
+                  rir: e.rir
+                }))
+              });
+            }
+          }
+          if (programDays.length) tpls = tpls.concat(programDays);
+        } else if (data && Array.isArray(data.templates)) {
+          tpls = data.templates;
+        }
+        loadedTemplates = tpls;
+        renderTemplatesList(loadedTemplates);
+      })
+      .catch(() => {
+        loadedTemplates = DEFAULT_TEMPLATES;
+        renderTemplatesList(loadedTemplates);
+      });
   }
 
   function renderTemplatesList(templates) {
@@ -2509,7 +2587,7 @@
   }
 
   function pickTemplate(tplIdx) {
-    const tpl = DEFAULT_TEMPLATES[tplIdx];
+    const tpl = (loadedTemplates && loadedTemplates[tplIdx]) || DEFAULT_TEMPLATES[tplIdx];
     if (tpl) {
       closeTemplateModal();
       startNewWorkout('template', tpl);
@@ -2517,6 +2595,7 @@
   }
 
   function closeTemplateModal() {
+    if (typeof document === 'undefined') return;
     const modal = document.getElementById('wuiTemplateModal');
     if (modal) modal.classList.remove('open');
     if (typeof root.unlockBodyScroll === 'function') root.unlockBodyScroll();
@@ -2607,6 +2686,12 @@
     openActiveModal,
     closeActiveModal,
     saveAndFinishWorkout,
+    getWorkouts,
+    getActiveWorkout: () => activeWorkout,
+    getSettings,
+    getDb: () => cachedDb,
+    setExerciseDb: db => { cachedDb = db; },
+    ensureExerciseDb,
 
     // Izbirnik vaj
     openPicker,

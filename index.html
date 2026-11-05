@@ -2780,6 +2780,9 @@
         const res = await fetch('./body-map-data.json');
         bodyMapStore = await res.json();
         renderBodyMap();
+        if (window.WorkoutUI && typeof window.WorkoutUI.renderBodyMapColors === 'function') {
+          window.WorkoutUI.renderBodyMapColors();
+        }
       } catch(e) {
         console.error('[Body Map] Napaka pri nalaganju:', e);
       }
@@ -2790,6 +2793,9 @@
       document.getElementById('btnBodyAnt')?.classList.toggle('active', view === 'anterior');
       document.getElementById('btnBodyPost')?.classList.toggle('active', view === 'posterior');
       renderBodyMap();
+      if (window.WorkoutUI && typeof window.WorkoutUI.renderBodyMapColors === 'function') {
+        window.WorkoutUI.renderBodyMapColors();
+      }
     }
 
     function renderBodyMap() {
@@ -2827,6 +2833,9 @@
     function selectMuscleGroup(m) {
       selectedMuscle = m;
       renderBodyMap();
+      if (window.WorkoutUI && typeof window.WorkoutUI.renderBodyMapColors === 'function') {
+        window.WorkoutUI.renderBodyMapColors();
+      }
 
       const nameEl = document.getElementById('selectedMuscleName');
       const statusEl = document.getElementById('selectedMuscleStatus');
@@ -2835,16 +2844,40 @@
 
       if (nameEl) nameEl.textContent = muscleTranslations[m] || m;
       
-      const statuses = {
-        'chest': { status: 'Sveže (92% regenerirano) · Zadnji trening: pred 3 dnevi', sets: '12 delovnih serij' },
-        'quadriceps': { status: 'Zmerna utrujenost (65% regenerirano) · DOMS faza', sets: '16 delovnih serij' },
-        'hamstring': { status: 'Močna obremenitev (42% regenerirano) · Potreben počitek', sets: '14 delovnih serij' },
-        'upper-back': { status: 'Optimalno pripravljeno (100% regenerirano)', sets: '8 delovnih serij' }
-      };
+      let curStatus = 'Status: Počiva (100% regenerirano)';
+      let curSets = '0 delovnih serij';
 
-      const cur = statuses[m] || { status: 'Počiva (100% regenerirano)', sets: '0 delovnih serij' };
-      if (statusEl) statusEl.textContent = cur.status;
-      if (setsEl) setsEl.textContent = cur.sets;
+      if (window.RecoveryEngine && window.WorkoutUI) {
+        try {
+          const history = window.WorkoutUI.getWorkouts ? window.WorkoutUI.getWorkouts() : [];
+          const now = Date.now();
+          const oneWeekAgo = now - 7 * 24 * 3600 * 1000;
+          let weeklySets = 0;
+          const pool = (window.WorkoutUI.getDb && window.WorkoutUI.getDb()?.exercises) || [];
+          for (const w of history) {
+            const wTime = w.start || (w.date ? new Date(w.date + 'T12:00:00').getTime() : 0);
+            if (wTime < oneWeekAgo || wTime > now) continue;
+            for (const ex of (w.exercises || [])) {
+              const matched = pool.find(e => e.id === ex.exId);
+              const pri = (matched && matched.pri) || [];
+              if (pri.includes(m)) {
+                weeklySets += (ex.sets || []).filter(s => s.done && s.type !== 'warmup').length;
+              }
+            }
+          }
+          curSets = `${weeklySets} delovnih serij`;
+
+          const recObj = window.RecoveryEngine.muscleRecovery(history, window.WorkoutUI.getDb ? window.WorkoutUI.getDb() : null, now);
+          if (recObj && recObj[m]) {
+            const info = recObj[m];
+            const statWord = info.status === 'fresh' ? 'Sveže' : info.status === 'loaded' ? 'Obremenjeno' : info.status === 'fatigued' ? 'Utrujeno' : 'Počiva';
+            curStatus = `Status: ${statWord} (${info.pct}% regenerirano)`;
+          }
+        } catch(e) {}
+      }
+
+      if (statusEl) statusEl.textContent = curStatus;
+      if (setsEl) setsEl.textContent = curSets;
 
       if (listEl) {
         const exs = muscleExercises[m] || [
@@ -3885,6 +3918,10 @@
       const opomba = document.getElementById('vnosOpomba').value;
       const data = { teza, tlak, opomba, date: new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' }) };
       saveToLocalStorageSafe('bine_zdravje_danes_vnos', JSON.stringify(data));
+      if (teza && !isNaN(parseFloat(teza)) && typeof prehranaState !== 'undefined') {
+        prehranaState.weightKg = parseFloat(teza);
+        if (typeof renderPrehranaView === 'function') renderPrehranaView();
+      }
       loadDanesVnos();
       
       const toast = document.getElementById('mascotToast');
@@ -3907,6 +3944,9 @@
           if (d.teza) {
             document.getElementById('vnosTeza').value = d.teza;
             document.getElementById('histTeza').textContent = d.teza + ' kg';
+            if (!isNaN(parseFloat(d.teza)) && typeof prehranaState !== 'undefined') {
+              prehranaState.weightKg = parseFloat(d.teza);
+            }
           }
           if (d.tlak) {
             document.getElementById('vnosTlak').value = d.tlak;
@@ -4275,6 +4315,16 @@
     // ==========================================
     // 3. PREHRANA & MACROFACTOR & KIWI REALNI MOTOR
     // ==========================================
+    function escapeHtml(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     let prehranaState = {
       weightKg: 81.1,
       goalType: 'FAT_LOSS',
@@ -4283,10 +4333,20 @@
       tdee: 2888,
       coachPlan: null
     };
+    window.prehranaState = prehranaState;
 
     let barcodeStream = null;
     let barcodeDetector = null;
     let scanningActive = false;
+    let editingMealIndex = null;
+    let _currentOffResults = [];
+
+    function updateGoalButtonsUI(goal) {
+      const g = goal || prehranaState.goalType || 'FAT_LOSS';
+      document.getElementById('goalBtnFatLoss')?.classList.toggle('active', g === 'FAT_LOSS');
+      document.getElementById('goalBtnMaint')?.classList.toggle('active', g === 'MAINTENANCE');
+      document.getElementById('goalBtnBulk')?.classList.toggle('active', g === 'MUSCLE_GAIN');
+    }
 
     function initPrehrana() {
       // 1. Naloži shranjeno stanje
@@ -4294,6 +4354,7 @@
         const savedMeals = localStorage.getItem('bine_zdravje_meals_v2');
         if (savedMeals) {
           prehranaState.meals = JSON.parse(savedMeals);
+          if (!Array.isArray(prehranaState.meals)) prehranaState.meals = [];
         } else {
           // Začetni bogati obrok za takojšnjo demonstracijo polnih mikronutrientov
           if (typeof PRESET_FOODS !== 'undefined' && PRESET_FOODS.length >= 2) {
@@ -4328,11 +4389,16 @@
         if (savedGoal) prehranaState.goalType = savedGoal;
 
         const savedHistory = localStorage.getItem('bine_zdravje_weight_history');
-        if (savedHistory) prehranaState.weightHistory = JSON.parse(savedHistory);
+        if (savedHistory) {
+          prehranaState.weightHistory = JSON.parse(savedHistory);
+          if (!Array.isArray(prehranaState.weightHistory)) prehranaState.weightHistory = [];
+        }
       } catch(e) {
         console.warn('Napaka pri branju prehranaState:', e);
       }
 
+      window.prehranaState = prehranaState;
+      updateGoalButtonsUI(prehranaState.goalType);
       renderPresetFoodChips();
       renderPrehranaView();
     }
@@ -4342,25 +4408,28 @@
       if (!container || typeof PRESET_FOODS === 'undefined') return;
       container.innerHTML = '';
 
-      PRESET_FOODS.forEach(food => {
+      PRESET_FOODS.forEach((food, idx) => {
         const chip = document.createElement('button');
         chip.type = 'button';
         chip.className = 'food-chip';
-        chip.innerHTML = `<span>+ ${food.name.split('(')[0].trim()}</span> <small style="color:var(--text-3); font-size:0.65rem;">(${food.calories}k)</small>`;
+        chip.setAttribute('data-food-id', food.id || `preset_${idx}`);
+        chip.innerHTML = `<span>+ ${escapeHtml(food.name.split('(')[0].trim())}</span> <small style="color:var(--text-3); font-size:0.65rem;">(${food.calories}k)</small>`;
         chip.onclick = () => addPresetFood(food);
         container.appendChild(chip);
       });
     }
 
     function addPresetFood(food) {
+      if (!food) return;
+      if (!Array.isArray(prehranaState.meals)) prehranaState.meals = [];
       const entry = {
-        id: 'm_' + Date.now(),
+        id: 'm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
         name: food.name,
-        serving: food.serving,
-        calories: food.calories,
-        protein: food.protein,
-        carbs: food.carbs,
-        fat: food.fat,
+        serving: food.serving || '1 porcija',
+        calories: Number(food.calories) || 0,
+        protein: Number(food.protein) || 0,
+        carbs: Number(food.carbs) || 0,
+        fat: Number(food.fat) || 0,
         micros: JSON.parse(JSON.stringify(food.micros || {})),
         time: new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' })
       };
@@ -4374,11 +4443,7 @@
     function setMacroGoal(goal) {
       prehranaState.goalType = goal;
       localStorage.setItem('bine_zdravje_macro_goal', goal);
-
-      document.getElementById('goalBtnFatLoss')?.classList.toggle('active', goal === 'FAT_LOSS');
-      document.getElementById('goalBtnMaint')?.classList.toggle('active', goal === 'MAINTENANCE');
-      document.getElementById('goalBtnBulk')?.classList.toggle('active', goal === 'MUSCLE_GAIN');
-
+      updateGoalButtonsUI(goal);
       renderPrehranaView();
     }
 
@@ -4387,91 +4452,118 @@
         console.warn('Engine še ni naložen');
         return;
       }
+      if (!prehranaState) return;
+      if (!Array.isArray(prehranaState.meals)) prehranaState.meals = [];
+      if (!Array.isArray(prehranaState.weightHistory)) prehranaState.weightHistory = [];
 
       // 1. Izračun TDEE in tedenskega načrta
       const smoothed = MetabolicEngine.calculateWeightTrend(prehranaState.weightHistory);
-      const latestSmoothed = smoothed.length > 0 ? smoothed[smoothed.length - 1].smoothedWeightKg : prehranaState.weightKg;
-      const latestRaw = prehranaState.weightHistory.length > 0 ? prehranaState.weightHistory[prehranaState.weightHistory.length - 1].weightKg : prehranaState.weightKg;
+      const latestSmoothed = (smoothed && smoothed.length > 0) ? smoothed[smoothed.length - 1].smoothedWeightKg : (prehranaState.weightKg || 80);
+      const latestRaw = (prehranaState.weightHistory && prehranaState.weightHistory.length > 0) ? prehranaState.weightHistory[prehranaState.weightHistory.length - 1].weightKg : (prehranaState.weightKg || 80);
       
       prehranaState.tdee = MetabolicEngine.calculateDynamicTDEE(prehranaState.weightHistory, smoothed);
       prehranaState.coachPlan = MetabolicEngine.generateMacroCoachPlan(
         prehranaState.tdee,
         latestSmoothed,
-        prehranaState.goalType,
+        prehranaState.goalType || 'FAT_LOSS',
         2.2, // g/kg B
         0.8  // g/kg M
       );
 
-      const plan = prehranaState.coachPlan;
+      const plan = prehranaState.coachPlan || {
+        tdee: 2888,
+        targetCalories: 2438,
+        goalType: 'FAT_LOSS',
+        proteinGrams: 178,
+        carbGrams: 285,
+        fatGrams: 65,
+        waterLiters: 3.6
+      };
 
-      // Posodobi UI za TDEE
+      // Posodobi UI za TDEE in Gumbe cilja
       const badge = document.getElementById('mfTdeeBadge');
       if (badge) badge.textContent = `${plan.tdee} kcal poraba`;
 
+      updateGoalButtonsUI(prehranaState.goalType);
+
       const elSmoothed = document.getElementById('mfSmoothedWeight');
-      if (elSmoothed) elSmoothed.textContent = `${latestSmoothed.toFixed(2)} kg`;
+      if (elSmoothed) elSmoothed.textContent = `${Number(latestSmoothed).toFixed(2)} kg`;
       const elRaw = document.getElementById('mfRawWeight');
-      if (elRaw) elRaw.textContent = `${latestRaw.toFixed(1)} kg`;
+      if (elRaw) elRaw.textContent = `${Number(latestRaw).toFixed(1)} kg`;
 
       // 2. Seštej zaužito hrano danes
       let totKcal = 0, totProt = 0, totCarb = 0, totFat = 0;
       const aggregatedMicros = {};
 
       prehranaState.meals.forEach(m => {
+        if (!m) return;
         totKcal += Number(m.calories) || 0;
         totProt += Number(m.protein) || 0;
         totCarb += Number(m.carbs) || 0;
         totFat += Number(m.fat) || 0;
 
-        if (m.micros) {
+        if (m.micros && typeof m.micros === 'object') {
           for (const [k, v] of Object.entries(m.micros)) {
-            aggregatedMicros[k] = (aggregatedMicros[k] || 0) + Number(v);
+            const num = Number(v);
+            if (!isNaN(num)) {
+              aggregatedMicros[k] = (aggregatedMicros[k] || 0) + num;
+            }
           }
         }
       });
 
-      // Posodobi števce in progress bare
+      // Protein je potreben tudi za funkcionalno domeno boneHealth v Kiwi 8
+      if (!aggregatedMicros.protein && totProt > 0) {
+        aggregatedMicros.protein = totProt;
+      }
+
+      // Posodobi števce in progress bare (varovalke pred 0 / NaN)
+      const targetCal = plan.targetCalories || 2400;
+      const targetProt = plan.proteinGrams || 178;
+      const targetCarb = plan.carbGrams || 280;
+      const targetFat = plan.fatGrams || 65;
+
       const elCalVal = document.getElementById('mfCaloriesVal');
       if (elCalVal) elCalVal.textContent = Math.round(totKcal);
       const elCalTarget = document.getElementById('mfCaloriesTarget');
-      if (elCalTarget) elCalTarget.textContent = `/ ${plan.targetCalories} kcal`;
+      if (elCalTarget) elCalTarget.textContent = `/ ${targetCal} kcal`;
       const elCalRem = document.getElementById('mfCalRemaining');
       if (elCalRem) {
-        const rem = plan.targetCalories - Math.round(totKcal);
+        const rem = targetCal - Math.round(totKcal);
         elCalRem.textContent = rem >= 0 ? `Preostalo: ${rem} kcal` : `Presežek: +${Math.abs(rem)} kcal`;
         elCalRem.style.color = rem >= 0 ? 'var(--text-3)' : 'var(--rec-yellow)';
       }
       const elCalBar = document.getElementById('mfCaloriesBar');
       if (elCalBar) {
-        const pct = Math.min(100, Math.round((totKcal / plan.targetCalories) * 100));
+        const pct = Math.min(100, Math.max(0, Math.round((totKcal / targetCal) * 100)));
         elCalBar.style.width = pct + '%';
-        elCalBar.style.background = totKcal > plan.targetCalories ? 'var(--rec-yellow)' : 'var(--text-1)';
+        elCalBar.style.background = totKcal > targetCal ? 'var(--rec-yellow)' : 'var(--text-1)';
       }
 
       // Beljakovine
       const elProtVal = document.getElementById('mfProteinVal');
       if (elProtVal) elProtVal.textContent = `${Math.round(totProt)} g`;
       const elProtTarget = document.getElementById('mfProteinTarget');
-      if (elProtTarget) elProtTarget.textContent = `/ ${plan.proteinGrams} g`;
+      if (elProtTarget) elProtTarget.textContent = `/ ${targetProt} g`;
       const elProtBar = document.getElementById('mfProteinBar');
       if (elProtBar) {
-        const pct = Math.min(100, Math.round((totProt / plan.proteinGrams) * 100));
+        const pct = Math.min(100, Math.max(0, Math.round((totProt / targetProt) * 100)));
         elProtBar.style.width = pct + '%';
       }
 
       // OH in Maščobe in Voda
       const elCarb = document.getElementById('mfCarbVal');
-      if (elCarb) elCarb.textContent = `${Math.round(totCarb)} / ${plan.carbGrams} g`;
+      if (elCarb) elCarb.textContent = `${Math.round(totCarb)} / ${targetCarb} g`;
       const elCarbBar = document.getElementById('mfCarbBar');
-      if (elCarbBar) elCarbBar.style.width = Math.min(100, Math.round((totCarb / plan.carbGrams) * 100)) + '%';
+      if (elCarbBar) elCarbBar.style.width = Math.min(100, Math.max(0, Math.round((totCarb / targetCarb) * 100))) + '%';
 
       const elFat = document.getElementById('mfFatVal');
-      if (elFat) elFat.textContent = `${Math.round(totFat)} / ${plan.fatGrams} g`;
+      if (elFat) elFat.textContent = `${Math.round(totFat)} / ${targetFat} g`;
       const elFatBar = document.getElementById('mfFatBar');
-      if (elFatBar) elFatBar.style.width = Math.min(100, Math.round((totFat / plan.fatGrams) * 100)) + '%';
+      if (elFatBar) elFatBar.style.width = Math.min(100, Math.max(0, Math.round((totFat / targetFat) * 100))) + '%';
 
       const elWater = document.getElementById('mfWaterTarget');
-      if (elWater) elWater.textContent = `${plan.waterLiters} L`;
+      if (elWater) elWater.textContent = `${plan.waterLiters || 3.6} L`;
 
       // 3. Render seznama obrokov
       const mealsList = document.getElementById('mealEntriesList');
@@ -4486,25 +4578,31 @@
           mealsList.innerHTML = `<div style="text-align: center; color: var(--text-3); font-size: 0.78rem; padding: 14px;">Danes še ni vnesene hrane. Izberi predlog zgoraj ali dodaj obrok.</div>`;
         } else {
           prehranaState.meals.forEach((m, idx) => {
+            if (!m) return;
             const row = document.createElement('div');
             row.className = 'meal-item-row';
-            const photoThumb = m.photo ? `<img src="${m.photo}" alt="${m.name}" onclick="openPhotoModal('${m.photo}', '${m.name.replace(/'/g, "\\'")}')" style="width: 38px; height: 38px; border-radius: 6px; object-fit: cover; cursor: pointer; border: 1px solid var(--edge-2); flex-shrink: 0;" title="Povečaj sliko obroka">` : '';
+            const safeName = escapeHtml(m.name || 'Obrok');
+            const safeTime = escapeHtml(m.time || '');
+            const photoThumb = m.photo ? `<img src="${m.photo}" alt="${safeName}" onclick="openPhotoModal('${m.photo}', '${safeName.replace(/'/g, "\\'")}')" style="width: 38px; height: 38px; border-radius: 6px; object-fit: cover; cursor: pointer; border: 1px solid var(--edge-2); flex-shrink: 0;" title="Povečaj sliko obroka">` : '';
             row.innerHTML = `
-              <div style="display: flex; align-items: center; gap: 10px;">
+              <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;">
                 ${photoThumb}
-                <div>
-                  <div style="font-size: 0.82rem; font-weight: 700; color: #fff;">
-                    ${m.name} <small style="color: var(--text-3); font-weight: 400;">(${m.time})</small>
+                <div style="min-width: 0; overflow: hidden;">
+                  <div style="font-size: 0.82rem; font-weight: 700; color: #fff; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+                    ${safeName} <small style="color: var(--text-3); font-weight: 400;">(${safeTime})</small>
                   </div>
                   <div style="font-size: 0.7rem; color: var(--text-2); margin-top: 2px;">
-                    <span style="color: var(--text-1); font-weight: 700;">${m.calories} kcal</span> · 
-                    <span style="color: var(--rec-green);">${m.protein}g B</span> · 
-                    <span style="color: var(--strain-blue);">${m.carbs}g OH</span> · 
-                    <span style="color: var(--rec-yellow);">${m.fat}g M</span>
+                    <span style="color: var(--text-1); font-weight: 700;">${m.calories || 0} kcal</span> · 
+                    <span style="color: var(--rec-green);">${m.protein || 0}g B</span> · 
+                    <span style="color: var(--strain-blue);">${m.carbs || 0}g OH</span> · 
+                    <span style="color: var(--rec-yellow);">${m.fat || 0}g M</span>
                   </div>
                 </div>
               </div>
-              <button type="button" onclick="deleteMealItem(${idx})" style="background: none; border: none; color: var(--text-3); font-size: 1.1rem; cursor: pointer; padding: 4px 8px;" title="Izbriši">✕</button>
+              <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                <button type="button" class="btn secondary" onclick="editMealItem(${idx})" style="padding: 3px 8px; font-size: 0.72rem; border-radius: 6px;" title="Uredi obrok">✎</button>
+                <button type="button" onclick="deleteMealItem(${idx})" style="background: none; border: none; color: var(--text-3); font-size: 1.1rem; cursor: pointer; padding: 4px 8px;" title="Izbriši obrok">✕</button>
+              </div>
             `;
             mealsList.appendChild(row);
           });
@@ -4512,7 +4610,7 @@
       }
 
       // 4. KIWI 8 FUNKCIONALNIH OCEN
-      const kiwiScores = NutritionEngine.calculateFunctionalHealthScores(aggregatedMicros);
+      const kiwiScores = NutritionEngine.calculateFunctionalHealthScores(aggregatedMicros) || {};
       const kiwiGrid = document.getElementById('kiwiCategoriesGrid');
       const kiwiBadge = document.getElementById('kiwiAverageBadge');
 
@@ -4522,7 +4620,7 @@
         let catCount = 0;
 
         for (const [catKey, catInfo] of Object.entries(KIWI_WEIGHTS)) {
-          const score = kiwiScores[catKey] || 0;
+          const score = typeof kiwiScores[catKey] === 'number' ? kiwiScores[catKey] : 0;
           sumScore += score;
           catCount++;
 
@@ -4538,7 +4636,7 @@
               <strong style="color: ${barColor}; font-size: 0.88rem;">${score}%</strong>
             </div>
             <div class="macro-progress-track">
-              <div class="macro-progress-fill" style="width: ${Math.min(100, score)}%; background: ${barColor};"></div>
+              <div class="macro-progress-fill" style="width: ${Math.min(100, Math.max(0, score))}%; background: ${barColor};"></div>
             </div>
             <span class="bento-sub" style="margin-top: 4px; font-size: 0.65rem;">${catInfo.sub}</span>
           `;
@@ -4556,7 +4654,7 @@
       const ratios = NutritionEngine.calculateBiochemicalRatios(aggregatedMicros);
       const ratiosBox = document.getElementById('cronometerRatiosContainer');
 
-      if (ratiosBox) {
+      if (ratiosBox && ratios) {
         ratiosBox.innerHTML = '';
         const ratioDefs = [
           { key: 'sodiumPotassium', title: 'Natrij : Kalij (Na : K)', target: 'Cilj: < 0.45 (1 : 2.2+)' },
@@ -4602,16 +4700,26 @@
     }
 
     function deleteMealItem(index) {
-      prehranaState.meals.splice(index, 1);
+      if (typeof index !== 'number' || index < 0 || index >= (prehranaState.meals ? prehranaState.meals.length : 0)) return;
+      const removed = prehranaState.meals.splice(index, 1)[0];
+      if (editingMealIndex === index) {
+        editingMealIndex = null;
+        closeQuickAddModal();
+      } else if (editingMealIndex !== null && editingMealIndex > index) {
+        editingMealIndex--;
+      }
       savePrehranaState();
       renderPrehranaView();
+      showMascotNotification(`Obrok izbrisan: ${removed?.name?.split('(')[0]?.trim() || ''}`);
     }
 
     function clearAllMeals() {
       if (confirm('Ali res želiš počistiti današnje vnose hrane?')) {
         prehranaState.meals = [];
+        editingMealIndex = null;
         savePrehranaState();
         renderPrehranaView();
+        showMascotNotification('Vsi današnji obroki so bili očiščeni.');
       }
     }
 
@@ -4619,13 +4727,39 @@
       try {
         localStorage.setItem('bine_zdravje_meals_v2', JSON.stringify(prehranaState.meals));
         localStorage.setItem('bine_zdravje_weight_history', JSON.stringify(prehranaState.weightHistory));
-      } catch(e) {}
+      } catch(e) {
+        console.warn('QuotaExceeded pri shranjevanju prehrane, poskušam shraniti brez slik...', e);
+        try {
+          const stripped = (prehranaState.meals || []).map(m => {
+            const copy = { ...m };
+            if (copy.photo && copy.photo.length > 500) delete copy.photo;
+            return copy;
+          });
+          localStorage.setItem('bine_zdravje_meals_v2', JSON.stringify(stripped));
+        } catch(e2) {
+          console.error('Neuspešno shranjevanje prehrane v localStorage:', e2);
+        }
+      }
     }
 
     // --- QUICK ADD ATWATER MODAL ---
-    function openQuickAddModal() {
+    function openQuickAddModal(editIdx = null) {
+      if (editIdx !== null && typeof editIdx === 'number') {
+        editMealItem(editIdx);
+        return;
+      }
       const el = document.getElementById('quickAddModalOverlay');
       if (el) {
+        if (editingMealIndex === null) {
+          const titleEl = document.getElementById('quickAddModalTitle');
+          if (titleEl) titleEl.textContent = '📸 Foto / Hitri Vnos Obroka';
+          const btnEl = document.getElementById('qaSubmitBtn');
+          if (btnEl) btnEl.textContent = '✓ Shrani Obrok v Dnevnik';
+          const nameInp = document.getElementById('qaFoodName');
+          if (nameInp && !nameInp.value) {
+            nameInp.value = typeof getSuggestedMealName === 'function' ? getSuggestedMealName() : '';
+          }
+        }
         el.classList.add('open');
         lockBodyScroll();
         const modal = el.querySelector('.modal');
@@ -4637,6 +4771,70 @@
     function closeQuickAddModal() {
       document.getElementById('quickAddModalOverlay')?.classList.remove('open');
       unlockBodyScroll();
+      if (editingMealIndex !== null) {
+        const elName = document.getElementById('qaFoodName'); if (elName) elName.value = '';
+        const elCal = document.getElementById('qaCalories'); if (elCal) elCal.value = '';
+        const elP = document.getElementById('qaProtein'); if (elP) elP.value = '';
+        const elC = document.getElementById('qaCarbs'); if (elC) elC.value = '';
+        const elF = document.getElementById('qaFat'); if (elF) elF.value = '';
+        const elAtwater = document.getElementById('qaAtwaterSum'); if (elAtwater) elAtwater.textContent = '0 kcal';
+        removePhoto('meal', false);
+      }
+      editingMealIndex = null;
+      const titleEl = document.getElementById('quickAddModalTitle');
+      if (titleEl) titleEl.textContent = '📸 Foto / Hitri Vnos Obroka';
+      const btnEl = document.getElementById('qaSubmitBtn');
+      if (btnEl) btnEl.textContent = '✓ Shrani Obrok v Dnevnik';
+    }
+
+    function editMealItem(index) {
+      if (typeof index !== 'number' || !prehranaState.meals || !prehranaState.meals[index]) return;
+      editingMealIndex = index;
+      const meal = prehranaState.meals[index];
+
+      const el = document.getElementById('quickAddModalOverlay');
+      if (!el) return;
+
+      const titleEl = document.getElementById('quickAddModalTitle');
+      if (titleEl) titleEl.textContent = '✎ Uredi Obrok';
+
+      const btnEl = document.getElementById('qaSubmitBtn');
+      if (btnEl) btnEl.textContent = '✓ Posodobi Obrok v Dnevniku';
+
+      const nameInp = document.getElementById('qaFoodName');
+      if (nameInp) nameInp.value = meal.name || '';
+
+      const calInp = document.getElementById('qaCalories');
+      if (calInp) calInp.value = meal.calories != null ? meal.calories : '';
+
+      const pInp = document.getElementById('qaProtein');
+      if (pInp) pInp.value = meal.protein != null ? meal.protein : '';
+
+      const cInp = document.getElementById('qaCarbs');
+      if (cInp) cInp.value = meal.carbs != null ? meal.carbs : '';
+
+      const fInp = document.getElementById('qaFat');
+      if (fInp) fInp.value = meal.fat != null ? meal.fat : '';
+
+      autoSyncAtwater();
+
+      if (meal.photo) {
+        currentMealPhotoDataUrl = meal.photo;
+        const img = document.getElementById('mealPreviewImg');
+        if (img) img.src = meal.photo;
+        const preview = document.getElementById('mealPreview');
+        if (preview) preview.style.display = 'block';
+        const meta = document.getElementById('mealPhotoMeta');
+        if (meta) meta.innerHTML = '✓ Shranjena fotografija obroka';
+      } else {
+        removePhoto('meal', false);
+      }
+
+      el.classList.add('open');
+      lockBodyScroll();
+      const modal = el.querySelector('.modal');
+      if (modal) modal.scrollTop = 0;
+      setTimeout(() => document.getElementById('qaFoodName')?.focus(), 100);
     }
 
     function autoSyncAtwater() {
@@ -4660,9 +4858,9 @@
     function submitQuickAddMeal() {
       const name = document.getElementById('qaFoodName')?.value.trim() || 'Hitri vnos';
       let kcal = parseInt(document.getElementById('qaCalories')?.value) || 0;
-      const p = parseFloat(document.getElementById('qaProtein')?.value) || 0;
-      const c = parseFloat(document.getElementById('qaCarbs')?.value) || 0;
-      const f = parseFloat(document.getElementById('qaFat')?.value) || 0;
+      let p = parseFloat(document.getElementById('qaProtein')?.value) || 0;
+      let c = parseFloat(document.getElementById('qaCarbs')?.value) || 0;
+      let f = parseFloat(document.getElementById('qaFat')?.value) || 0;
 
       if (!kcal && (p || c || f)) {
         kcal = Math.round((p * 4) + (c * 4) + (f * 9));
@@ -4679,31 +4877,54 @@
         }
       }
 
-      const entry = {
-        id: 'm_' + Date.now(),
-        name,
-        calories: kcal,
-        protein: Math.round(p),
-        carbs: Math.round(c),
-        fat: Math.round(f),
-        time: new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' }),
-        photo: currentMealPhotoDataUrl || null,
-        micros: {}
-      };
+      if (editingMealIndex !== null && prehranaState.meals && prehranaState.meals[editingMealIndex]) {
+        const existing = prehranaState.meals[editingMealIndex];
+        let updatedMicros = existing.micros ? { ...existing.micros } : {};
+        if (existing.calories > 0 && kcal > 0 && kcal !== existing.calories) {
+          const ratio = kcal / existing.calories;
+          for (const k of Object.keys(updatedMicros)) {
+            updatedMicros[k] = Math.round(updatedMicros[k] * ratio * 10) / 10;
+          }
+        }
+        prehranaState.meals[editingMealIndex] = {
+          ...existing,
+          name,
+          calories: kcal,
+          protein: Math.round(p),
+          carbs: Math.round(c),
+          fat: Math.round(f),
+          photo: currentMealPhotoDataUrl || existing.photo || null,
+          micros: updatedMicros
+        };
+        showMascotNotification(`Obrok posodobljen: ${name} (${kcal} kcal)`);
+      } else {
+        const entry = {
+          id: 'm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          name,
+          calories: kcal,
+          protein: Math.round(p),
+          carbs: Math.round(c),
+          fat: Math.round(f),
+          time: new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' }),
+          photo: currentMealPhotoDataUrl || null,
+          micros: {}
+        };
+        prehranaState.meals.push(entry);
+        showMascotNotification(`Uspešno dodano: ${name} (${kcal} kcal)`);
+      }
 
-      prehranaState.meals.push(entry);
+      editingMealIndex = null;
       savePrehranaState();
       renderPrehranaView();
       closeQuickAddModal();
 
-      document.getElementById('qaFoodName').value = '';
-      document.getElementById('qaCalories').value = '';
-      document.getElementById('qaProtein').value = '';
-      document.getElementById('qaCarbs').value = '';
-      document.getElementById('qaFat').value = '';
+      const elName = document.getElementById('qaFoodName'); if (elName) elName.value = '';
+      const elCal = document.getElementById('qaCalories'); if (elCal) elCal.value = '';
+      const elP = document.getElementById('qaProtein'); if (elP) elP.value = '';
+      const elC = document.getElementById('qaCarbs'); if (elC) elC.value = '';
+      const elF = document.getElementById('qaFat'); if (elF) elF.value = '';
+      const elAtwater = document.getElementById('qaAtwaterSum'); if (elAtwater) elAtwater.textContent = '0 kcal';
       removePhoto('meal', false);
-
-      showMascotNotification(`Uspešno dodano: ${name} (${kcal} kcal)`);
     }
 
     // --- OPEN FOOD FACTS SEARCH & BARCODE MODAL ---
@@ -4745,13 +4966,14 @@
       const resBox = document.getElementById('offSearchResults');
       if (!resBox) return;
       resBox.innerHTML = '';
+      _currentOffResults = items || [];
 
       if (!items || items.length === 0) {
         resBox.innerHTML = '<div style="text-align: center; color: var(--rec-red); font-size: 0.8rem; padding: 20px;">Nobenega izdelka ni bilo mogoče najti. Poskusi z drugim iskalnim nizom ali črtno kodo.</div>';
         return;
       }
 
-      items.forEach(item => {
+      items.forEach((item, idx) => {
         const row = document.createElement('div');
         row.style.cssText = "display: flex; gap: 10px; align-items: center; padding: 10px; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--edge-1);";
         
@@ -4759,26 +4981,30 @@
           ? `<img src="${item.imageUrl}" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid var(--edge-2);">`
           : `<div style="width: 44px; height: 44px; background: var(--surface-3); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">🥗</div>`;
 
+        const per = item.per100g || {};
+        const safeName = escapeHtml(item.name || 'Neznano živilo');
+        const safeBrand = escapeHtml(item.brand || 'Brez znamke');
+
         row.innerHTML = `
           ${imgHtml}
           <div style="flex: 1; min-width: 0;">
             <div style="font-size: 0.82rem; font-weight: 700; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-              ${item.name}
+              ${safeName}
             </div>
-            <div style="font-size: 0.68rem; color: var(--text-3);">${item.brand || 'Brez znamke'} · na 100g:</div>
+            <div style="font-size: 0.68rem; color: var(--text-3);">${safeBrand} · na 100g:</div>
             <div style="font-size: 0.72rem; color: var(--text-2); margin-top: 2px;">
-              <strong>${item.per100g.calories} kcal</strong> · 
-              <span style="color: var(--rec-green);">${item.per100g.protein}g B</span> · 
-              <span style="color: var(--strain-blue);">${item.per100g.carbs}g OH</span> · 
-              <span style="color: var(--rec-yellow);">${item.per100g.fat}g M</span>
+              <strong>${per.calories || 0} kcal</strong> · 
+              <span style="color: var(--rec-green);">${per.protein || 0}g B</span> · 
+              <span style="color: var(--strain-blue);">${per.carbs || 0}g OH</span> · 
+              <span style="color: var(--rec-yellow);">${per.fat || 0}g M</span>
             </div>
           </div>
           <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
             <div style="display: flex; align-items: center; gap: 4px;">
-              <input type="number" value="100" id="grams_${item.barcode || Math.random().toString(36).substr(2,5)}" style="width: 52px; padding: 4px; background: var(--surface-3); border: 1px solid var(--edge-2); border-radius: 4px; color: #fff; font-size: 0.75rem; text-align: center;">
+              <input type="number" value="100" class="off-grams-input" style="width: 52px; padding: 4px; background: var(--surface-3); border: 1px solid var(--edge-2); border-radius: 4px; color: #fff; font-size: 0.75rem; text-align: center;">
               <span style="font-size: 0.68rem; color: var(--text-3);">g</span>
             </div>
-            <button type="button" class="btn" style="padding: 4px 10px; font-size: 0.7rem;" onclick='addOffItemToMeals(${JSON.stringify(item).replace(/'/g, "&#39;")}, this)'>
+            <button type="button" class="btn" style="padding: 4px 10px; font-size: 0.7rem;" onclick="addOffItemByIndex(${idx}, this)">
               + Dodaj
             </button>
           </div>
@@ -4787,21 +5013,23 @@
       });
     }
 
-    function addOffItemToMeals(item, btnElement) {
-      const container = btnElement.parentElement;
-      const gramsInput = container.querySelector('input[type="number"]');
+    function addOffItemByIndex(index, btnElement) {
+      const item = _currentOffResults[index];
+      if (!item) return;
+      const container = btnElement?.parentElement;
+      const gramsInput = container?.querySelector('.off-grams-input') || container?.querySelector('input[type="number"]');
       const grams = parseFloat(gramsInput?.value) || 100;
       const factor = grams / 100.0;
 
-      const p100 = item.per100g;
+      const p100 = item.per100g || {};
       const entry = {
-        id: 'm_' + Date.now(),
+        id: 'm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
         name: `${item.name} (${grams}g)`,
         serving: `${grams}g`,
-        calories: Math.round(p100.calories * factor),
-        protein: Number((p100.protein * factor).toFixed(1)),
-        carbs: Number((p100.carbs * factor).toFixed(1)),
-        fat: Number((p100.fat * factor).toFixed(1)),
+        calories: Math.round((p100.calories || 0) * factor),
+        protein: Number(((p100.protein || 0) * factor).toFixed(1)),
+        carbs: Number(((p100.carbs || 0) * factor).toFixed(1)),
+        fat: Number(((p100.fat || 0) * factor).toFixed(1)),
         micros: {
           sodium: p100.sodium ? p100.sodium * factor : 0,
           calcium: p100.calcium ? p100.calcium * factor : 0,
@@ -4818,6 +5046,57 @@
 
       showMascotNotification(`Dodan izdelek: ${item.name} (${entry.calories} kcal)`);
     }
+
+    function addOffItemToMeals(item, btnElement) {
+      if (!item) return;
+      const container = btnElement?.parentElement;
+      const gramsInput = container?.querySelector('input[type="number"]');
+      const grams = parseFloat(gramsInput?.value) || 100;
+      const factor = grams / 100.0;
+
+      const p100 = item.per100g || {};
+      const entry = {
+        id: 'm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        name: `${item.name} (${grams}g)`,
+        serving: `${grams}g`,
+        calories: Math.round((p100.calories || 0) * factor),
+        protein: Number(((p100.protein || 0) * factor).toFixed(1)),
+        carbs: Number(((p100.carbs || 0) * factor).toFixed(1)),
+        fat: Number(((p100.fat || 0) * factor).toFixed(1)),
+        micros: {
+          sodium: p100.sodium ? p100.sodium * factor : 0,
+          calcium: p100.calcium ? p100.calcium * factor : 0,
+          potassium: p100.potassium ? p100.potassium * factor : 0,
+          iron: p100.iron ? p100.iron * factor : 0
+        },
+        time: new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' })
+      };
+
+      prehranaState.meals.push(entry);
+      savePrehranaState();
+      renderPrehranaView();
+      closeOffSearchModal();
+
+      showMascotNotification(`Dodan izdelek: ${item.name} (${entry.calories} kcal)`);
+    }
+
+    // Expose all functions on window for rock-solid global access
+    window.prehranaState = prehranaState;
+    window.renderPrehranaView = renderPrehranaView;
+    window.initPrehrana = initPrehrana;
+    window.addPresetFood = addPresetFood;
+    window.deleteMealItem = deleteMealItem;
+    window.editMealItem = editMealItem;
+    window.openQuickAddModal = openQuickAddModal;
+    window.closeQuickAddModal = closeQuickAddModal;
+    window.submitQuickAddMeal = submitQuickAddMeal;
+    window.setMacroGoal = setMacroGoal;
+    window.setQuickCal = setQuickCal;
+    window.autoSyncAtwater = autoSyncAtwater;
+    window.applyAtwaterCalories = applyAtwaterCalories;
+    window.clearAllMeals = clearAllMeals;
+    window.addOffItemByIndex = addOffItemByIndex;
+    window.addOffItemToMeals = addOffItemToMeals;
 
     // --- KAMERA / BARCODE DETECTOR ---
     async function toggleBarcodeCamera() {
