@@ -429,6 +429,13 @@
     }
   }
 
+  function clearAllEntries() {
+    state.entries = [];
+    saveState();
+    dispatchDiaryEvent('entriesCleared', {});
+    return true;
+  }
+
   // Samodejni zagon ob nalaganju
   loadState();
 
@@ -441,6 +448,7 @@
     addEntry,
     logPreset,
     deleteEntry,
+    clearAllEntries,
     getEntriesForDate,
     getTodayEntries,
     getDatesWithEntries,
