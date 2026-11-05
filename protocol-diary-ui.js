@@ -507,8 +507,8 @@
       const deltaY = touch.clientY - startY;
       const duration = Date.now() - startTime;
 
-      // Zahtevaj jasen vodoravni poteg (vsaj 60px, bistveno bolj horizontalen kot vertikalen, < 500ms)
-      if (Math.abs(deltaX) > 60 && Math.abs(deltaX) > 1.8 * Math.abs(deltaY) && duration < 500) {
+      // Zahtevaj naraven vodoravni poteg (vsaj 45px, bolj vodoraven kot navpičen, < 650ms)
+      if (Math.abs(deltaX) > 45 && Math.abs(deltaX) > 1.35 * Math.abs(deltaY) && duration < 650) {
         handleGlobalSwipe(deltaX < 0 ? 'next' : 'prev');
       }
     }, { passive: true });
