@@ -1857,7 +1857,10 @@
       <div class="card" style="border-top: 2px solid var(--rec-green); background: linear-gradient(180deg, var(--surface-2) 0%, rgba(20, 23, 26, 0.7) 100%);">
         <div class="card-header">
           <div class="card-title">🍽️ Dnevnik Prehrane</div>
-          <span class="status-pill" id="danesMealCountBadge" style="color: var(--rec-green); border-color: rgba(0,230,118,0.3);">0 obrokov danes</span>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <button type="button" class="status-pill optimal fv-status-badge" id="danesFvStatusBadge" onclick="FoodVision.checkHealth(true)" style="cursor: pointer; padding: 2px 8px; font-size: 0.72rem; font-weight: 700;" title="Klikni za test AI povezave">🟢 AI Povezan</button>
+            <span class="status-pill" id="danesMealCountBadge" style="color: var(--rec-green); border-color: rgba(0,230,118,0.3);">0 obrokov danes</span>
+          </div>
         </div>
         <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px;">
           <button type="button" class="btn" style="padding: 12px 10px; font-size: 0.88rem; font-weight: 800; background: linear-gradient(135deg, #00E676 0%, #00B0FF 100%); color: #08090A; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,230,118,0.3); cursor: pointer;" onclick="triggerDirectFoodPhotoUpload()">
@@ -2086,7 +2089,10 @@
       <div class="card">
         <div class="card-header">
           <div class="card-title">🍽️ Dnevnik Obrokov & Hitri Vnos</div>
-          <span class="status-pill" id="mealCountBadge">Danes: 0 obrokov</span>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <button type="button" class="status-pill optimal fv-status-badge" id="fvStatusBadge" onclick="FoodVision.checkHealth(true)" style="cursor: pointer; padding: 2px 8px; font-size: 0.72rem; font-weight: 700;" title="Klikni za test AI povezave">🟢 AI Povezan</button>
+            <span class="status-pill" id="mealCountBadge">Danes: 0 obrokov</span>
+          </div>
         </div>
 
         <!-- Glavni gumb: + Foto vnos obroka -->
@@ -2542,7 +2548,7 @@
           </div>
         </div>
 
-        <button type="button" class="btn" style="width: 100%; padding: 12px; margin-top: 6px; font-weight: 800; background: linear-gradient(135deg, #00E676 0%, #00B0FF 100%); color: #08090A; box-shadow: 0 4px 16px rgba(0,230,118,0.3);" onclick="submitQuickAddMeal()">
+        <button type="button" id="qaSubmitBtn" class="btn" style="width: 100%; padding: 12px; margin-top: 6px; font-weight: 800; background: linear-gradient(135deg, #00E676 0%, #00B0FF 100%); color: #08090A; box-shadow: 0 4px 16px rgba(0,230,118,0.3);" onclick="submitQuickAddMeal()">
           ✓ Shrani Obrok v Dnevnik
         </button>
       </div>
@@ -3494,7 +3500,7 @@
     // Service worker & Auto-Update
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=30').then((reg) => {
+        navigator.serviceWorker.register('./sw.js?v=31').then((reg) => {
           reg.update();
           reg.onupdatefound = () => {
             const installingWorker = reg.installing;
@@ -4952,7 +4958,7 @@
     initApp();
   </script>
   <script src="./food-match.js?v=28"></script>
-  <script src="./food-vision-ui.js?v=28"></script>
+  <script src="./food-vision-ui.js?v=31"></script>
   <script src="./exercise-match.js?v=28"></script>
   <script src="./workout-engine.js?v=28"></script>
   <script src="./recovery-engine.js?v=28"></script>
