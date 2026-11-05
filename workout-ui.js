@@ -179,6 +179,7 @@
     }
   }
 
+  const serijSklon = n => { const m = n % 100; return m === 1 ? 'serija' : m === 2 ? 'seriji' : (m === 3 || m === 4) ? 'serije' : 'serij'; };
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   // ========== ČISTE DOMENSKE FUNKCIJE (PURE HELPERS) ==========
@@ -1250,7 +1251,7 @@
             <div style="font-size: 0.75rem; color: var(--text-2); display: flex; gap: 12px;">
               <span>⏱️ ${dur} min</span>
               ${vol > 0 ? `<span>🏋️ ${vol.toLocaleString('sl-SI')} kg</span>` : ''}
-              <span>🔢 ${(w.exercises || []).reduce((acc, e) => acc + (e.sets || []).filter(s => s.done).length, 0)} serij</span>
+              <span>🔢 ${((n) => n + ' ' + serijSklon(n))((w.exercises || []).reduce((acc, e) => acc + (e.sets || []).filter(s => s.done).length, 0))}</span>
             </div>
             <div style="font-size: 0.7rem; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
               ${esc(exSummary)}
@@ -2116,7 +2117,7 @@
         <div style="font-size: 0.72rem; color: var(--text-3); text-transform: uppercase; font-weight: 700; margin-bottom: 6px;">Obremenjene mišične skupine:</div>
         <div style="display: flex; flex-wrap: wrap; gap: 6px;">
           ${Object.entries(muscleMap).map(([m, c]) => `
-            <span class="status-pill" style="color: var(--rec-green);">${MUSCLE_NAMES_SL[m] || m}: <b>${c}</b> serij</span>
+            <span class="status-pill" style="color: var(--rec-green);">${MUSCLE_NAMES_SL[m] || m}: <b>${c}</b> ${serijSklon(c)}</span>
           `).join('')}
         </div>
       </div>
@@ -2190,7 +2191,7 @@
       <div style="display: flex; gap: 12px; font-size: 0.8rem; color: var(--text-2); background: var(--surface-3); border-radius: 8px; padding: 8px 12px;">
         <span>⏱️ ${durMin} min</span>
         <span>🏋️ ${vol.toLocaleString('sl-SI')} kg</span>
-        <span>🔢 ${(w.exercises || []).reduce((acc, e) => acc + (e.sets || []).filter(s => s.done).length, 0)} serij</span>
+        <span>🔢 ${((n) => n + ' ' + serijSklon(n))((w.exercises || []).reduce((acc, e) => acc + (e.sets || []).filter(s => s.done).length, 0))}</span>
       </div>
     `;
 

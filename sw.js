@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bine-zdravje-v33';
+const CACHE_NAME = 'bine-zdravje-v34';
 const ASSETS = [
   './',
   './index.html',
@@ -22,7 +22,10 @@ const ASSETS = [
   './skin-storage.js',
   './skinhair-engine.js',
   './skinhair-ui.js',
-  './cikel-plan.js'
+  './cikel-plan.js',
+  './danes-podatki.js',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {
@@ -81,7 +84,7 @@ self.addEventListener('fetch', (event) => {
           }
           return networkRes;
         })
-        .catch(() => null);
+        .catch(() => cached || Response.error());
 
       return cached || fetchPromise;
     })

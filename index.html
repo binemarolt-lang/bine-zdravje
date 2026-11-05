@@ -6,6 +6,9 @@
   <title>Bine Zdravje v2 — Enotni Kineziološki Sistem</title>
   <script src="./nutrition-engine.js"></script>
   <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="./icon-192.png">
+  <meta name="mobile-web-app-capable" content="yes">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
@@ -119,13 +122,15 @@
     .container {
       max-width: 600px;
       margin: 0 auto;
-      padding: 16px 16px 160px 16px;
+      padding: 16px 16px calc(190px + env(safe-area-inset-bottom, 0px)) 16px;
       position: relative;
       z-index: 10;
       display: flex;
       flex-direction: column;
       gap: 14px;
     }
+    .hero-rhr { font-size: 0.95rem; font-weight: 700; color: var(--text-2); margin-top: 1px; }
+    .enota { font-size: 0.8rem; color: var(--text-3); font-weight: 600; }
     .view { display: none; flex-direction: column; gap: 14px; }
     .view.active { display: flex; }
 
@@ -479,9 +484,10 @@
       border-top: 1px solid var(--edge-1);
       display: flex;
       justify-content: space-around;
-      padding: 8px 6px env(safe-area-inset-bottom, 8px);
+      padding: 6px 2px max(8px, env(safe-area-inset-bottom));
       z-index: 200;
     }
+    .nav-tab span { white-space: nowrap; }
     .nav-tab {
       display: flex;
       flex-direction: column;
@@ -493,7 +499,9 @@
       font-size: 0.7rem;
       font-weight: 600;
       cursor: pointer;
-      padding: 6px 10px;
+      padding: 6px 2px;
+      flex: 1 1 0;
+      min-width: 0;
       border-radius: 10px;
       transition: color 0.15s, transform 0.1s;
     }
@@ -512,6 +520,14 @@
       stroke-width: 2;
     }
 
+
+    /* FAB: ne na zavihkih, kjer je že glavni foto gumb ali ni povezan s hrano */
+    body[data-view="prehrana"] .fab-photo-food,
+    body[data-view="bloodwork"] .fab-photo-food,
+    body[data-view="estetika"] .fab-photo-food,
+    body[data-view="vault"] .fab-photo-food,
+    body[data-view="cikel"] .fab-photo-food { display: none; }
+    body.modal-open .fab-photo-food { display: none; }
     /* Floating Action Button (FAB) za Foto Vnos Hrane */
     .fab-photo-food {
       position: fixed;
@@ -1750,7 +1766,7 @@
 
   <header>
     <div class="brand">
-      🧬 BINE <span>ZDRAVJE</span> <small id="appVersionBadge" style="font-size: 0.65rem; color: var(--rec-green); font-weight: 700; border: 1px solid rgba(0,230,118,0.3); padding: 2px 6px; border-radius: 6px; margin-left: 6px; cursor: pointer;" onclick="if(window.checkForAppUpdate) window.checkForAppUpdate(true);" title="Klikni za preverjanje posodobitev">v3.0 ↻</small>
+      🧬 BINE <span>ZDRAVJE</span> <small id="appVersionBadge" style="font-size: 0.65rem; color: var(--rec-green); font-weight: 700; border: 1px solid rgba(0,230,118,0.3); padding: 2px 6px; border-radius: 6px; margin-left: 6px; cursor: pointer;" onclick="if(window.checkForAppUpdate) window.checkForAppUpdate(true);" title="Klikni za preverjanje posodobitev">v3.1 ↻</small>
     </div>
     <div style="display: flex; align-items: center; gap: 8px;">
       <button class="status-pill" onclick="cycleAnimeVibe()" id="vibeBtn" style="cursor: pointer; background: var(--surface-3); border-color: var(--edge-3); color: var(--text-1);" title="Nastavi glasnost anime ozadja">⚡ Vibe: 16%</button>
@@ -1777,45 +1793,46 @@
       
       <!-- HERO TWIN RINGS -->
       <div class="card hero-rings-card">
-        <img src="./assets/anime/happy.gif" class="anime-watermark" style="width: 120px; height: 120px; opacity: 0.16;" alt="">
+        <img src="./assets/anime/happy.gif" class="anime-watermark" style="width: 64px; height: 64px; opacity: 0.10; top: 8px; bottom: auto; right: 8px; border-radius: 14px;" alt="">
         <div class="rings-wrapper">
           <svg width="220" height="220" viewBox="0 0 220 220">
             <!-- Ozadja obročev -->
             <circle cx="110" cy="110" r="95" stroke="rgba(255,255,255,0.06)" stroke-width="12" fill="none"/>
             <circle cx="110" cy="110" r="76" stroke="rgba(255,255,255,0.06)" stroke-width="10" fill="none"/>
             
-            <!-- Zunanji: Day Strain (0-21) -->
+            <!-- Zunanji: aktivne minute (AZM) proti cilju 22 min/dan (150/teden) -->
             <circle id="ringStrain" cx="110" cy="110" r="95" stroke="var(--strain-blue)" stroke-width="12" fill="none"
-                    stroke-dasharray="596.9" stroke-dashoffset="240" stroke-linecap="round"
+                    stroke-dasharray="596.9" stroke-dashoffset="596.9" stroke-linecap="round"
                     transform="rotate(-90 110 110)" style="filter: drop-shadow(0 0 8px var(--strain-blue-glow)); transition: stroke-dashoffset 0.8s ease;"/>
 
             <!-- Notranji: Recovery % (0-100) -->
             <circle id="ringRecovery" cx="110" cy="110" r="76" stroke="var(--rec-green)" stroke-width="10" fill="none"
-                    stroke-dasharray="477.5" stroke-dashoffset="85" stroke-linecap="round"
+                    stroke-dasharray="477.5" stroke-dashoffset="477.5" stroke-linecap="round"
                     transform="rotate(-90 110 110)" style="filter: drop-shadow(0 0 10px var(--rec-green-glow)); transition: stroke-dashoffset 0.8s ease;"/>
           </svg>
           <div class="rings-center" onclick="triggerSuperSaiyan()" style="cursor: pointer;" title="Klikni za Beast Mode!">
             <img id="ringCenterChibi" src="./assets/anime/wink.gif" class="ring-chibi" alt="chibi">
-            <span class="recovery-score" id="heroRecoveryNum">82%</span>
+            <span class="recovery-score" id="heroRecoveryNum">–</span>
             <span class="recovery-sub">Regeneracija</span>
           </div>
         </div>
 
-        <div style="display: flex; justify-content: space-around; width: 100%; border-top: 1px solid var(--edge-1); padding-top: 12px; margin-top: 4px;">
+        <button type="button" id="danesVir" onclick="DanesPodatki.povezi()" style="background:none;border:0;padding:2px 4px;font-size:0.72rem;color:var(--text-3);cursor:pointer;text-align:center;">Nalagam podatke ure…</button>
+        <div class="hero-stat-row" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; text-align: center; width: 100%; border-top: 1px solid var(--edge-1); padding-top: 12px; margin-top: 4px;">
           <div>
-            <div class="bento-label">Day Strain <img src="./assets/anime/laugh.gif" class="micro-sticker" alt=""></div>
-            <div style="font-size: 1.4rem; font-weight: 800; color: var(--strain-blue); font-variant-numeric: tabular-nums;" id="heroStrainNum">12.6</div>
-            <div style="font-size: 0.7rem; color: var(--text-3);">Cilj: 10.5 – 14.0</div>
+            <div class="bento-label">Aktivnost <img src="./assets/anime/laugh.gif" class="micro-sticker" alt=""></div>
+            <div style="font-size: 1.4rem; font-weight: 800; color: var(--strain-blue); font-variant-numeric: tabular-nums; white-space: nowrap;" id="heroStrainNum">–</div>
+            <div style="font-size: 0.7rem; color: var(--text-3);" id="heroStrainSub">korakov danes</div>
           </div>
           <div>
             <div class="bento-label">HRV / RHR <img src="./assets/anime/happy.gif" class="micro-sticker" alt=""></div>
-            <div style="font-size: 1.4rem; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums;">74 <span style="font-size: 0.8rem; color: var(--text-3);">ms</span> / 54</div>
-            <div style="font-size: 0.7rem; color: var(--rec-green);">+8% nad osnovo</div>
+            <div style="font-size: 1.4rem; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; white-space: nowrap;" id="heroHrvRhr">–</div>
+            <div style="font-size: 0.7rem; color: var(--text-3);" id="heroHrvSub">nalagam…</div>
           </div>
           <div>
             <div class="bento-label">Spanje <img src="./assets/anime/wink.gif" class="micro-sticker" alt=""></div>
-            <div style="font-size: 1.4rem; font-weight: 800; color: var(--sleep-purple); font-variant-numeric: tabular-nums;">7h 42m</div>
-            <div style="font-size: 0.7rem; color: var(--text-3);">94% potrebe</div>
+            <div style="font-size: 1.4rem; font-weight: 800; color: var(--sleep-purple); font-variant-numeric: tabular-nums; white-space: nowrap;" id="heroSpanje">–</div>
+            <div style="font-size: 0.7rem; color: var(--text-3);" id="heroSpanjeSub">–</div>
           </div>
         </div>
       </div>
@@ -1825,22 +1842,21 @@
 
       <!-- HYPNOGRAM SPANJA -->
       <div class="card">
-        <img src="./assets/anime/wink.gif" class="anime-watermark" style="opacity: 0.11;" alt="">
         <div class="card-header">
           <div class="card-title">🌙 Arhitektura Spanja (Fitbit Air)</div>
-          <span style="font-size: 0.75rem; color: var(--text-2);">Dolg spanec: 1h 48m</span>
-        </div>
+          </div>
+        <div style="font-size: 0.75rem; color: var(--text-2); margin: -4px 0 8px;" id="hypnoSummary"></div>
         <div class="hypno-bar">
-          <div class="hypno-awake" style="width: 8%;" title="Budnost (36m)"></div>
-          <div class="hypno-light" style="width: 48%;" title="Lahko (3h 40m)"></div>
-          <div class="hypno-deep" style="width: 24%;" title="Globoko (1h 48m)"></div>
-          <div class="hypno-rem" style="width: 20%;" title="REM (1h 38m)"></div>
+          <div class="hypno-awake" id="hypnoAwake" style="width: 0%;"></div>
+          <div class="hypno-light" id="hypnoLight" style="width: 0%;"></div>
+          <div class="hypno-deep" id="hypnoDeep" style="width: 0%;"></div>
+          <div class="hypno-rem" id="hypnoRem" style="width: 0%;"></div>
         </div>
-        <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-3);">
-          <span><b style="color: #FF3D00;">■</b> Budno 8%</span>
-          <span><b style="color: #536DFE;">■</b> Lahko 48%</span>
-          <span><b style="color: #304FFE;">■</b> Globoko 24%</span>
-          <span><b style="color: #00B0FF;">■</b> REM 20%</span>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; font-size: 0.72rem; color: var(--text-3); white-space: nowrap;">
+          <span><b style="color: #FF3D00;">■</b> <span id="hypnoAwakeLeg">Budno –</span></span>
+          <span><b style="color: #536DFE; opacity: 0.7;">■</b> <span id="hypnoLightLeg">Lahko –</span></span>
+          <span><b style="color: #304FFE;">■</b> <span id="hypnoDeepLeg">Globoko –</span></span>
+          <span><b style="color: #00B0FF;">■</b> <span id="hypnoRemLeg">REM –</span></span>
         </div>
       </div>
 
@@ -1859,7 +1875,7 @@
           <div class="card-title">🍽️ Dnevnik Prehrane</div>
           <div style="display: flex; align-items: center; gap: 6px;">
             <button type="button" class="status-pill optimal fv-status-badge" id="danesFvStatusBadge" onclick="FoodVision.checkHealth(true)" style="cursor: pointer; padding: 2px 8px; font-size: 0.72rem; font-weight: 700;" title="Klikni za test AI povezave">🟢 AI Povezan</button>
-            <span class="status-pill" id="danesMealCountBadge" style="color: var(--rec-green); border-color: rgba(0,230,118,0.3);">0 obrokov danes</span>
+            <span class="status-pill" id="danesMealCountBadge" style="color: var(--rec-green); border-color: rgba(0,230,118,0.3);">0 obrokov</span>
           </div>
         </div>
         <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px;">
@@ -2446,34 +2462,34 @@
     </button>
     <button class="nav-tab" onclick="switchNav('cikel')">
       <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-      <span>Cikel & PK</span>
+      <span>Cikel</span>
     </button>
     <button class="nav-tab" onclick="switchNav('prehrana')">
-      <svg viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+      <svg viewBox="0 0 24 24"><path d="M12 7c-1.5-1.6-4.5-2-6.3-.2C3.6 8.9 4 13.4 6 16.7 7.4 19 9 21 10.5 21c.8 0 1-.5 1.5-.5s.7.5 1.5.5c1.5 0 3.1-2 4.5-4.3 2-3.3 2.4-7.8.3-9.9C16.5 5 13.5 5.4 12 7z"></path><path d="M12 7c0-2 1-3.5 3-4"></path></svg>
       <span>Prehrana</span>
     </button>
     <button class="nav-tab" onclick="switchNav('bloodwork')">
       <svg viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path></svg>
-      <span>Izvidi/Porto</span>
+      <span>Izvidi</span>
     </button>
     <button class="nav-tab" onclick="switchNav('trening')">
       <svg viewBox="0 0 24 24"><path d="M6 5v14M18 5v14M2 9v6M22 9v6M6 12h12"></path></svg>
       <span>Trening</span>
     </button>
     <button class="nav-tab" onclick="switchNav('estetika')">
-      <svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 0 1 5 5v1a5 5 0 0 1-10 0V7a5 5 0 0 1 5-5z"></path><path d="M12 14c-4.42 0-8 2.69-8 6v1h16v-1c0-3.31-3.58-6-8-6z"></path><circle cx="17.5" cy="4.5" r="1.5"></circle></svg>
-      <span>Koža/Lasje</span>
+      <svg viewBox="0 0 24 24"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"></path><path d="M19 15l.8 1.9L22 18l-2.2 1.1L19 21l-.8-1.9L16 18l2.2-1.1z"></path></svg>
+      <span>Koža</span>
     </button>
     <button class="nav-tab" onclick="switchNav('vault')">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-      <span>Vault (133)</span>
+      <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"></path><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"></path></svg>
+      <span>Vault</span>
     </button>
   </nav>
 
   <!-- PLAVAJOČI GUMB ZA TRENUTNI FOTO VNOS HRANE (FAB) -->
   <button type="button" class="fab-photo-food" onclick="triggerDirectFoodPhotoUpload()" title="Slikaj obrok – AI prepozna hrano in hranila">
     <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-    <span>+ Foto Hrana</span>
+    <span>Obrok</span>
   </button>
   <input type="file" id="directFoodCameraInput" accept="image/*" capture="environment" style="display: none;" onchange="handleDirectFoodPhotoUpload(this)">
 
@@ -2915,7 +2931,9 @@
       initPrehrana();
     }
 
+    function sklonObrok(n) { const m = n % 100; return m === 1 ? 'obrok' : m === 2 ? 'obroka' : (m === 3 || m === 4) ? 'obroki' : 'obrokov'; }
     function switchNav(id) {
+      document.body.dataset.view = id;
       document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
       const tabBtn = Array.from(document.querySelectorAll('.nav-tab')).find(b => b.getAttribute('onclick')?.includes(id));
@@ -3552,7 +3570,7 @@
       window.checkForAppUpdate = triggerUpdateCheck;
 
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=33').then((reg) => {
+        navigator.serviceWorker.register('./sw.js?v=34').then((reg) => {
           swReg = reg;
           window._swReg = reg;
           reg.update().catch(() => {});
@@ -4617,9 +4635,9 @@
       // 3. Render seznama obrokov
       const mealsList = document.getElementById('mealEntriesList');
       const countBadge = document.getElementById('mealCountBadge');
-      if (countBadge) countBadge.textContent = `Danes: ${prehranaState.meals.length} obrokov (${Math.round(totKcal)} kcal, ${Math.round(totProt)}g B)`;
+      if (countBadge) countBadge.textContent = `Danes: ${prehranaState.meals.length} ${sklonObrok(prehranaState.meals.length)} (${Math.round(totKcal)} kcal, ${Math.round(totProt)}g B)`;
       const danesBadge = document.getElementById('danesMealCountBadge');
-      if (danesBadge) danesBadge.textContent = `${prehranaState.meals.length} obrokov (${Math.round(totKcal)} kcal)`;
+      if (danesBadge) danesBadge.textContent = `${prehranaState.meals.length} ${sklonObrok(prehranaState.meals.length)} (${Math.round(totKcal)} kcal)`;
 
       if (mealsList) {
         mealsList.innerHTML = '';
@@ -5292,10 +5310,11 @@
   <script src="./recovery-engine.js?v=28"></script>
   <script src="./workout-parser.js?v=28"></script>
   <script src="./workout-io.js?v=28"></script>
-  <script src="./workout-ui.js?v=28"></script>
+  <script src="./workout-ui.js?v=34"></script>
   <script src="./skin-storage.js?v=29"></script>
   <script src="./skinhair-engine.js?v=29"></script>
   <script src="./skinhair-ui.js?v=29"></script>
+  <script src="./danes-podatki.js?v=34"></script>
   <script src="./cikel-plan.js?v=33"></script>
   <script>
     if (window.SkinHairUI && typeof window.SkinHairUI.mount === 'function') {
