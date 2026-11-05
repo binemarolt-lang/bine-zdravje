@@ -132,7 +132,11 @@
     .hero-rhr { font-size: 0.95rem; font-weight: 700; color: var(--text-2); margin-top: 1px; }
     .enota { font-size: 0.8rem; color: var(--text-3); font-weight: 600; }
     .view { display: none; flex-direction: column; gap: 14px; }
-    .view.active { display: flex; }
+    .view.active { display: flex; animation: viewFadeIn 0.18s ease-out; }
+    @keyframes viewFadeIn {
+      from { opacity: 0.35; transform: translateY(3px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
 
     /* Surface Cards */
     .card {
