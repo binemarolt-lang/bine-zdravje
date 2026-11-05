@@ -552,6 +552,7 @@
   }
 
   return {
+    getDiaryViewHtml,
     renderDiaryView,
     renderTodayWidget,
     quickLog,

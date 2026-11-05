@@ -281,10 +281,10 @@
       case 'lasje':
         return renderLasjeView(hair, needleLock);
       case 'dnevnik':
-        setTimeout(() => {
-          if (window.ProtocolDiaryUI) window.ProtocolDiaryUI.renderDiaryView('sh-content-area');
-        }, 15);
-        return '<div id="sh-diary-loading" style="text-align: center; padding: 30px 10px; color: var(--text-3); font-size: 0.8rem;">📖 Nalagam dnevnik vnosov...</div>';
+        if (window.ProtocolDiaryUI && typeof window.ProtocolDiaryUI.getDiaryViewHtml === 'function') {
+          return window.ProtocolDiaryUI.getDiaryViewHtml();
+        }
+        return '<div style="text-align: center; padding: 30px 10px; color: var(--text-3); font-size: 0.8rem;">📖 Nalagam dnevnik vnosov...</div>';
       case 'rutina':
         return renderRutinaView(needleLock);
       default:
