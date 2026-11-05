@@ -334,7 +334,9 @@
   }
 
   function renderQuickEstimatorBody(err) {
+    injectModal();
     const b = document.getElementById('fvBody');
+    if (!b) return;
     const photo = quickState.photo;
     const k = quickState.kcal;
     const errText = err ? (err.message || String(err)) : null;
