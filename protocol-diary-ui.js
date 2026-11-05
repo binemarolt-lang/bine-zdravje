@@ -556,6 +556,7 @@
     saveNewEntryFromModal,
     exportToObsidian,
     initSwipeNavigation,
+    handleGlobalSwipe,
     refreshActiveViews
   };
 }));
