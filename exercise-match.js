@@ -322,7 +322,9 @@
       const qt = meaningfulTokens[k];
 
       // Exact token posting
+      let hasExact = false;
       if (TOKEN_INDEX.has(qt)) {
+        hasExact = true;
         const post = TOKEN_INDEX.get(qt);
         for (let i = 0; i < post.length; i++) candidateIndices.add(post[i]);
       }
@@ -337,7 +339,7 @@
         // Prefix matching while typing
         if (qt.length >= 2 && vt.startsWith(qt)) {
           matched = true;
-        } else if (maxDist > 0 && Math.abs(vt.length - qt.length) <= maxDist) {
+        } else if (!hasExact && maxDist > 0 && Math.abs(vt.length - qt.length) <= maxDist) {
           // Typo matching within distance
           if (damerauLevenshtein(qt, vt) <= maxDist) {
             matched = true;
