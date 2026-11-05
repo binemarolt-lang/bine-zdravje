@@ -36,11 +36,10 @@
   }
 
   /**
-   * Izris polnega pogleda dnevnika v poljuben vsebnik
+   * Generiranje HTML kode polnega pogleda dnevnika
    */
-  function renderDiaryView(containerId = 'sh-content-area') {
-    const container = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
-    if (!container || !Diary) return;
+  function getDiaryViewHtml() {
+    if (!Diary) return '<div style="padding: 20px; text-align: center; color: var(--text-3);">Dnevnik ni naložen.</div>';
 
     const stats = Diary.getStats();
     const todayEntries = Diary.getTodayEntries();
@@ -53,7 +52,7 @@
       return dayEntries.some(e => e.category === currentCategoryFilter);
     });
 
-    const html = `
+    return `
       <!-- KARTICA 1: NADZORNA PLOŠČA & STATISTIKA -->
       <div class="card" style="margin-bottom: 12px; position: relative;">
         <div class="card-header">
@@ -134,8 +133,15 @@
         </div>
       </div>
     `;
+  }
 
-    container.innerHTML = html;
+  /**
+   * Izris polnega pogleda dnevnika v poljuben vsebnik
+   */
+  function renderDiaryView(containerId = 'sh-content-area') {
+    const container = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
+    if (!container || !Diary) return;
+    container.innerHTML = getDiaryViewHtml();
   }
 
   /**
