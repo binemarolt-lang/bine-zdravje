@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bine-zdravje-v34';
+const CACHE_NAME = 'bine-zdravje-v35';
 const ASSETS = [
   './',
   './index.html',
@@ -24,6 +24,8 @@ const ASSETS = [
   './skinhair-ui.js',
   './cikel-plan.js',
   './danes-podatki.js',
+  './protocol-diary.js',
+  './protocol-diary-ui.js',
   './icon-192.png',
   './icon-512.png'
 ];
