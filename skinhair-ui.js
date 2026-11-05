@@ -921,6 +921,11 @@
     state.hairProtocol[step] = completed;
     saveState();
     render();
+    if (completed && window.ProtocolDiary) {
+      if (step === 'minoxidilApplied') window.ProtocolDiary.logPreset('minoxidil_topical');
+      else if (step === 'finasterideTaken') window.ProtocolDiary.logPreset('finasteride_1mg');
+      else if (step === 'ketoconazoleWash') window.ProtocolDiary.logPreset('ketoconazole_shampoo');
+    }
   }
 
   function toggleActiveIngredient(slot, ingredientId) {
