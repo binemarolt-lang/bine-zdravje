@@ -974,6 +974,9 @@
     state.hairProtocol.minoxidilApplied = false; // Varnostni reset minoksidila
     saveState();
     render();
+    if (window.ProtocolDiary) {
+      window.ProtocolDiary.logPreset('microneedling_scalp');
+    }
     if (typeof alert === 'function') {
       alert('✓ Mikroneedling seja zabeležena! Vklopljena 24-urna varnostna zapora minoksidila.');
     }

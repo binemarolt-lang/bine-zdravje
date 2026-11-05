@@ -191,9 +191,29 @@
     toggleToday() {
       const s = load(); s.done = s.done || {};
       const k = isoDate(new Date());
-      if (s.done[k]) delete s.done[k];
-      else s.done[k] = new Date().toTimeString().slice(0, 5);
+      if (s.done[k]) {
+        delete s.done[k];
+      } else {
+        const timeStr = new Date().toTimeString().slice(0, 5);
+        s.done[k] = timeStr;
+        if (window.ProtocolDiary) {
+          try {
+            const di = dayIndex(s.start, new Date());
+            const w = Math.max(0, Math.floor(di / 7));
+            const tU = unitsFor(PLAN.testUnits, w), eU = unitsFor(PLAN.eqUnits, w);
+            window.ProtocolDiary.addEntry({
+              substance: 'Testosteron + EQ',
+              dose: `${tU}T + ${eU}EQ`,
+              unit: 'enot (U-100)',
+              category: 'anabolik',
+              slot: 'MORNING_FASTED',
+              notes: `Dnevni vbod (${tU} enot Testa + ${eU} enot EQ)`
+            });
+          } catch(e) {}
+        }
+      }
       save(s); render();
+      if (window.ProtocolDiaryUI) window.ProtocolDiaryUI.refreshActiveViews();
     },
     changeStart() {
       const s = load();
