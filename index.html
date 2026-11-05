@@ -3530,27 +3530,74 @@
       }
     });
 
-    // Service worker & Auto-Update
+    // Service worker & Auto-Update Engine
     if ('serviceWorker' in navigator) {
+      let refreshing = false;
+      let swReg = null;
+
+      function triggerUpdateCheck(manual = false) {
+        if (swReg) {
+          if (manual && typeof showMascotNotification === 'function') {
+            showMascotNotification('🔍 Preverjam posodobitve aplikacije...');
+          }
+          swReg.update().then(() => {
+            if (manual && !swReg.installing && !swReg.waiting && typeof showMascotNotification === 'function') {
+              setTimeout(() => showMascotNotification('✓ Aplikacija je že na najnovejši verziji!'), 800);
+            }
+          }).catch(() => {});
+        }
+      }
+      window.checkForAppUpdate = triggerUpdateCheck;
+
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=31').then((reg) => {
-          reg.update();
+        navigator.serviceWorker.register('./sw.js?v=32').then((reg) => {
+          swReg = reg;
+          window._swReg = reg;
+          reg.update().catch(() => {});
+
           reg.onupdatefound = () => {
             const installingWorker = reg.installing;
             if (installingWorker) {
               installingWorker.onstatechange = () => {
                 if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  showMascotNotification('Nova verzija je pripravljena!');
-                  setTimeout(() => window.location.reload(), 1000);
+                  if (typeof showMascotNotification === 'function') {
+                    showMascotNotification('⚡ Nova verzija PWA je naložena! Osvežujem...');
+                  }
+                  setTimeout(() => {
+                    if (!refreshing) {
+                      refreshing = true;
+                      window.location.reload();
+                    }
+                  }, 800);
                 }
               };
             }
           };
         }).catch(err => console.log('SW error', err));
       });
+
+      // Ko nov Service Worker prevzame nadzor (skipWaiting / clients.claim)
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        console.log('[SW] Nova verzija aktivirana');
+        if (!refreshing) {
+          refreshing = true;
+          if (typeof showMascotNotification === 'function') {
+            showMascotNotification('⚡ Nova verzija aktivirana! Osvežujem...');
+          }
+          setTimeout(() => window.location.reload(), 500);
+        }
       });
+
+      // Samodejno preveri ob vsakem odprtju telefona / preklopu zavihka
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          triggerUpdateCheck(false);
+        }
+      });
+
+      // Periodično preverjanje v ozadju vsakih 45 sekund
+      setInterval(() => {
+        triggerUpdateCheck(false);
+      }, 45000);
     }
 
     // Interaktivna maskota & motivacija
