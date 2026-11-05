@@ -884,6 +884,12 @@
     state.activeSubTab = subTab;
     saveState();
     render();
+    setTimeout(() => {
+      const activeBtn = document.querySelector('.sh-tab-btn.active');
+      if (activeBtn && typeof activeBtn.scrollIntoView === 'function') {
+        activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }, 40);
   }
 
   function setAcneZoneGrade(zoneId, grade) {
