@@ -234,10 +234,11 @@
         <!-- Segmentirani nadzornik (Sub-tabs) -->
         <div class="sh-subtabs">
           <button class="sh-tab-btn ${state.activeSubTab === 'pregled' ? 'active' : ''}" onclick="SkinHairUI.switchSubTab('pregled')">📊 Pregled</button>
-          <button class="sh-tab-btn ${state.activeSubTab === 'primerjalnik' ? 'active' : ''}" onclick="SkinHairUI.switchSubTab('primerjalnik')">🔍 Primerjalnik</button>
-          <button class="sh-tab-btn ${state.activeSubTab === 'akne' ? 'active' : ''}" onclick="SkinHairUI.switchSubTab('akne')">🔴 Akne (GAGS)</button>
           <button class="sh-tab-btn ${state.activeSubTab === 'lasje' ? 'active' : ''}" onclick="SkinHairUI.switchSubTab('lasje')">💈 Lasje</button>
+          <button class="sh-tab-btn ${state.activeSubTab === 'dnevnik' ? 'active' : ''}" onclick="SkinHairUI.switchSubTab('dnevnik')">📖 Dnevnik Vnosov</button>
           <button class="sh-tab-btn ${state.activeSubTab === 'rutina' ? 'active' : ''}" onclick="SkinHairUI.switchSubTab('rutina')">🧪 Rutina</button>
+          <button class="sh-tab-btn ${state.activeSubTab === 'akne' ? 'active' : ''}" onclick="SkinHairUI.switchSubTab('akne')">🔴 Akne (GAGS)</button>
+          <button class="sh-tab-btn ${state.activeSubTab === 'primerjalnik' ? 'active' : ''}" onclick="SkinHairUI.switchSubTab('primerjalnik')">🔍 Primerjalnik</button>
         </div>
       </div>
 
