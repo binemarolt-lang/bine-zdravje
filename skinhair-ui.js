@@ -99,9 +99,86 @@
 
   function saveState() {
     try {
-      localStorage.setItem(LS_STATE_KEY, JSON.stringify(state));
+      const stateToSave = JSON.parse(JSON.stringify(state));
+      if (Array.isArray(stateToSave.photos)) {
+        stateToSave.photos = stateToSave.photos.map(p => {
+          if (p.storage === 'indexedDB' || (p.url && p.url.startsWith('blob:'))) {
+            return {
+              id: p.id,
+              date: p.date,
+              timestamp: p.timestamp,
+              category: p.category,
+              storage: 'indexedDB'
+            };
+          }
+          if (p.url && !p.url.startsWith('data:')) {
+            return p;
+          }
+          if (p.url && p.url.startsWith('data:') && p.url.length > 50000) {
+            return {
+              id: p.id,
+              date: p.date,
+              timestamp: p.timestamp,
+              category: p.category,
+              storage: 'data_omitted'
+            };
+          }
+          return p;
+        });
+      }
+      localStorage.setItem(LS_STATE_KEY, JSON.stringify(stateToSave));
     } catch (e) {
       console.warn('[SkinHairUI] Napaka pri shranjevanju v localStorage:', e);
+    }
+  }
+
+  async function rehydratePhotosFromStorage() {
+    if (typeof window === 'undefined' || !window.SkinStorage) return;
+    try {
+      let changed = false;
+      // 1. Obnovi blob URL-je za obstoječe fotografije v stanju
+      if (Array.isArray(state.photos)) {
+        for (const p of state.photos) {
+          if (p.storage === 'indexedDB' || (p.id && p.id.startsWith('photo_'))) {
+            if (!p.url || p.url.startsWith('blob:')) {
+              const rec = await window.SkinStorage.getPhoto(p.id);
+              if (rec && rec.photoUrl) {
+                p.url = rec.photoUrl;
+                p.thumbnail = rec.thumbnailUrl || rec.photoUrl;
+                changed = true;
+              }
+            }
+          }
+        }
+      }
+
+      // 2. Preveri fotografije v skinHairDB, ki morda še niso v state.photos
+      const dbPhotos = await window.SkinStorage.listPhotos();
+      if (Array.isArray(dbPhotos)) {
+        for (const dbp of dbPhotos) {
+          if (!state.photos.some(p => p.id === dbp.id)) {
+            const rec = await window.SkinStorage.getPhoto(dbp.id);
+            if (rec && rec.photoUrl) {
+              state.photos.unshift({
+                id: dbp.id,
+                date: dbp.date,
+                timestamp: dbp.timestamp,
+                category: dbp.category || 'obraz',
+                url: rec.photoUrl,
+                thumbnail: rec.thumbnailUrl || rec.photoUrl,
+                storage: 'indexedDB'
+              });
+              changed = true;
+            }
+          }
+        }
+      }
+
+      if (changed) {
+        render();
+      }
+    } catch (e) {
+      console.warn('[SkinHairUI] Rehidracija fotografij iz skinHairDB:', e);
     }
   }
 
@@ -111,6 +188,7 @@
     const container = document.getElementById('view-estetika');
     if (!container) return;
     render();
+    rehydratePhotosFromStorage();
   }
 
   function render() {
@@ -302,7 +380,9 @@
 
   // ========== 2. PODZAVIHEK: PRIMERJALNIK FOTOGRAFIJ ==========
   function renderPrimerjalnikView() {
-    const hasPhotos = state.photos && state.photos.length >= 2;
+    const activeCat = state.comparison.activeCategory || 'vse';
+    const allPhotos = state.photos || [];
+    const filteredPhotos = allPhotos.filter(p => activeCat === 'vse' || p.category === activeCat);
 
     return `
       <div class="card" style="margin-bottom: 12px;">
@@ -317,7 +397,7 @@
         <!-- Filtrirni čipi -->
         <div style="display: flex; gap: 6px; overflow-x: auto; padding: 6px 0 10px 0;">
           ${['vse', 'obraz', 'lasna_linija', 'temen', 'hrbet', 'prsa'].map(cat => `
-            <button class="sh-cat-chip ${state.comparison.activeCategory === cat ? 'active' : ''}" onclick="SkinHairUI.filterCategory('${cat}')">
+            <button class="sh-cat-chip ${activeCat === cat ? 'active' : ''}" onclick="SkinHairUI.filterCategory('${cat}')">
               ${cat === 'vse' ? 'Vse' : cat === 'obraz' ? 'Obraz' : cat === 'lasna_linija' ? 'Linija' : cat === 'temen' ? 'Temen' : cat === 'hrbet' ? 'Hrbet' : 'Prsa'}
             </button>
           `).join('')}
@@ -344,18 +424,21 @@
       <!-- ČASOVNICA FOTOGRAFIJ (Photo Timeline) -->
       <div class="card">
         <div class="card-header">
-          <div class="card-title">📸 Časovnica Fotografij (${state.photos.length})</div>
+          <div class="card-title">📸 Časovnica Fotografij (${filteredPhotos.length})</div>
           <button class="btn secondary" style="font-size: 0.72rem; padding: 4px 8px;" onclick="SkinHairUI.triggerPhotoUploadModal()">+ Dodaj</button>
         </div>
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; margin-top: 10px;">
-          ${state.photos.length === 0 ? `
+          ${filteredPhotos.length === 0 ? `
             <div style="grid-column: 1 / -1; text-align: center; padding: 24px; color: var(--text-3); font-size: 0.8rem;">
-              Še ni naloženih fotografij napredka. Tapni »+ Dodaj« za prvo sliko obraza ali lasišča.
+              ${allPhotos.length === 0 ? 'Še ni naloženih fotografij napredka. Tapni »+ Dodaj« za prvo sliko obraza ali lasišča.' : 'Ni fotografij v izbrani kategoriji.'}
             </div>
-          ` : state.photos.map((p, idx) => `
+          ` : filteredPhotos.map((p, idx) => `
             <div class="sh-photo-thumb-card ${p.id === state.comparison.photoA ? 'selected-a' : ''} ${p.id === state.comparison.photoB ? 'selected-b' : ''}" 
+                 style="position: relative;"
                  onclick="SkinHairUI.selectPhotoForCompare('${p.id}')">
               <img src="${p.thumbnail || p.url}" style="width: 100%; height: 80px; object-fit: cover; border-radius: 6px;" alt="">
+              <button type="button" title="Izbriši" style="position: absolute; top: 3px; right: 3px; background: rgba(0,0,0,0.65); border: none; border-radius: 50%; color: #fff; width: 18px; height: 18px; font-size: 10px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center;"
+                      onclick="event.stopPropagation(); SkinHairUI.deletePhoto('${p.id}')">✕</button>
               <div style="font-size: 0.65rem; color: var(--text-2); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                 ${p.date || 'Danes'}
               </div>
@@ -368,8 +451,10 @@
   }
 
   function renderCompareCanvas() {
-    const photoA = state.photos.find(p => p.id === state.comparison.photoA) || state.photos[0] || null;
-    const photoB = state.photos.find(p => p.id === state.comparison.photoB) || state.photos[1] || photoA;
+    const activeCat = state.comparison.activeCategory || 'vse';
+    const candidatePhotos = (state.photos || []).filter(p => activeCat === 'vse' || p.category === activeCat);
+    const photoA = candidatePhotos.find(p => p.id === state.comparison.photoA) || candidatePhotos[0] || (state.photos && state.photos[0]) || null;
+    const photoB = candidatePhotos.find(p => p.id === state.comparison.photoB) || candidatePhotos[1] || photoA;
 
     if (!photoA) {
       return `
@@ -546,26 +631,57 @@
         <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
           <span style="font-size: 0.75rem; color: var(--text-3);">
             Zadnja seja: ${state.hairProtocol.lastMicroneedleDate ? new Date(state.hairProtocol.lastMicroneedleDate).toLocaleDateString('sl-SI') : 'Ni vpisano'}
+            ${needleLock.isLocked ? ` <strong style="color: #ef4444;">(Zapora: ${needleLock.hoursRemaining}h)</strong>` : ''}
           </span>
-          <button class="btn secondary" style="font-size: 0.75rem;" onclick="SkinHairUI.logMicroneedlingSession()">
-            Zabeleži sejo danes
-          </button>
+          ${needleLock.isLocked ? `
+            <button class="btn secondary" style="font-size: 0.75rem; border-color: #ef4444; color: #fca5a5;" onclick="SkinHairUI.resetMicroneedlingLockout()">
+              🔓 Ponastavi zaporo
+            </button>
+          ` : `
+            <button class="btn secondary" style="font-size: 0.75rem;" onclick="SkinHairUI.logMicroneedlingSession()">
+              Zabeleži sejo danes
+            </button>
+          `}
         </div>
       </div>
     `;
   }
 
   // ========== 5. PODZAVIHEK: RUTINA & PROTOKOLI ==========
+  const AM_AVAILABLE_ACTIVES = [
+    { id: 'azelaic_acid', label: 'Azelainska (15–20%)' },
+    { id: 'vitamin_c_laa', label: 'Vitamin C (LAA)' },
+    { id: 'niacinamide', label: 'Niacinamid' },
+    { id: 'ceramides', label: 'Ceramidi' },
+    { id: 'spf_50', label: 'SPF 50+' },
+    { id: 'salicylic_acid', label: 'Salicilna (BHA)' },
+    { id: 'benzoyl_peroxide', label: 'BPO' }
+  ];
+
+  const PM_AVAILABLE_ACTIVES = [
+    { id: 'tretinoin', label: 'Tretinoin 0.05%' },
+    { id: 'adapalene', label: 'Adapalen' },
+    { id: 'benzoyl_peroxide', label: 'BPO' },
+    { id: 'salicylic_acid', label: 'Salicilna (BHA)' },
+    { id: 'glycolic_acid', label: 'Glikolna (AHA)' },
+    { id: 'azelaic_acid', label: 'Azelainska' },
+    { id: 'niacinamide', label: 'Niacinamid' },
+    { id: 'ceramides', label: 'Ceramidi' }
+  ];
+
   function renderRutinaView(needleLock) {
     const engine = window.SkinHairEngine;
-    const amEval = engine ? engine.evaluateSkincareRoutine(state.skincare.amActives, 'am') : { warnings: [] };
-    const pmEval = engine ? engine.evaluateSkincareRoutine(state.skincare.pmActives, 'pm') : { warnings: [] };
+    const amActives = state.skincare.amActives || [];
+    const pmActives = state.skincare.pmActives || [];
+    const amEval = engine ? engine.evaluateSkincareRoutine(amActives, 'am') : { warnings: [], recommendations: [] };
+    const pmEval = engine ? engine.evaluateSkincareRoutine(pmActives, 'pm') : { warnings: [], recommendations: [] };
 
     return `
-      <!-- CIRKADIANA SKINECARE RUTINA -->
+      <!-- CIRKADIANA SKINCARE RUTINA & KEMIČNI KONFLIKTI -->
       <div class="card" style="margin-bottom: 12px;">
         <div class="card-header">
-          <div class="card-title">🧪 Cirkadiana Nega Kože</div>
+          <div class="card-title">🧪 Cirkadiana Nega & Kemični Konflikti</div>
+          <span style="font-size: 0.72rem; color: var(--text-3);">Matrika interakcij</span>
         </div>
 
         <!-- AM Rutina -->
@@ -577,14 +693,25 @@
               <span>Opravljeno</span>
             </label>
           </div>
-          <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 2px;">
-            Aktivne sestavine: Azelainska kislina 15–20% + Vlažilna krema + SPF 50+
+          <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 4px; margin-bottom: 6px;">
+            Aktivne sestavine AM (klikni za vklop/izklop):
           </div>
-          ${amEval.warnings.length > 0 ? `
-            <div style="margin-top: 6px; font-size: 0.7rem; color: #fbbf24;">
-              ⚠️ Opozorilo: ${amEval.warnings[0].message}
+          <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px;">
+            ${AM_AVAILABLE_ACTIVES.map(act => {
+              const active = amActives.includes(act.id);
+              return `<button type="button" class="sh-cat-chip ${active ? 'active' : ''}" style="font-size: 0.68rem; padding: 2px 7px;" onclick="SkinHairUI.toggleActiveIngredient('am', '${act.id}')">${act.label}</button>`;
+            }).join('')}
+          </div>
+          ${(amEval.warnings || []).map(w => `
+            <div style="background: rgba(239, 68, 68, 0.12); border-left: 3px solid #ef4444; padding: 6px 10px; border-radius: 6px; margin-top: 6px; font-size: 0.72rem; color: #fca5a5;">
+              <strong>⚠️ Opozorilo:</strong> ${w.message}
             </div>
-          ` : ''}
+          `).join('')}
+          ${(amEval.recommendations || []).map(r => `
+            <div style="background: rgba(52, 211, 153, 0.1); border-left: 3px solid #34d399; padding: 6px 10px; border-radius: 6px; margin-top: 6px; font-size: 0.72rem; color: #6ee7b7;">
+              <strong>💡 Sinergija:</strong> ${r}
+            </div>
+          `).join('')}
         </div>
 
         <!-- PM Rutina -->
@@ -596,14 +723,25 @@
               <span>Opravljeno</span>
             </label>
           </div>
-          <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 2px;">
-            Aktivne sestavine: Dvojno čiščenje $\\to$ Tretinoin 0.05% $\\to$ Lamelarni ceramidi
+          <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 4px; margin-bottom: 6px;">
+            Aktivne sestavine PM (klikni za vklop/izklop):
           </div>
-          ${pmEval.warnings.length > 0 ? `
-            <div style="margin-top: 6px; font-size: 0.7rem; color: #fbbf24;">
-              ⚠️ Opozorilo: ${pmEval.warnings[0].message}
+          <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px;">
+            ${PM_AVAILABLE_ACTIVES.map(act => {
+              const active = pmActives.includes(act.id);
+              return `<button type="button" class="sh-cat-chip ${active ? 'active' : ''}" style="font-size: 0.68rem; padding: 2px 7px;" onclick="SkinHairUI.toggleActiveIngredient('pm', '${act.id}')">${act.label}</button>`;
+            }).join('')}
+          </div>
+          ${(pmEval.warnings || []).map(w => `
+            <div style="background: rgba(239, 68, 68, 0.12); border-left: 3px solid #ef4444; padding: 6px 10px; border-radius: 6px; margin-top: 6px; font-size: 0.72rem; color: #fca5a5;">
+              <strong>⚠️ Opozorilo:</strong> ${w.message}
             </div>
-          ` : ''}
+          `).join('')}
+          ${(pmEval.recommendations || []).map(r => `
+            <div style="background: rgba(52, 211, 153, 0.1); border-left: 3px solid #34d399; padding: 6px 10px; border-radius: 6px; margin-top: 6px; font-size: 0.72rem; color: #6ee7b7;">
+              <strong>💡 Sinergija:</strong> ${r}
+            </div>
+          `).join('')}
         </div>
       </div>
 
@@ -613,10 +751,33 @@
           <div class="card-title">💈 Dnevni Protokol za Lase</div>
           <span style="font-size: 0.72rem; color: var(--rec-green); font-weight: 600;">🔥 Streak: ${state.hairProtocol.streakDays} dni</span>
         </div>
+
+        ${needleLock.isLocked ? `
+          <div style="background: rgba(239, 68, 68, 0.12); border-left: 4px solid #ef4444; padding: 8px 10px; border-radius: 6px; margin-top: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-weight: 700; font-size: 0.78rem; color: #ef4444;">🛑 24-urna varnostna zapora aktivna (${needleLock.hoursRemaining} h do izteka)</div>
+              <div style="font-size: 0.7rem; color: var(--text-2); margin-top: 2px;">Minoksidil zaklenjen proti hipotenziji in tahikardiji po iglanju.</div>
+            </div>
+            <button class="btn secondary" style="font-size: 0.68rem; padding: 3px 8px; border-color: #ef4444; color: #fca5a5;" onclick="SkinHairUI.resetMicroneedlingLockout()">
+              🔓 Ponastavi
+            </button>
+          </div>
+        ` : `
+          <div style="margin-top: 8px; display: flex; justify-content: space-between; align-items: center; background: var(--surface-2); padding: 6px 10px; border-radius: 6px;">
+            <span style="font-size: 0.72rem; color: var(--text-2);">Seja mikroneedlinga (1x na teden):</span>
+            <button class="btn secondary" style="font-size: 0.68rem; padding: 3px 8px;" onclick="SkinHairUI.logMicroneedlingSession()">
+              🪡 Zabeleži danes
+            </button>
+          </div>
+        `}
+
         <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
           <label style="background: var(--surface-2); padding: 8px 10px; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
             <div>
-              <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-1);">Minoksidil 5% (1x ali 2x na dan)</div>
+              <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-1);">
+                Minoksidil 5% (1x ali 2x na dan)
+                ${needleLock.isLocked ? `<span style="font-size: 0.68rem; color: #ef4444; font-weight: 700; margin-left: 4px;">(🛑 ZAKLENJENO ${needleLock.hoursRemaining}h)</span>` : ''}
+              </div>
               <div style="font-size: 0.68rem; color: var(--text-3);">${needleLock.isLocked ? 'Zaklenjeno zaradi mikroneedlinga!' : 'Podaljšanje anagene faze'}</div>
             </div>
             <input type="checkbox" ${state.hairProtocol.minoxidilApplied ? 'checked' : ''} 
@@ -750,12 +911,55 @@
     render();
   }
 
+  function toggleActiveIngredient(slot, ingredientId) {
+    const listKey = slot === 'am' ? 'amActives' : 'pmActives';
+    if (!state.skincare[listKey]) state.skincare[listKey] = [];
+    const idx = state.skincare[listKey].indexOf(ingredientId);
+    if (idx >= 0) {
+      state.skincare[listKey].splice(idx, 1);
+    } else {
+      state.skincare[listKey].push(ingredientId);
+    }
+    saveState();
+    render();
+  }
+
+  function resetMicroneedlingLockout() {
+    state.hairProtocol.lastMicroneedleDate = null;
+    saveState();
+    render();
+  }
+
+  async function deletePhoto(photoId) {
+    if (typeof window !== 'undefined' && window.confirm && !window.confirm('Želiš izbrisati to fotografijo iz trezorja?')) {
+      return;
+    }
+    try {
+      if (window.SkinStorage && typeof window.SkinStorage.deletePhoto === 'function') {
+        await window.SkinStorage.deletePhoto(photoId);
+      }
+    } catch (e) {
+      console.warn('[SkinHairUI] Napaka pri brisanju fotografije:', e);
+    }
+    state.photos = (state.photos || []).filter(p => p.id !== photoId);
+    if (state.comparison.photoA === photoId) {
+      state.comparison.photoA = state.photos[0] ? state.photos[0].id : null;
+    }
+    if (state.comparison.photoB === photoId) {
+      state.comparison.photoB = state.photos[1] ? state.photos[1].id : state.comparison.photoA;
+    }
+    saveState();
+    render();
+  }
+
   function logMicroneedlingSession() {
     state.hairProtocol.lastMicroneedleDate = new Date().toISOString();
     state.hairProtocol.minoxidilApplied = false; // Varnostni reset minoksidila
     saveState();
     render();
-    alert('✓ Mikroneedling seja zabeležena! Vklopljena 24-urna varnostna zapora minoksidila.');
+    if (typeof alert === 'function') {
+      alert('✓ Mikroneedling seja zabeležena! Vklopljena 24-urna varnostna zapora minoksidila.');
+    }
   }
 
   function setCompareMode(mode) {
@@ -822,22 +1026,50 @@
     if (btn) btn.classList.add('active');
   }
 
-  function handleNativePhotoUpload(input) {
+  async function handleNativePhotoUpload(input) {
     if (!input.files || !input.files[0]) return;
     const file = input.files[0];
+
+    try {
+      if (window.SkinStorage && typeof window.SkinStorage.savePhoto === 'function') {
+        const savedMeta = await window.SkinStorage.savePhoto(file, { category: selectedNewPhotoCat });
+        const retrieved = await window.SkinStorage.getPhoto(savedMeta.id);
+
+        const newPhoto = {
+          id: savedMeta.id,
+          date: savedMeta.date || new Date().toISOString().split('T')[0],
+          timestamp: savedMeta.timestamp || Date.now(),
+          category: selectedNewPhotoCat,
+          url: retrieved ? retrieved.photoUrl : null,
+          thumbnail: retrieved ? (retrieved.thumbnailUrl || retrieved.photoUrl) : null,
+          storage: 'indexedDB'
+        };
+
+        state.photos.unshift(newPhoto);
+        if (!state.comparison.photoA) state.comparison.photoA = newPhoto.id;
+        else state.comparison.photoB = newPhoto.id;
+
+        saveState();
+        closeCameraModal();
+        render();
+        return;
+      }
+    } catch (err) {
+      console.warn('[SkinHairUI] Shranjevanje v SkinStorage ni uspelo, fallback na FileReader:', err);
+    }
 
     const reader = new FileReader();
     reader.onload = function (e) {
       const dataUrl = e.target.result;
       
-      // Ustvari novo fotografijo v stanju
       const newPhoto = {
         id: 'photo_' + Date.now(),
         date: new Date().toISOString().split('T')[0],
         timestamp: Date.now(),
         category: selectedNewPhotoCat,
         url: dataUrl,
-        thumbnail: dataUrl
+        thumbnail: dataUrl,
+        storage: 'local'
       };
 
       state.photos.unshift(newPhoto);
@@ -862,29 +1094,46 @@
 
       function onMove(clientX) {
         const rect = container.getBoundingClientRect();
+        if (!rect.width) return;
         let pos = ((clientX - rect.left) / rect.width) * 100;
         pos = Math.max(0, Math.min(100, pos));
         topImg.style.clipPath = `inset(0 ${100 - pos}% 0 0)`;
         divider.style.left = `${pos}%`;
         state.comparison.splitPositionPct = Math.round(pos);
+        const slider = document.getElementById('shSliderControl');
+        if (slider) slider.value = Math.round(pos);
       }
 
-      divider.addEventListener('pointerdown', (e) => {
+      function onPointerDown(e) {
         isDragging = true;
-        divider.setPointerCapture(e.pointerId);
-      });
+        try {
+          if (divider.setPointerCapture) divider.setPointerCapture(e.pointerId);
+          else if (e.target.setPointerCapture) e.target.setPointerCapture(e.pointerId);
+        } catch (_) {}
+        onMove(e.clientX);
+      }
 
-      divider.addEventListener('pointermove', (e) => {
+      function onPointerMove(e) {
         if (!isDragging) return;
         onMove(e.clientX);
-      });
+      }
 
-      divider.addEventListener('pointerup', (e) => {
-        isDragging = false;
-        saveState();
-      });
+      function onPointerUp(e) {
+        if (isDragging) {
+          isDragging = false;
+          saveState();
+        }
+      }
 
-      divider.addEventListener('pointercancel', () => { isDragging = false; });
+      divider.addEventListener('pointerdown', onPointerDown);
+      divider.addEventListener('pointermove', onPointerMove);
+      divider.addEventListener('pointerup', onPointerUp);
+      divider.addEventListener('pointercancel', onPointerUp);
+
+      container.addEventListener('pointerdown', onPointerDown);
+      container.addEventListener('pointermove', onPointerMove);
+      container.addEventListener('pointerup', onPointerUp);
+      container.addEventListener('pointercancel', onPointerUp);
     }, 50);
   }
 
@@ -984,16 +1233,20 @@ finasterid: ${state.hairProtocol.finasterideTaken ? 'da' : 'ne'}
     updateHairParam: updateHairParam,
     toggleRoutineCompleted: toggleRoutineCompleted,
     toggleHairStep: toggleHairStep,
+    toggleActiveIngredient: toggleActiveIngredient,
     logMicroneedlingSession: logMicroneedlingSession,
+    resetMicroneedlingLockout: resetMicroneedlingLockout,
     setCompareMode: setCompareMode,
     filterCategory: filterCategory,
     handleSliderInput: handleSliderInput,
     selectPhotoForCompare: selectPhotoForCompare,
+    deletePhoto: deletePhoto,
     triggerPhotoUploadModal: triggerPhotoUploadModal,
     closeCameraModal: closeCameraModal,
     updateGhostOpacity: updateGhostOpacity,
     setNewPhotoCategory: setNewPhotoCategory,
     handleNativePhotoUpload: handleNativePhotoUpload,
+    rehydratePhotosFromStorage: rehydratePhotosFromStorage,
     exportToObsidian: exportToObsidian
   };
 }));
