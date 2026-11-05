@@ -2949,6 +2949,7 @@
       loadBloodworkVnos();
       loadBodyMapData();
       initPrehrana();
+      if (window.ProtocolDiaryUI) window.ProtocolDiaryUI.renderTodayWidget();
     }
 
     function sklonObrok(n) { const m = n % 100; return m === 1 ? 'obrok' : m === 2 ? 'obroka' : (m === 3 || m === 4) ? 'obroki' : 'obrokov'; }
@@ -2961,6 +2962,7 @@
       else if (typeof event !== 'undefined' && event && event.currentTarget) event.currentTarget.classList.add('active');
       const view = document.getElementById('view-' + id);
       if (view) view.classList.add('active');
+      if (id === 'danes' && window.ProtocolDiaryUI) window.ProtocolDiaryUI.renderTodayWidget();
       if (id === 'prehrana' && typeof renderPrehranaView === 'function') renderPrehranaView();
       if (id === 'cikel' && window.CikelPlan) window.CikelPlan.render();
       if (id === 'trening') {
