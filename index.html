@@ -461,6 +461,8 @@
       border-radius: 8px;
     }
     .check-btn {
+      position: relative;
+      flex-shrink: 0;
       width: 24px;
       height: 24px;
       border-radius: 50%;
@@ -474,6 +476,7 @@
       font-size: 0.75rem;
       transition: all 0.15s;
     }
+    .check-btn::after { content: ''; position: absolute; inset: -10px; }
     .check-btn.checked {
       background: var(--rec-green);
       border-color: var(--rec-green);
