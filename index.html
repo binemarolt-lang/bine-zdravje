@@ -50,6 +50,10 @@
     html {
       min-height: 100%;
     }
+    html, body {
+      overflow-x: hidden;
+      max-width: 100%;
+    }
     body {
       background: var(--bg);
       color: var(--text-1);
@@ -67,7 +71,7 @@
       top: -120px;
       left: 50%;
       transform: translateX(-50%);
-      width: 440px;
+      width: min(440px, calc(100vw - 24px));
       height: 340px;
       background: radial-gradient(circle, var(--rec-green-glow) 0%, transparent 70%);
       pointer-events: none;
@@ -84,7 +88,7 @@
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       border-bottom: 1px solid var(--edge-1);
-      padding: 12px 18px env(safe-area-inset-top, 12px);
+      padding: calc(12px + env(safe-area-inset-top, 0px)) 18px 12px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -575,7 +579,6 @@
     body.modal-open {
       overflow: hidden !important;
       height: 100% !important;
-      touch-action: none !important;
       overscroll-behavior: none !important;
     }
 
@@ -1160,16 +1163,18 @@
     /* Vault Grid & Brez scroll-traps */
     .vault-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
       margin-top: 8px;
     }
-    @media (max-width: 360px) {
+    @media (max-width: 600px) {
       .vault-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
       }
     }
     .vault-card {
+      min-width: 0;
+      overflow-wrap: anywhere;
       cursor: pointer;
       transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
       user-select: none;
@@ -1244,7 +1249,7 @@
     }
     .mascot-toast {
       position: fixed;
-      top: 60px;
+      top: calc(60px + env(safe-area-inset-top, 0px));
       right: 16px;
       max-width: 290px;
       background: rgba(14, 16, 18, 0.94);
@@ -2314,7 +2319,7 @@
           <div class="card-title">🧮 Vermeulen Kalkulator Prostega T</div>
           <span class="status-pill" style="color: var(--strain-blue);">Prihranek 10,20 €</span>
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 110px), 1fr)); gap: 8px;">
           <div>
             <label style="font-size: 0.72rem; color: var(--text-3);">Skupni T (ng/dL)</label>
             <input type="number" id="vermT" value="950" oninput="runVermeulen()">
