@@ -794,8 +794,10 @@
 
       /* Polnozaslonski sheet za aktivni trening */
       .wui-sheet-fullscreen { position: fixed; inset: 0; z-index: 9999; background: var(--surface-1, #08090A); display: flex; flex-direction: column; overflow: hidden; }
-      .wui-sheet-header { background: var(--surface-2); border-bottom: 1px solid var(--edge-1); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-      .wui-sheet-title-input { background: transparent; border: none; font-size: 1.15rem; font-weight: 800; color: #fff; flex: 1; padding: 4px 0; outline: none; }
+      .wui-sheet-header { background: var(--surface-2); border-bottom: 1px solid var(--edge-1); padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+      .wui-sheet-title-input { background: transparent; border: none; font-size: 1.15rem; font-weight: 800; color: #fff; flex: 1; min-width: 0; padding: 4px 0; outline: none; }
+      /* (1) Modali morajo biti nad aktivnim sheetom (9999) */
+      #wuiModalsContainer .modal-overlay { z-index: 10005; }
       .wui-timer-badge { background: var(--surface-3); border: 1px solid var(--edge-2); border-radius: 8px; padding: 4px 10px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; font-weight: 700; color: var(--rec-green); }
       .wui-sheet-body { flex: 1; overflow-y: auto; padding: 14px 14px calc(110px + env(safe-area-inset-bottom, 24px)) 14px; display: flex; flex-direction: column; gap: 14px; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; }
       .wui-sheet-footer { background: var(--surface-2); border-top: 1px solid var(--edge-1); padding: 12px 16px; display: flex; gap: 10px; }

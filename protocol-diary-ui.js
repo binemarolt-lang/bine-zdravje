@@ -488,13 +488,19 @@
     function shouldIgnoreSwipe(target) {
       if (!target) return false;
       return !!target.closest(
-        'input[type="range"], .sh-split-container, .modal-overlay, #cpChart, #cikelSvgChart, .sh-subtabs, #catFilterButtons, #presetFoodsChips, canvas, button'
+        'input[type="range"], input, textarea, select, table, .sh-split-container, .modal-overlay, .modal, .wui-sheet-fullscreen, .wui-container, .beast-overlay, [contenteditable], #cpChart, #cikelSvgChart, .sh-subtabs, #catFilterButtons, #presetFoodsChips, canvas, button'
       );
+    }
+
+    function isFullscreenSheetOpen() {
+      const sheet = document.getElementById('wuiActiveSheet');
+      return !!sheet && getComputedStyle(sheet).display === 'flex';
     }
 
     document.addEventListener('touchstart', (e) => {
       if (!e.touches || e.touches.length !== 1) return;
       if (document.body.classList.contains('modal-open')) return;
+      if (isFullscreenSheetOpen()) return;
       if (shouldIgnoreSwipe(e.target)) return;
 
       const touch = e.touches[0];
