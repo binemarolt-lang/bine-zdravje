@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bine-zdravje-v37';
+const CACHE_NAME = 'bine-zdravje-v38';
 const ASSETS = [
   './',
   './index.html',
@@ -27,6 +27,7 @@ const ASSETS = [
   './danes-podatki.js',
   './protocol-diary.js',
   './protocol-diary-ui.js',
+  './assistant-ui.js',
   './icon-192.png',
   './icon-512.png'
 ];

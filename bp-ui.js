@@ -200,5 +200,5 @@
     }
   }
 
-  window.BpVision = { pick, handleFile, getLog };
+  window.BpVision = { pick, handleFile, getLog, save };
 })();

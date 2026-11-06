@@ -488,7 +488,7 @@
     function shouldIgnoreSwipe(target) {
       if (!target) return false;
       return !!target.closest(
-        'input[type="range"], input, textarea, select, table, .sh-split-container, .modal-overlay, .modal, .wui-sheet-fullscreen, .wui-container, .beast-overlay, [contenteditable], #cpChart, #cikelSvgChart, .sh-subtabs, #catFilterButtons, #presetFoodsChips, canvas, button'
+        'input[type="range"], input, textarea, select, table, .sh-split-container, .modal-overlay, .modal, #assistantSheet, .assistant-sheet, .wui-sheet-fullscreen, .wui-container, .beast-overlay, [contenteditable], #cpChart, #cikelSvgChart, .sh-subtabs, #catFilterButtons, #presetFoodsChips, canvas, button'
       );
     }
 
