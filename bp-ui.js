@@ -6,6 +6,9 @@
  * Shranjevanje: polje vnosTlak ("sys/dia") + dnevnik bine_zdravje_tlak_log (datum, ura, sys, dia, pulz).
  * Brez potrditve se ne zapiše nič.
  *
+ * Zgodovina: zadnjih 14 meritev (seznam + SVG graf sys/dia), brisanje posamezne meritve,
+ * kopiranje CSV (celoten dnevnik). Ročni vnos v polje "Krvni tlak" se zapiše v dnevnik preko syncManual().
+ *
  * Odvisnosti iz index.html: compressAndResizeImage, saveDanesVnos, showMascotNotification (vse neobvezno razen prve).
  */
 (function () {
@@ -19,6 +22,8 @@
     'http://100.101.68.31:8091',
     'http://127.0.0.1:8091'
   ];
+  const HIST_N = 14;
+  const COL_SYS = '#FF6B5B', COL_DIA = '#00B0FF';
 
   function toast(msg) {
     if (typeof showMascotNotification === 'function') showMascotNotification(msg);
@@ -72,6 +77,8 @@
     try { return JSON.parse(localStorage.getItem(LS_LOG) || '[]'); } catch (e) { return []; }
   }
 
+  function todayIso() { return new Date().toLocaleDateString('sv-SE'); }
+
   function addLog(sys, dia, pulse) {
     const log = getLog();
     const d = new Date();
@@ -82,6 +89,27 @@
       sys, dia, pulse: pulse || null
     });
     localStorage.setItem(LS_LOG, JSON.stringify(log.slice(-1000)));
+  }
+
+  /** Ročni vnos v polje "Krvni tlak": zapiše v dnevnik, če je veljaven in ni enak zadnjemu vpisu za ta dan. */
+  function syncManual(str) {
+    const m = String(str || '').match(/^\s*(\d{2,3})\s*\/\s*(\d{2,3})\s*$/);
+    if (!m) return false;
+    const sys = parseInt(m[1], 10), dia = parseInt(m[2], 10);
+    if (!(sys >= 60 && sys <= 260 && dia >= 30 && dia <= 160 && sys > dia)) return false;
+    const log = getLog();
+    const last = log[log.length - 1];
+    if (last && last.date === todayIso() && last.sys === sys && last.dia === dia) return false;
+    addLog(sys, dia, null);
+    return true;
+  }
+
+  function deleteAt(idx) {
+    const log = getLog();
+    if (!(idx >= 0 && idx < log.length)) return false;
+    log.splice(idx, 1);
+    localStorage.setItem(LS_LOG, JSON.stringify(log));
+    return true;
   }
 
   // ---------- Modal za potrditev ----------
@@ -166,8 +194,109 @@
     const field = document.getElementById('vnosTlak');
     if (field) field.value = sys + '/' + dia;
     if (typeof saveDanesVnos === 'function') { try { saveDanesVnos(); } catch (e) { console.error(e); } }
+    renderHistory('bpHistRoot');
     close();
     toast('Tlak shranjen: ' + sys + '/' + dia + (pulse ? ' · pulz ' + pulse : ''));
+  }
+
+  // ---------- Zgodovina: zadnjih 14 meritev, graf, brisanje, CSV ----------
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function toCsv(log) {
+    return ['datum,ura,sistolicni,diastolicni,pulz']
+      .concat(log.map(e => [e.date, e.time || '', e.sys, e.dia, e.pulse == null ? '' : e.pulse].join(',')))
+      .join('\n');
+  }
+
+  function copyText(text) {
+    const fallback = () => {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, text.length);
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      ta.remove();
+      return ok;
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).then(() => true, () => fallback());
+    }
+    return Promise.resolve(fallback());
+  }
+
+  function chartHtml(pts) {
+    if (pts.length < 2) {
+      return '<div style="color:var(--text-3);font-size:.8rem;padding:10px 0;">Premalo podatkov za graf (potrebni sta vsaj 2 meritvi).</div>';
+    }
+    const W = 320, H = 150, P = 22;
+    const vals = pts.flatMap(p => [p.sys, p.dia]);
+    const lo = Math.min(...vals) - 10, hi = Math.max(...vals) + 10;
+    const x = i => P + (W - 2 * P) * i / (pts.length - 1);
+    const y = v => H - P - (H - 2 * P) * (v - lo) / (hi - lo);
+    const line = key => pts.map((p, i) => x(i).toFixed(1) + ',' + y(p[key]).toFixed(1)).join(' ');
+    const dots = (key, col) => pts.map((p, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(p[key]).toFixed(1)}" r="3" fill="${col}"/>`).join('');
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" role="img" aria-label="Graf tlaka: sistolični in diastolični">' +
+      '<line x1="' + P + '" x2="' + (W - P) + '" y1="' + (H - P) + '" y2="' + (H - P) + '" stroke="rgba(255,255,255,0.12)"/>' +
+      '<polyline points="' + line('sys') + '" fill="none" stroke="' + COL_SYS + '" stroke-width="2"/>' +
+      '<polyline points="' + line('dia') + '" fill="none" stroke="' + COL_DIA + '" stroke-width="2"/>' +
+      dots('sys', COL_SYS) + dots('dia', COL_DIA) +
+      '</svg>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;font-size:.72rem;color:var(--text-3);margin-top:4px;">' +
+        '<span><b style="color:' + COL_SYS + ';">●</b> sistolični</span>' +
+        '<span><b style="color:' + COL_DIA + ';">●</b> diastolični</span>' +
+        '<span>min ' + Math.min(...vals) + ' · max ' + Math.max(...vals) + '</span>' +
+      '</div>';
+  }
+
+  function rowHtml(x) {
+    const e = x.e;
+    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface-2,#181b20);border:1px solid var(--edge-1,#2a2d33);border-radius:10px;">' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div style="font-weight:800;font-variant-numeric:tabular-nums;">' + esc(e.sys) + '/' + esc(e.dia) +
+          ' <span style="font-size:.7rem;color:var(--text-3,#8b9097);font-weight:600;">mmHg' + (e.pulse ? ' · pulz ' + esc(e.pulse) : '') + '</span></div>' +
+        '<div style="font-size:.72rem;color:var(--text-3,#8b9097);">' + esc(e.date) + (e.time ? ' ob ' + esc(e.time) : '') + '</div>' +
+      '</div>' +
+      '<button type="button" data-bp-act="del" data-idx="' + x.i + '" aria-label="Izbriši meritev" style="min-width:44px;min-height:44px;background:none;border:1px solid var(--edge-2,#2a2d33);border-radius:10px;cursor:pointer;font-size:1rem;">🗑️</button>' +
+    '</div>';
+  }
+
+  function onHistClick(ev) {
+    const btn = ev.target.closest && ev.target.closest('[data-bp-act]');
+    if (!btn) return;
+    if (btn.dataset.bpAct === 'csv') {
+      const log = getLog();
+      copyText(toCsv(log)).then(ok => toast(ok ? 'CSV kopiran (' + log.length + ' meritev)' : 'Kopiranje ni uspelo'));
+      return;
+    }
+    if (btn.dataset.bpAct === 'del') {
+      if (!confirm('Izbrišem to meritev tlaka?')) return;
+      if (deleteAt(parseInt(btn.dataset.idx, 10))) toast('Meritev izbrisana');
+      if (window.DanesPodatki && DanesPodatki.renderDanes) DanesPodatki.renderDanes();
+      else renderHistory('bpHistRoot');
+    }
+  }
+
+  function renderHistory(rootId) {
+    const host = document.getElementById(rootId || 'bpHistRoot');
+    if (!host) return;
+    const log = getLog();
+    const recent = log.map((e, i) => ({ e, i })).slice(-HIST_N); // najstarejša prvo (za graf)
+    const pts = recent.map(x => ({ sys: Number(x.e.sys), dia: Number(x.e.dia) }));
+    let html = chartHtml(pts);
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:10px 0 6px;">' +
+      '<span style="font-size:.72rem;color:var(--text-3,#8b9097);font-weight:700;text-transform:uppercase;">Meritve (' + recent.length + ' od ' + log.length + ')</span>' +
+      '<button type="button" class="btn secondary" data-bp-act="csv"' + (log.length ? '' : ' disabled') +
+      ' style="min-height:44px;padding:8px 12px;font-size:.78rem;">📋 Kopiraj CSV (vse)</button></div>';
+    if (!log.length) html += '<div style="color:var(--text-3,#8b9097);font-size:.8rem;">Še ni meritev tlaka.</div>';
+    else html += '<div style="display:flex;flex-direction:column;gap:6px;">' + recent.slice().reverse().map(rowHtml).join('') + '</div>';
+    host.innerHTML = html;
+    if (!host.__bpBound) {
+      host.__bpBound = true;
+      host.addEventListener('click', onHistClick);
+    }
   }
 
   // ---------- Vstopne točke ----------
@@ -200,5 +329,8 @@
     }
   }
 
-  window.BpVision = { pick, handleFile, getLog, save };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => renderHistory('bpHistRoot'));
+  else renderHistory('bpHistRoot');
+
+  window.BpVision = { pick, handleFile, getLog, save, syncManual, deleteAt, renderHistory };
 })();
