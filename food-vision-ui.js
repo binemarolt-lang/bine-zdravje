@@ -568,7 +568,9 @@
   }
 
   function refreshItem(i) {
+    if (!review) return;
     const it = review.items[i];
+    if (!it) return;
     const el = document.querySelector(`.fv-item[data-i="${i}"]`);
     if (!el) return renderReview();
     const n = it.nutr || {};

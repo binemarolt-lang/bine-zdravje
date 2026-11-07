@@ -536,6 +536,16 @@
     }
 
 
+    /* IZVIDI: tipke in polja >=44px za dotik (iPhone) */
+    #view-bloodwork .btn,
+    #view-bloodwork select,
+    #view-bloodwork input:not([type="file"]),
+    #view-bloodwork .photo-btn-action { min-height: 44px; box-sizing: border-box; }
+    #view-bloodwork .photo-btn-action { min-width: 44px; }
+    #view-bloodwork input[type="number"],
+    #view-bloodwork select,
+    #view-bloodwork textarea { font-size: 16px; }
+
     /* FAB: ne na zavihkih, kjer je že glavni foto gumb ali ni povezan s hrano */
     body[data-view="prehrana"] .fab-photo-food,
     body[data-view="bloodwork"] .fab-photo-food,
@@ -3175,7 +3185,7 @@
 
       const T = t * 0.03467 * 1e-9;
       const SHBG = shbg * 1e-9;
-      const Alb = (alb / 69000) * 1e-2;
+      const Alb = (alb * 10 / 69000); // g/dL -> mol/L (M_alb 69 kDa)
 
       const Ka = 3.6e4;
       const Kt = 1.0e9;
@@ -3207,8 +3217,23 @@
 
     function copyPortoText() {
       const text = document.getElementById('portoCardText').innerText;
-      navigator.clipboard.writeText(text);
-      alert('Kopirano v odložišče!');
+      const done = () => alert('Kopirano v odložišče!');
+      const legacy = () => {
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.setAttribute('readonly', '');
+          ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px;';
+          document.body.appendChild(ta);
+          ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
+          const ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+          if (ok) done(); else alert('Kopiranje ni uspelo — besedilo označi in kopiraj ročno.');
+        } catch (e) { alert('Kopiranje ni uspelo — besedilo označi in kopiraj ročno.'); }
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, legacy);
+      } else legacy();
     }
 
     // --- VAULT ENCIKLOPEDIJA IN PODROBNOSTI SNOVI ---
@@ -4391,7 +4416,7 @@
       const apobBar = document.getElementById('apobBar');
       if (apobEl && apobBar) {
         const isOptimal = bw.apob < 80;
-        apobEl.innerHTML = `${bw.apob} mg/dL <span style="color: ${isOptimal ? 'var(--rec-green)' : 'var(--rec-yellow);'};">(${isOptimal ? 'Optimalno' : 'Zmerno'})</span>`;
+        apobEl.innerHTML = `${bw.apob} mg/dL <span style="color: ${isOptimal ? 'var(--rec-green)' : 'var(--rec-yellow)'};">(${isOptimal ? 'Optimalno' : 'Zmerno'})</span>`;
         apobBar.style.width = Math.min(100, (bw.apob / 120) * 100) + '%';
       }
     }
@@ -4407,6 +4432,12 @@
           if (document.getElementById('inpBioSHBG')) document.getElementById('inpBioSHBG').value = bw.shbg;
           if (document.getElementById('inpBioApoB')) document.getElementById('inpBioApoB').value = bw.apob;
           if (document.getElementById('inpBioGGT')) document.getElementById('inpBioGGT').value = bw.ggt;
+          if (bw.creat != null && document.getElementById('inpBioKreatinin')) document.getElementById('inpBioKreatinin').value = bw.creat;
+          if (bw.ast != null && document.getElementById('inpBioAST')) document.getElementById('inpBioAST').value = bw.ast;
+          if (bw.alt != null && document.getElementById('inpBioALT')) document.getElementById('inpBioALT').value = bw.alt;
+          if (document.getElementById('vermT')) document.getElementById('vermT').value = bw.totalT;
+          if (document.getElementById('vermSHBG')) document.getElementById('vermSHBG').value = bw.shbg;
+          runVermeulen();
           applyBloodworkValues(bw);
         }
         const labPhoto = localStorage.getItem('bine_zdravje_last_lab_photo');

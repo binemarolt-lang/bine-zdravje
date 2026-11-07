@@ -810,14 +810,14 @@
       .wui-menu-btn { background: var(--surface-3); border: 1px solid var(--edge-2); border-radius: 8px; color: var(--text-2); padding: 6px 10px; font-size: 0.85rem; cursor: pointer; min-height: 38px; }
 
       /* Tabela serij */
-      .wui-set-table { width: 100%; border-collapse: separate; border-spacing: 0 6px; }
-      .wui-set-table th { font-size: 0.68rem; color: var(--text-3); text-transform: uppercase; font-weight: 700; padding: 4px 6px; text-align: center; }
-      .wui-set-table td { padding: 3px 4px; text-align: center; }
+      .wui-set-table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0 6px; }
+      .wui-set-table th { font-size: 0.62rem; color: var(--text-3); text-transform: uppercase; font-weight: 700; padding: 4px 0; text-align: center; overflow: hidden; white-space: nowrap; }
+      .wui-set-table td { padding: 3px 2px; text-align: center; overflow: hidden; }
       .wui-set-row.done { opacity: 0.6; }
       .wui-set-row.done .wui-check-btn { background: var(--rec-green); border-color: var(--rec-green); color: #08090A; }
 
       /* Gumbi za serijo (N / W / D / F) */
-      .wui-type-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--edge-2); background: var(--surface-3); color: #fff; font-size: 0.82rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
+      .wui-type-btn { width: 36px; height: 44px; border-radius: 8px; border: 1px solid var(--edge-2); background: var(--surface-3); color: #fff; font-size: 0.82rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
       .wui-type-btn.type-warmup { background: rgba(255, 159, 10, 0.2); border-color: var(--rec-yellow); color: var(--rec-yellow); }
       .wui-type-btn.type-drop { background: rgba(0, 176, 255, 0.2); border-color: var(--strain-blue); color: var(--strain-blue); }
       .wui-type-btn.type-failure { background: rgba(255, 61, 0, 0.2); border-color: var(--rec-red); color: var(--rec-red); }
@@ -831,7 +831,7 @@
       .wui-check-btn { width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--edge-2); background: var(--surface-3); color: var(--text-2); font-size: 1.15rem; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
 
       /* Izbris serije */
-      .wui-del-btn { background: none; border: none; color: var(--text-3); font-size: 1.1rem; padding: 8px; cursor: pointer; min-height: 44px; min-width: 36px; display: flex; align-items: center; justify-content: center; }
+      .wui-del-btn { background: none; border: none; color: var(--text-3); font-size: 1.1rem; padding: 8px 0; cursor: pointer; min-height: 44px; width: 100%; min-width: 36px; display: flex; align-items: center; justify-content: center; }
 
       /* Lebdeči počitek (Rest Pill) */
       .wui-rest-pill { position: fixed; bottom: 84px; right: 16px; z-index: 10000; background: rgba(18, 22, 26, 0.95); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--rec-green); box-shadow: 0 8px 24px rgba(0,0,0,0.6); border-radius: 30px; padding: 8px 14px; display: none; align-items: center; gap: 12px; }
@@ -1384,13 +1384,13 @@
             <table class="wui-set-table">
               <thead>
                 <tr>
-                  <th style="width: 38px;">SET</th>
-                  <th style="width: 60px;">PREJŠNJIČ</th>
+                  <th style="width: 40px;">SET</th>
+                  <th style="width: 52px;">PREJ.</th>
                   <th>KG</th>
                   <th>PON</th>
-                  <th style="width: 44px;">RIR</th>
+                  <th style="width: 38px;">RIR</th>
                   <th style="width: 44px;">✓</th>
-                  <th style="width: 28px;"></th>
+                  <th style="width: 40px;"></th>
                 </tr>
               </thead>
               <tbody>
@@ -1424,7 +1424,7 @@
                 <input type="number" step="1" inputmode="numeric" class="wui-input" value="${s.reps !== null && s.reps !== undefined ? s.reps : ''}" placeholder="${placeholderReps}" oninput="WorkoutUI.onSetRepsChange(${exIdx}, ${sIdx}, this.value)">
               </td>
               <td>
-                <input type="number" step="1" inputmode="numeric" class="wui-input" style="max-width: 44px;" value="${s.rir !== null && s.rir !== undefined ? s.rir : ''}" placeholder="${placeholderRir}" oninput="WorkoutUI.onSetRirChange(${exIdx}, ${sIdx}, this.value)">
+                <input type="number" step="1" inputmode="numeric" class="wui-input" style="max-width: 38px; padding: 8px 0;" value="${s.rir !== null && s.rir !== undefined ? s.rir : ''}" placeholder="${placeholderRir}" oninput="WorkoutUI.onSetRirChange(${exIdx}, ${sIdx}, this.value)">
               </td>
               <td>
                 <button type="button" class="wui-check-btn" onclick="WorkoutUI.toggleSetDone(${exIdx}, ${sIdx})" title="Označi kot opravljeno">✓</button>
