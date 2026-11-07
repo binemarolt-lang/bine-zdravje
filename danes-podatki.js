@@ -196,9 +196,17 @@
   // ---------- Zgodovina teže (samo branje weightHistory) ----------
   /** Vnosi teže: prehranaState.weightHistory (če je dostopen), sicer shranjena kopija v localStorage. Samo branje. */
   function weightSeries() {
-    let h = null;
-    try { if (typeof prehranaState !== 'undefined' && prehranaState && Array.isArray(prehranaState.weightHistory)) h = prehranaState.weightHistory; } catch (e) { h = null; }
-    if (!h) h = readJson(LS_WEIGHT, []);
+    // Prednost ima shranjena zgodovina. Če je ni, prehrana uporablja privzeti TEST_14DAY_HISTORY (testni podatki):
+    // takrat graf ne prikaže ničesar, da ne izgleda kot resnična teža.
+    const shranjena = readJson(LS_WEIGHT, null);
+    let h = Array.isArray(shranjena) ? shranjena : null;
+    if (!h) {
+      let ph = null;
+      try { if (typeof prehranaState !== 'undefined' && prehranaState && Array.isArray(prehranaState.weightHistory)) ph = prehranaState.weightHistory; } catch (e) { ph = null; }
+      let testni = false;
+      try { testni = typeof TEST_14DAY_HISTORY !== 'undefined' && JSON.stringify(ph) === JSON.stringify(TEST_14DAY_HISTORY); } catch (e) { testni = false; }
+      h = (ph && !testni) ? ph : [];
+    }
     return (Array.isArray(h) ? h : [])
       .filter((x) => x && x.date && num(x.weightKg) != null)
       .slice()
