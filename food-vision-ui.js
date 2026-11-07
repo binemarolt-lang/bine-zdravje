@@ -568,6 +568,7 @@
 
     const entry = {
       id: 'm_' + Date.now(),
+      date: (window.prehranaState && prehranaState.selectedDate) || (typeof PrehranaDays !== 'undefined' ? PrehranaDays.isoOf() : new Date().toISOString().slice(0, 10)),
       name: mealName,
       serving: `${k} kcal (hitra ocena)`,
       calories: k,
