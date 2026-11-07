@@ -631,22 +631,55 @@
     const filteredPhotos = allPhotos.filter(p => activeCat === 'vse' || p.category === activeCat);
 
     return `
+      <!-- OPOMNIK ZA FOTOGRAFIRANJE -->
+      <div class="card sh-photo-reminder-banner" style="margin-bottom: 12px; background: var(--surface-2); border-left: 3px solid var(--strain-blue, #38bdf8); padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+        <div style="font-size: 0.78rem; color: var(--text-1); line-height: 1.4;">
+          📸 <span>${formatPhotoReminderText()}</span>
+        </div>
+        <button type="button" class="btn secondary" style="font-size: 0.72rem; padding: 0 10px; min-height: 44px; flex-shrink: 0;" onclick="SkinHairUI.triggerPhotoUploadModal()">+ Foto</button>
+      </div>
+
       <div class="card" style="margin-bottom: 12px;">
         <div class="card-header">
           <div class="card-title">🔍 Before / After Primerjalnik</div>
           <div style="display: flex; gap: 6px;">
-            <button class="btn ${state.comparison.mode === 'split' ? 'primary' : 'secondary'}" style="font-size: 0.7rem; padding: 3px 8px;" onclick="SkinHairUI.setCompareMode('split')">Zavesa</button>
-            <button class="btn ${state.comparison.mode === 'blend' ? 'primary' : 'secondary'}" style="font-size: 0.7rem; padding: 3px 8px;" onclick="SkinHairUI.setCompareMode('blend')">Bledenje</button>
+            <button class="btn ${state.comparison.mode === 'split' ? 'primary' : 'secondary'}" style="font-size: 0.7rem; padding: 3px 8px; min-height: 44px;" onclick="SkinHairUI.setCompareMode('split')">Zavesa</button>
+            <button class="btn ${state.comparison.mode === 'blend' ? 'primary' : 'secondary'}" style="font-size: 0.7rem; padding: 3px 8px; min-height: 44px;" onclick="SkinHairUI.setCompareMode('blend')">Bledenje</button>
           </div>
         </div>
 
         <!-- Filtrirni čipi -->
         <div style="display: flex; gap: 6px; overflow-x: auto; padding: 6px 0 10px 0;">
           ${['vse', 'obraz', 'lasna_linija', 'temen', 'hrbet', 'prsa'].map(cat => `
-            <button class="sh-cat-chip ${activeCat === cat ? 'active' : ''}" onclick="SkinHairUI.filterCategory('${cat}')">
+            <button class="sh-cat-chip ${activeCat === cat ? 'active' : ''}" style="min-height: 44px;" onclick="SkinHairUI.filterCategory('${cat}')">
               ${cat === 'vse' ? 'Vse' : cat === 'obraz' ? 'Obraz' : cat === 'lasna_linija' ? 'Linija' : cat === 'temen' ? 'Temen' : cat === 'hrbet' ? 'Hrbet' : 'Prsa'}
             </button>
           `).join('')}
+        </div>
+
+        <!-- Izbira intervala napredka (1/3/6 mesecev) -->
+        <div style="margin: 4px 0 12px 0; background: rgba(0,0,0,0.18); padding: 8px 10px; border-radius: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">📅 Interval napredka:</span>
+            ${state.comparison.selectedInterval ? `<span style="font-size: 0.68rem; color: var(--rec-green);">Samodejno izbrani fotografiji (${state.comparison.selectedInterval}M)</span>` : ''}
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button type="button" class="btn ${state.comparison.selectedInterval === 1 ? 'primary' : 'secondary'}"
+                    style="flex: 1; min-height: 44px; font-size: 0.74rem; padding: 0 8px;"
+                    onclick="SkinHairUI.selectCompareInterval(1)">
+              1 mesec
+            </button>
+            <button type="button" class="btn ${state.comparison.selectedInterval === 3 ? 'primary' : 'secondary'}"
+                    style="flex: 1; min-height: 44px; font-size: 0.74rem; padding: 0 8px;"
+                    onclick="SkinHairUI.selectCompareInterval(3)">
+              3 mesece
+            </button>
+            <button type="button" class="btn ${state.comparison.selectedInterval === 6 ? 'primary' : 'secondary'}"
+                    style="flex: 1; min-height: 44px; font-size: 0.74rem; padding: 0 8px;"
+                    onclick="SkinHairUI.selectCompareInterval(6)">
+              6 mesecev
+            </button>
+          </div>
         </div>
 
         <!-- PRIMERJALNO PLATNO -->
