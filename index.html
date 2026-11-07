@@ -4495,9 +4495,10 @@
       const alt = parseFloat(document.getElementById('inpBioALT')?.value) || 28;
 
       const bw = { hct, e2, totalT, shbg, apob, ggt, creat, ast, alt, datum: new Date().toISOString().split('T')[0] };
+      // Zgodovina PRED prepisom starega ključa (bine_zdravje_bloodwork_data se ne spreminja, samo se doda v novi ključ).
+      if (window.CikelPlan && CikelPlan.appendBloodwork) { try { CikelPlan.appendBloodwork(bw); } catch (e) { console.error(e); } }
       saveToLocalStorageSafe('bine_zdravje_bloodwork_data', JSON.stringify(bw));
       applyBloodworkValues(bw);
-      if (window.CikelPlan && CikelPlan.appendBloodwork) { try { CikelPlan.appendBloodwork(bw); } catch (e) { console.error(e); } }
 
       document.getElementById('vermT').value = totalT;
       document.getElementById('vermSHBG').value = shbg;
