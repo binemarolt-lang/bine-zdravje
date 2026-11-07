@@ -584,6 +584,7 @@
 
   function openSheet() {
     if (!overlay) return;
+    document.body.classList.add('assistant-open');
     if (!greeted) {
       greeted = true;
       appendBubble('assistant', 'Zdravo! Lahko pogledam tvoje podatke ali predlagam vnos (trening, obrok, tlak, teža, protokol, izvid). Ničesar ne shranim brez tvoje potrditve.');
@@ -595,6 +596,7 @@
 
   function closeSheet() {
     if (!overlay) return;
+    document.body.classList.remove('assistant-open');
     overlay.classList.remove('open');
     if (inputEl) inputEl.blur();
   }
