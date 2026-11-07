@@ -483,12 +483,60 @@
   }
 
   // ========== 1. PODZAVIHEK: PREGLED ==========
+  function getLastPhotoInfo() {
+    const photos = state.photos || [];
+    if (!photos || photos.length === 0) return null;
+    let latestTs = 0;
+    for (const p of photos) {
+      let ts = p.timestamp;
+      if (!ts && p.date) {
+        const parsed = Date.parse(p.date);
+        if (!isNaN(parsed)) ts = parsed;
+      }
+      if (ts && ts > latestTs) {
+        latestTs = ts;
+      }
+    }
+    if (!latestTs) return null;
+    const diffDays = Math.max(0, Math.floor((Date.now() - latestTs) / (1000 * 60 * 60 * 24)));
+    return { latestTs, diffDays };
+  }
+
+  function formatPhotoReminderText() {
+    const info = getLastPhotoInfo();
+    if (!info) {
+      return 'Zadnja fotografija: še ni posneta, priporočeno fotografirati v istih pogojih';
+    }
+    const x = info.diffDays;
+    let daysStr;
+    if (x === 0) {
+      daysStr = 'pred 0 dnevi (danes)';
+    } else if (x === 1) {
+      daysStr = 'pred 1 dnem';
+    } else if (x === 2) {
+      daysStr = 'pred 2 dnevoma';
+    } else if (x === 3 || x === 4) {
+      daysStr = `pred ${x} dnevi`;
+    } else {
+      daysStr = `pred ${x} dnevi`;
+    }
+    return `Zadnja fotografija: ${daysStr}, priporočeno fotografirati v istih pogojih`;
+  }
+
   function renderPregledView(gags, hair, needleLock, triggers) {
     const skinScore = gags.skinHealthScore;
     const hairScore = hair.hairIndex;
 
     return `
       ${renderVaultCard()}
+
+      <!-- OPOMNIK ZA FOTOGRAFIRANJE -->
+      <div class="card sh-photo-reminder-banner" style="margin-bottom: 12px; background: var(--surface-2); border-left: 3px solid var(--strain-blue, #38bdf8); padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+        <div style="font-size: 0.78rem; color: var(--text-1); line-height: 1.4;">
+          📸 <span>${formatPhotoReminderText()}</span>
+        </div>
+        <button type="button" class="btn secondary" style="font-size: 0.72rem; padding: 0 10px; min-height: 44px; flex-shrink: 0;" onclick="SkinHairUI.switchSubTab('primerjalnik')">Primerjalnik</button>
+      </div>
 
       <!-- DVOJNI ESTETSKI OBROČ (Twin Aesthetics Rings) -->
       <div class="card" style="margin-bottom: 12px;">

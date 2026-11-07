@@ -72,17 +72,17 @@ self.addEventListener('fetch', (event) => {
           }
           return networkRes;
         })
-        .catch(() => caches.match(req).then((cached) => cached || caches.match('./index.html')))
+        .catch(() => caches.match(req, { ignoreSearch: true }).then((cached) => cached || caches.match('./index.html', { ignoreSearch: true })))
     );
     return;
   }
 
-  // 1b. Endpoint in API klici: vedno omrežje
-  if (req.method !== 'GET' || req.url.includes('food-vision-endpoint.json') || req.url.includes('/api/')) return;
+  // 1b. Endpoint in API klici ter dinamični uvozi: vedno omrežje (brez predpomnjenja)
+  if (req.method !== 'GET' || req.url.includes('food-vision-endpoint.json') || req.url.includes('google-health-workouts.json') || req.url.includes('/api/')) return;
 
   // 2. Za ostale statične vire: Stale-While-Revalidate (takoj iz cache-a, vzporedno posodobi)
   event.respondWith(
-    caches.match(req).then((cached) => {
+    caches.match(req, { ignoreSearch: true }).then((cached) => {
       const fetchPromise = fetch(req)
         .then((networkRes) => {
           if (networkRes && networkRes.status === 200) {
