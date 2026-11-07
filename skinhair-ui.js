@@ -247,27 +247,44 @@
         ${renderSubTabContent(state.activeSubTab, gagsResult, hairResult, needleLock, triggers)}
       </div>
 
-      <!-- MODAL ZA GHOST OVERLAY KAMERO -->
-      <div class="modal-overlay" id="shCameraModalOverlay" style="display: none;" onclick="if(event.target.id==='shCameraModalOverlay') SkinHairUI.closeCameraModal()">
+    `;
+
+    ensureCameraModal();
+
+    // Inicializiraj poslušalce za drsnike, če smo na primerjalniku
+    if (state.activeSubTab === 'primerjalnik') {
+      initSplitSlider();
+    }
+  }
+
+  // Modal za foto mora živeti na document.body: znotraj #view-estetika/.container
+  // ga stacking context (z-index 10 + transform animacije) potisne pod spodnjo navigacijo (z 200).
+  function ensureCameraModal() {
+    if (typeof document === 'undefined' || !document.body) return;
+    let modal = document.getElementById('shCameraModalOverlay');
+    if (modal && modal.parentElement === document.body) return;
+    if (modal) modal.remove();
+    modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'shCameraModalOverlay';
+    modal.style.display = 'none';
+    modal.style.zIndex = '1200';
+    modal.setAttribute('onclick', "if(event.target.id==='shCameraModalOverlay') SkinHairUI.closeCameraModal()");
+    modal.innerHTML = `
         <div class="modal" style="max-width: 480px; padding: 0;">
           <div class="modal-header" style="padding: 12px 16px;">
             <div class="modal-sheet-handle"></div>
             <div class="modal-header-row">
               <h3 style="margin: 0; font-size: 0.95rem;">📸 Standardiziran Foto Zajem</h3>
-              <button type="button" class="modal-close" onclick="SkinHairUI.closeCameraModal()">✕</button>
+              <button type="button" class="modal-close" style="width: 44px; height: 44px;" onclick="SkinHairUI.closeCameraModal()">✕</button>
             </div>
           </div>
           <div class="modal-body" style="padding: 14px;">
             ${renderCameraModalBody()}
           </div>
         </div>
-      </div>
     `;
-
-    // Inicializiraj poslušalce za drsnike, če smo na primerjalniku
-    if (state.activeSubTab === 'primerjalnik') {
-      initSplitSlider();
-    }
+    document.body.appendChild(modal);
   }
 
   function renderSubTabContent(subTab, gags, hair, needleLock, triggers) {
@@ -852,7 +869,7 @@
           <!-- Fallback gumb za prenos -->
           <div id="shCameraFallback" style="padding: 16px;">
             <p style="font-size: 0.8rem; color: var(--text-3); margin-bottom: 8px;">Kamera v brskalniku ali izbira iz galerije:</p>
-            <input type="file" id="shNativeFileInput" accept="image/*" capture="user" style="display: none;" onchange="SkinHairUI.handleNativePhotoUpload(this)">
+            <input type="file" id="shNativeFileInput" accept="image/*" style="display: none;" onchange="SkinHairUI.handleNativePhotoUpload(this)">
             <button type="button" class="btn primary" onclick="document.getElementById('shNativeFileInput').click()">
               📷 Posnemi / Izberi sliko
             </button>
@@ -868,9 +885,9 @@
 
         <!-- Kategorija slike -->
         <div style="margin-top: 10px; display: flex; gap: 6px; justify-content: center;">
-          ${['obraz', 'lasna_linija', 'temen', 'hrbet'].map(c => `
-            <button class="sh-cat-chip" style="font-size: 0.68rem;" onclick="SkinHairUI.setNewPhotoCategory('${c}', this)">
-              ${c === 'obraz' ? 'Obraz' : c === 'lasna_linija' ? 'Linija' : c === 'temen' ? 'Temen' : 'Hrbet'}
+          ${['obraz', 'lasna_linija', 'temen', 'hrbet', 'prsa'].map(c => `
+            <button type="button" class="sh-cat-chip sh-newcat ${c === selectedNewPhotoCat ? 'active' : ''}" style="font-size: 0.68rem;" onclick="SkinHairUI.setNewPhotoCategory('${c}', this)">
+              ${c === 'obraz' ? 'Obraz' : c === 'lasna_linija' ? 'Linija' : c === 'temen' ? 'Temen' : c === 'hrbet' ? 'Hrbet' : 'Prsa'}
             </button>
           `).join('')}
         </div>
@@ -1039,10 +1056,10 @@
     if (lbl) lbl.textContent = val + '%';
   }
 
-  let selectedNewPhotoCat = 'obraz';
   function setNewPhotoCategory(cat, btn) {
     selectedNewPhotoCat = cat;
-    document.querySelectorAll('.sh-cat-chip').forEach(b => b.classList.remove('active'));
+    // samo čipi v modalu (prej je odstranilo 'active' tudi s filtrov Primerjalnika in sestavin rutine)
+    document.querySelectorAll('#shCameraModalOverlay .sh-newcat').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
   }
 
