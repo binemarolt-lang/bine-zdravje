@@ -795,7 +795,7 @@
       /* Polnozaslonski sheet za aktivni trening */
       .wui-sheet-fullscreen { position: fixed; inset: 0; z-index: 9999; background: var(--surface-1, #08090A); display: flex; flex-direction: column; overflow: hidden; }
       .wui-sheet-header { background: var(--surface-2); border-bottom: 1px solid var(--edge-1); padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
-      .wui-sheet-title-input { background: transparent; border: none; font-size: 1.15rem; font-weight: 800; color: #fff; flex: 1; min-width: 0; padding: 4px 0; outline: none; min-height: 44px; }
+      .wui-sheet-title-input { background: transparent; border: none; font-size: 1.15rem; font-weight: 800; color: #fff; flex: 1; min-width: 0; padding: 4px 0; min-height: 44px; }
       /* (1) Modali morajo biti nad aktivnim sheetom (9999) */
       #wuiModalsContainer .modal-overlay { z-index: 10005; }
       .wui-timer-badge { background: var(--surface-3); border: 1px solid var(--edge-2); border-radius: 8px; padding: 4px 10px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; font-weight: 700; color: var(--rec-green); }
@@ -834,7 +834,7 @@
       .wui-del-btn { background: none; border: none; color: var(--text-3); font-size: 1.1rem; padding: 8px 0; cursor: pointer; min-height: 44px; width: 100%; min-width: 36px; display: flex; align-items: center; justify-content: center; }
 
       /* Lebdeči počitek (Rest Pill) */
-      .wui-rest-pill { position: fixed; bottom: 84px; right: 16px; z-index: 10000; background: rgba(18, 22, 26, 0.95); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--rec-green); box-shadow: 0 8px 24px rgba(0,0,0,0.6); border-radius: 30px; padding: 8px 14px; display: none; align-items: center; gap: 12px; }
+      .wui-rest-pill { position: fixed; bottom: calc(84px + env(safe-area-inset-bottom,0px)); right: 16px; z-index: 10000; background: rgba(18, 22, 26, 0.95); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--rec-green); box-shadow: 0 8px 24px rgba(0,0,0,0.6); border-radius: 30px; padding: 8px 14px; display: none; align-items: center; gap: 12px; }
       .wui-rest-pill.visible { display: flex; animation: wuiSlideUp 0.25s ease-out; }
       @keyframes wuiSlideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
       .wui-rest-info { display: flex; align-items: center; gap: 6px; cursor: pointer; font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 800; color: #fff; }
@@ -874,7 +874,7 @@
             <div class="modal-sheet-handle"></div>
             <div class="modal-header-row">
               <h3>🔍 Izberi vajo</h3>
-              <button type="button" class="modal-close" onclick="WorkoutUI.closePicker()">✕</button>
+              <button type="button" class="modal-close" aria-label="Zapri" onclick="WorkoutUI.closePicker()">✕</button>
             </div>
           </div>
           <div style="padding: 10px 14px 6px;">
@@ -895,7 +895,7 @@
             <div class="modal-sheet-handle"></div>
             <div class="modal-header-row">
               <h3>✨ Pametni AI vnos treninga</h3>
-              <button type="button" class="modal-close" onclick="WorkoutUI.closeAiModal()">✕</button>
+              <button type="button" class="modal-close" aria-label="Zapri" onclick="WorkoutUI.closeAiModal()">✕</button>
             </div>
           </div>
           <div class="modal-body" style="display: flex; flex-direction: column; gap: 12px;">
@@ -934,7 +934,7 @@
             <div class="modal-sheet-handle"></div>
             <div class="modal-header-row">
               <h3>🏆 Povzetek treninga</h3>
-              <button type="button" class="modal-close" onclick="WorkoutUI.closeSummaryModal()">✕</button>
+              <button type="button" class="modal-close" aria-label="Zapri" onclick="WorkoutUI.closeSummaryModal()">✕</button>
             </div>
           </div>
           <div class="modal-body" id="wuiSummaryBody" style="display: flex; flex-direction: column; gap: 14px;"></div>
@@ -948,7 +948,7 @@
             <div class="modal-sheet-handle"></div>
             <div class="modal-header-row">
               <h3 id="wuiDetailTitle">📋 Podrobnosti treninga</h3>
-              <button type="button" class="modal-close" onclick="WorkoutUI.closeDetailModal()">✕</button>
+              <button type="button" class="modal-close" aria-label="Zapri" onclick="WorkoutUI.closeDetailModal()">✕</button>
             </div>
           </div>
           <div class="modal-body" id="wuiDetailBody" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;"></div>
@@ -963,7 +963,7 @@
             <div class="modal-sheet-handle"></div>
             <div class="modal-header-row">
               <h3 id="wuiStatsTitle">📊 Statistika vaje</h3>
-              <button type="button" class="modal-close" onclick="WorkoutUI.closeStatsModal()">✕</button>
+              <button type="button" class="modal-close" aria-label="Zapri" onclick="WorkoutUI.closeStatsModal()">✕</button>
             </div>
           </div>
           <div class="modal-body" id="wuiStatsBody" style="display: flex; flex-direction: column; gap: 12px;"></div>
@@ -977,7 +977,7 @@
             <div class="modal-sheet-handle"></div>
             <div class="modal-header-row">
               <h3>⚖️ Kalkulator kolutov</h3>
-              <button type="button" class="modal-close" onclick="WorkoutUI.closePlatesModal()">✕</button>
+              <button type="button" class="modal-close" aria-label="Zapri" onclick="WorkoutUI.closePlatesModal()">✕</button>
             </div>
           </div>
           <div class="modal-body" style="display: flex; flex-direction: column; gap: 12px;">
@@ -1004,7 +1004,7 @@
             <div class="modal-sheet-handle"></div>
             <div class="modal-header-row">
               <h3>🔥 Ogrevalne serije</h3>
-              <button type="button" class="modal-close" onclick="WorkoutUI.closeWarmupModal()">✕</button>
+              <button type="button" class="modal-close" aria-label="Zapri" onclick="WorkoutUI.closeWarmupModal()">✕</button>
             </div>
           </div>
           <div class="modal-body" style="display: flex; flex-direction: column; gap: 12px;">
@@ -1030,7 +1030,7 @@
             <div class="modal-sheet-handle"></div>
             <div class="modal-header-row">
               <h3>⚙️ Nastavitve treninga</h3>
-              <button type="button" class="modal-close" onclick="WorkoutUI.closeSettingsModal()">✕</button>
+              <button type="button" class="modal-close" aria-label="Zapri" onclick="WorkoutUI.closeSettingsModal()">✕</button>
             </div>
           </div>
           <div class="modal-body" style="display: flex; flex-direction: column; gap: 12px;">
@@ -1065,7 +1065,7 @@
             <div class="modal-sheet-handle"></div>
             <div class="modal-header-row">
               <h3>📋 Izberi predlogo treninga</h3>
-              <button type="button" class="modal-close" onclick="WorkoutUI.closeTemplateModal()">✕</button>
+              <button type="button" class="modal-close" aria-label="Zapri" onclick="WorkoutUI.closeTemplateModal()">✕</button>
             </div>
           </div>
           <div class="modal-body" id="wuiTemplateList" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;"></div>
@@ -1248,7 +1248,7 @@
         const vol = calculateVolume(w);
         const exSummary = (w.exercises || []).map(e => e.name).slice(0, 3).join(', ') + ((w.exercises || []).length > 3 ? '...' : '');
         html += `
-          <div class="wui-hist-card" onclick="WorkoutUI.openDetailModal('${w.id}')">
+          <div class="wui-hist-card" role="button" tabindex="0" onclick="WorkoutUI.openDetailModal('${w.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">
             <div class="wui-hist-row">
               <strong style="color: #fff; font-size: 0.92rem;">${esc(w.name || 'Trening')}</strong>
               <span style="font-size: 0.72rem; color: var(--text-3); font-family: 'JetBrains Mono', monospace;">${w.date}</span>
@@ -1430,7 +1430,7 @@
                 <input type="number" step="1" inputmode="numeric" class="wui-input" style="max-width: 38px; padding: 8px 0;" value="${s.rir !== null && s.rir !== undefined ? s.rir : ''}" placeholder="${placeholderRir}" oninput="WorkoutUI.onSetRirChange(${exIdx}, ${sIdx}, this.value)">
               </td>
               <td>
-                <button type="button" class="wui-check-btn" onclick="WorkoutUI.toggleSetDone(${exIdx}, ${sIdx})" title="Označi kot opravljeno">✓</button>
+                <button type="button" class="wui-check-btn" aria-label="Označi kot opravljeno" onclick="WorkoutUI.toggleSetDone(${exIdx}, ${sIdx})" title="Označi kot opravljeno">✓</button>
               </td>
               <td>
                 <button type="button" class="wui-del-btn" onclick="WorkoutUI.removeSet(${exIdx}, ${sIdx})" title="Odstrani serijo">✕</button>
@@ -2583,7 +2583,7 @@
     const list = document.getElementById('wuiTemplateList');
     if (!list) return;
     list.innerHTML = templates.map((t, idx) => `
-      <div class="wui-hist-card" onclick="WorkoutUI.pickTemplate(${idx})">
+      <div class="wui-hist-card" role="button" tabindex="0" onclick="WorkoutUI.pickTemplate(${idx})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">
         <div style="font-weight: 800; color: #fff; font-size: 0.95rem;">${esc(t.name)}</div>
         <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 4px;">
           ${(t.exercises || []).map(e => e.name).join(' · ')}
