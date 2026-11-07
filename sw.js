@@ -13,7 +13,6 @@ const ASSETS = [
   './food-aliases.json',
   './exercise-db.json',
   './workout-templates.json',
-  './google-health-workouts.json',
   './exercise-match.js',
   './workout-engine.js',
   './recovery-engine.js',
@@ -31,7 +30,9 @@ const ASSETS = [
   './error-guard.js',
   './backup-ui.js',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './apple-touch-icon.png',
+  './icon-maskable-512.png'
 ];
 
 self.addEventListener('install', (event) => {

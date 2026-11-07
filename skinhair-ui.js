@@ -76,7 +76,8 @@
       photoB: null, // primerjalna fotografija
       splitPositionPct: 50,
       opacityBlendPct: 50,
-      mode: 'split' // 'split' | 'blend'
+      mode: 'split', // 'split' | 'blend'
+      selectedInterval: null // npr. 1, 3, 6 (mesecev)
     },
 
     // Seznam lokalnih fotografij (metapodatki + thumbnail)
