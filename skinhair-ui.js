@@ -662,7 +662,7 @@
               🔓 Ponastavi zaporo
             </button>
           ` : `
-            <button class="btn secondary" style="font-size: 0.75rem;" onclick="SkinHairUI.logMicroneedlingSession()">
+            <button class="btn secondary" style="font-size: 0.75rem;" onclick="SkinHairUI.logMicroneedlingFromButton()">
               Zabeleži sejo danes
             </button>
           `}
@@ -789,7 +789,7 @@
         ` : `
           <div style="margin-top: 8px; display: flex; justify-content: space-between; align-items: center; background: var(--surface-2); padding: 6px 10px; border-radius: 6px;">
             <span style="font-size: 0.72rem; color: var(--text-2);">Seja mikroneedlinga (1x na teden):</span>
-            <button class="btn secondary" style="font-size: 0.68rem; padding: 3px 8px;" onclick="SkinHairUI.logMicroneedlingSession()">
+            <button class="btn secondary" style="font-size: 0.68rem; padding: 3px 8px;" onclick="SkinHairUI.logMicroneedlingFromButton()">
               🪡 Zabeleži danes
             </button>
           </div>
@@ -988,17 +988,25 @@
     render();
   }
 
+  // Zabeleži sejo mikroneedlinga: samo stanje + opozorilo. NE kliče ProtocolDiary.logPreset,
+  // ker ta kliče to funkcijo nazaj (prej neskončna rekurzija -> "Maximum call stack size exceeded").
   function logMicroneedlingSession() {
     state.hairProtocol.lastMicroneedleDate = new Date().toISOString();
     state.hairProtocol.minoxidilApplied = false; // Varnostni reset minoksidila
     saveState();
     render();
-    if (window.ProtocolDiary) {
-      window.ProtocolDiary.logPreset('microneedling_scalp');
-    }
     if (typeof alert === 'function') {
       alert('✓ Mikroneedling seja zabeležena! Vklopljena 24-urna varnostna zapora minoksidila.');
     }
+  }
+
+  // Vstop iz gumbov v UI: dnevnik ustvari vnos in nazaj pokliče logMicroneedlingSession (stanje).
+  function logMicroneedlingFromButton() {
+    if (window.ProtocolDiary && typeof window.ProtocolDiary.logPreset === 'function') {
+      const entry = window.ProtocolDiary.logPreset('microneedling_scalp');
+      if (entry) return;
+    }
+    logMicroneedlingSession();
   }
 
   function setCompareMode(mode) {
@@ -1278,6 +1286,7 @@ finasterid: ${state.hairProtocol.finasterideTaken ? 'da' : 'ne'}
     toggleHairStep: toggleHairStep,
     toggleActiveIngredient: toggleActiveIngredient,
     logMicroneedlingSession: logMicroneedlingSession,
+    logMicroneedlingFromButton: logMicroneedlingFromButton,
     resetMicroneedlingLockout: resetMicroneedlingLockout,
     setCompareMode: setCompareMode,
     filterCategory: filterCategory,

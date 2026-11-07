@@ -2855,7 +2855,8 @@
       'neck': 'Vratne mišice',
       'abductors': 'Abduktorji',
       'adductors': 'Adduktorji',
-      'knees': 'Kolenski sklepi'
+      'knees': 'Kolenski sklepi',
+      'head': 'Glava'
     };
 
     const muscleExercises = {
@@ -2894,6 +2895,7 @@
         if (window.WorkoutUI && typeof window.WorkoutUI.renderBodyMapColors === 'function') {
           window.WorkoutUI.renderBodyMapColors();
         }
+        selectMuscleGroup(selectedMuscle); // osveži statični placeholder (serije, status, vaje)
       } catch(e) {
         console.error('[Body Map] Napaka pri nalaganju:', e);
       }
