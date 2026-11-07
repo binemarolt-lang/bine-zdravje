@@ -3700,7 +3700,7 @@
       window.checkForAppUpdate = triggerUpdateCheck;
 
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=38').then((reg) => {
+        navigator.serviceWorker.register('./sw.js?v=40').then((reg) => {
           swReg = reg;
           window._swReg = reg;
           reg.update().catch(() => {});
@@ -5440,22 +5440,22 @@
     initApp();
   </script>
   <script src="./food-match.js?v=28"></script>
-  <script src="./food-vision-ui.js?v=31"></script>
+  <script src="./food-vision-ui.js?v=40"></script>
   <script src="./bp-ui.js?v=1"></script>
   <script src="./exercise-match.js?v=28"></script>
   <script src="./workout-engine.js?v=28"></script>
   <script src="./recovery-engine.js?v=28"></script>
   <script src="./workout-parser.js?v=28"></script>
   <script src="./workout-io.js?v=28"></script>
-  <script src="./workout-ui.js?v=37"></script>
+  <script src="./workout-ui.js?v=40"></script>
   <script src="./skin-storage.js?v=29"></script>
   <script src="./skinhair-engine.js?v=29"></script>
-  <script src="./skinhair-ui.js?v=29"></script>
+  <script src="./skinhair-ui.js?v=40"></script>
   <script src="./danes-podatki.js?v=34"></script>
-  <script src="./cikel-plan.js?v=34"></script>
+  <script src="./cikel-plan.js?v=40"></script>
   <script src="./protocol-diary.js?v=34"></script>
-  <script src="./protocol-diary-ui.js?v=37"></script>
-  <script src="./assistant-ui.js?v=38"></script>
+  <script src="./protocol-diary-ui.js?v=40"></script>
+  <script src="./assistant-ui.js?v=40"></script>
   <script>
     if (window.SkinHairUI && typeof window.SkinHairUI.mount === 'function') {
       window.SkinHairUI.mount();

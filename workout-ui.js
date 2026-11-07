@@ -1363,7 +1363,7 @@
                 ${supersetActive ? `<span class="status-pill" style="color:var(--strain-blue); margin-top:2px; font-size:0.65rem;">🔗 Superset ${esc(ex.supersetId)}</span>` : ''}
               </div>
               <div style="display: flex; gap: 4px;">
-                <button type="button" class="wui-menu-btn" onclick="WorkoutUI.openStatsModal('${ex.exId}', '${esc(ex.name)}')" title="Statistika">📊</button>
+                <button type="button" class="wui-menu-btn" data-exid="${esc(ex.exId)}" data-exname="${esc(ex.name)}" onclick="WorkoutUI.openStatsModal(this.dataset.exid, this.dataset.exname)" title="Statistika">📊</button>
                 <button type="button" class="wui-menu-btn" onclick="WorkoutUI.openPlatesModalForExercise(${exIdx})" title="Koluti">⚖️</button>
                 <button type="button" class="wui-menu-btn" onclick="WorkoutUI.openWarmupModalForExercise(${exIdx})" title="Ogrevanje">🔥</button>
                 <button type="button" class="wui-menu-btn" onclick="WorkoutUI.toggleExerciseMenu(${exIdx})" title="Več možnosti">•••</button>

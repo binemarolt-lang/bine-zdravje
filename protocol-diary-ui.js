@@ -176,15 +176,15 @@
               <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.22); padding: 8px 10px; border-radius: 8px; border-left: 2px solid ${cat.color};">
                 <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
                   <span style="font-size: 0.72rem; color: var(--text-3); font-variant-numeric: tabular-nums; width: 38px;">
-                    ${e.time}
+                    ${escapeHtml(e.time)}
                   </span>
                   <div style="min-width: 0; flex: 1;">
                     <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                       <span style="font-weight: 700; font-size: 0.82rem; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                        ${e.substance}
+                        ${escapeHtml(e.substance)}
                       </span>
                       <span style="font-size: 0.74rem; font-weight: 700; color: ${cat.color};">
-                        ${e.dose} ${e.unit}
+                        ${escapeHtml(e.dose)} ${escapeHtml(e.unit)}
                       </span>
                     </div>
                     <div style="font-size: 0.68rem; color: var(--text-3); margin-top: 1px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
@@ -207,8 +207,8 @@
   }
 
   function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   /**
@@ -262,8 +262,8 @@
           <div style="font-size: 0.72rem; color: var(--text-3); display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--edge-1); padding-top: 6px;">
             ${todayEntries.slice(0, 4).map(e => `
               <div style="display: flex; justify-content: space-between;">
-                <span>${e.substance} (${e.dose} ${e.unit})</span>
-                <span style="color: var(--text-3); font-variant-numeric: tabular-nums;">${e.time}</span>
+                <span>${escapeHtml(e.substance)} (${escapeHtml(e.dose)} ${escapeHtml(e.unit)})</span>
+                <span style="color: var(--text-3); font-variant-numeric: tabular-nums;">${escapeHtml(e.time)}</span>
               </div>
             `).join('')}
             ${todayEntries.length > 4 ? `<span style="color: var(--rec-green); font-size: 0.68rem;">+ še ${todayEntries.length - 4} vnosov</span>` : ''}
