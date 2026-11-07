@@ -588,6 +588,11 @@
       throw new Error('PIN mora vsebovati vsaj 4 znake');
     }
 
+    // Varovalka: ponovni klic bi prepisal sol in kanarček ter naredil obstoječe šifrirane fotografije nedosegljive
+    if (await isPinConfigured()) {
+      throw new Error('PIN_ZE_NASTAVLJEN');
+    }
+
     // 1. Ustvari novo 16-bajtno sol
     const salt = crypto.getRandomValues(new Uint8Array(CRYPTO_CONFIG.SALT_BYTE_LENGTH));
 
@@ -649,6 +654,42 @@
     resetAutoLockTimer();
     dispatchVaultEvent('unlocked');
 
+    return { success: true };
+  }
+
+  /**
+   * Izklopi zaščito s PIN-om. Samo če ni šifriranih fotografij (sicer bi bile nedosegljive).
+   * Vrne { success, error?, count? }
+   */
+  async function disableVaultPin(pin) {
+    const meta = await getVaultMeta('pin_security');
+    if (!meta) {
+      return { success: true, alreadyDisabled: true };
+    }
+
+    // Preveri PIN (uporabi obstoječo funkcijo); pri napačnem PIN-u ostane stanje nespremenjeno
+    const check = await unlockVault(pin);
+    if (!check.success) {
+      return { success: false, error: 'NAPAČEN_PIN' };
+    }
+
+    const photos = await performTransaction(STORES.PHOTOS, 'readonly', (store) => {
+      return new Promise((resolve, reject) => {
+        const req = store.getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+      });
+    });
+    const encryptedCount = photos.filter(p => p.isEncrypted).length;
+    if (encryptedCount > 0) {
+      return { success: false, error: 'SIFRIRANE_FOTOGRAFIJE', count: encryptedCount };
+    }
+
+    await performTransaction(STORES.VAULT_META, 'readwrite', (store) => {
+      store.delete('pin_security');
+    });
+
+    lockVault();
     return { success: true };
   }
 
@@ -1249,6 +1290,7 @@
     isPinConfigured,
     setupVaultPin,
     unlockVault,
+    disableVaultPin,
     lockVault,
     isUnlocked: () => isVaultUnlocked,
     on: (event, fn) => {
