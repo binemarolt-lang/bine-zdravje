@@ -208,9 +208,82 @@
   const quickState = { kcal: 450, p: 28, c: 51, f: 15, photo: null, mealName: '' };
 
   function computeItem(it) {
-    if (it.match && it.match.index != null) it.nutr = FoodMatch.nutrientsFor(it.match.index, it.grams);
+    // Potrjene vrednosti (embalaža ali OFF) imajo prednost pred USDA ujemanjem.
+    if (it.verified && it.est) it.nutr = FoodMatch.nutrientsFromEstimate(it.est, it.grams);
+    else if (it.match && it.match.index != null) it.nutr = FoodMatch.nutrientsFor(it.match.index, it.grams);
     else if (it.est) it.nutr = FoodMatch.nutrientsFromEstimate(it.est, it.grams);
     else it.nutr = { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, micros: {} };
+  }
+
+  // Oznaka vira pri vsaki postavki. 'ocena' ostane jasno označena kot ocena.
+  function sourceBadge(it) {
+    if (it.source === 'label') return '<span class="fv-src" style="color:var(--rec-green)">✓ Z embalaže</span>';
+    if (it.source === 'off_barcode' || it.source === 'off_search') return '<span class="fv-src" style="color:var(--rec-green)">✓ Open Food Facts</span>';
+    if (it.source === 'usda') return '<span class="fv-src" style="color:var(--strain-blue)">USDA baza</span>';
+    return '<span class="fv-src" style="color:var(--rec-yellow)">ocena (ni potrjeno)</span>';
+  }
+
+  // ---------- Črtna koda (EAN) ----------
+  function eanValid(s) {
+    if (!/^\d{8}$|^\d{13}$/.test(s)) return false;
+    const body = s.slice(0, -1).split('').map(Number);
+    let sum = 0;
+    body.forEach((d, i) => { sum += d * ((body.length - i) % 2 === 1 ? 3 : 1); });
+    return (10 - (sum % 10)) % 10 === Number(s.slice(-1));
+  }
+
+  async function lookupOFF(ean) {
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 6000);
+    try {
+      const r = await fetch('https://world.openfoodfacts.org/api/v2/product/' + ean + '.json?fields=product_name,brands,nutriments', { signal: ctrl.signal });
+      if (!r.ok) return null;
+      const p = (await r.json()).product;
+      const n = p && p.nutriments;
+      if (!n || !(Number(n['energy-kcal_100g']) > 0)) return null;
+      return { name: p.product_name || '', brands: p.brands || '', per100g: {
+        kcal: Number(n['energy-kcal_100g']) || 0, protein: Number(n.proteins_100g) || 0,
+        carbs: Number(n.carbohydrates_100g) || 0, fat: Number(n.fat_100g) || 0, fiber: Number(n.fiber_100g) || 0 } };
+    } catch (e) { return null; } finally { clearTimeout(to); }
+  }
+
+  // Skener: BarcodeDetector če je na voljo (kamera), sicer ročni vnos EAN.
+  async function scanBarcodeCamera() {
+    if (!('BarcodeDetector' in window) || !navigator.mediaDevices) return null;
+    const video = document.createElement('video');
+    video.setAttribute('playsinline', ''); video.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:10001;background:#000';
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    video.srcObject = stream; document.body.appendChild(video); await video.play();
+    const det = new BarcodeDetector({ formats: ['ean_13', 'ean_8'] });
+    try {
+      const t0 = Date.now();
+      while (Date.now() - t0 < 15000) {
+        const codes = await det.detect(video);
+        const v = codes.map(c => c.rawValue).find(eanValid);
+        if (v) return v;
+        await new Promise(r => setTimeout(r, 250));
+      }
+      return null;
+    } finally { stream.getTracks().forEach(t => t.stop()); video.remove(); }
+  }
+
+  async function scanBarcode(i) {
+    const it = review && review.items[i]; if (!it) return;
+    let ean = null;
+    try { ean = await scanBarcodeCamera(); } catch (e) { ean = null; }
+    if (!ean) {
+      const typed = window.prompt('Vnesi EAN (8 ali 13 številk, pod črtno kodo):', it.barcode || '');
+      ean = typed ? typed.replace(/\D/g, '') : null;
+    }
+    if (!ean) return;
+    if (!eanValid(ean)) { toast('⚠️ EAN ni veljaven (kontrolna številka).'); return; }
+    toast('🔍 Iščem v Open Food Facts…');
+    const off = await lookupOFF(ean);
+    if (!off) { toast('Izdelka ni v Open Food Facts – ostane ocena.'); return; }
+    Object.assign(it, { barcode: ean, verified: true, source: 'off_barcode', est: off.per100g, offName: off.name });
+    if (!it.name || it.name === it.aiName) it.name = off.name || it.name;
+    computeItem(it); renderReview();
+    toast('✅ Vrednosti iz Open Food Facts (' + ean + ')');
   }
 
   function rematch(it, query) {
