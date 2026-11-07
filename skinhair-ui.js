@@ -1296,6 +1296,7 @@
   }
 
   function selectPhotoForCompare(photoId) {
+    state.comparison.selectedInterval = null;
     if (!state.comparison.photoA) {
       state.comparison.photoA = photoId;
     } else if (!state.comparison.photoB || state.comparison.photoB === state.comparison.photoA) {
@@ -1303,6 +1304,60 @@
     } else {
       state.comparison.photoA = state.comparison.photoB;
       state.comparison.photoB = photoId;
+    }
+    saveState();
+    render();
+  }
+
+  /**
+   * Samodejna izbira najbližjih fotografij (prejšnja in nova) za primerjavo glede na interval (npr. 1, 3, 6 mesecev)
+   */
+  function selectCompareInterval(months) {
+    state.comparison.selectedInterval = months;
+    const activeCat = state.comparison.activeCategory || 'vse';
+    let photos = (state.photos || []).filter(p => activeCat === 'vse' || p.category === activeCat);
+    if (photos.length < 2 && (state.photos || []).length >= 2) {
+      photos = state.photos;
+    }
+    if (!photos || photos.length === 0) {
+      render();
+      return;
+    }
+    if (photos.length === 1) {
+      state.comparison.photoA = photos[0].id;
+      state.comparison.photoB = photos[0].id;
+      saveState();
+      render();
+      return;
+    }
+
+    const sorted = [...photos].map(p => {
+      let ts = p.timestamp;
+      if (!ts && p.date) {
+        const parsed = Date.parse(p.date);
+        if (!isNaN(parsed)) ts = parsed;
+      }
+      return { id: p.id, ts: ts || 0 };
+    }).sort((a, b) => a.ts - b.ts);
+
+    const targetMs = months * 30 * 24 * 60 * 60 * 1000;
+    let bestPair = null;
+    let bestDiffError = Infinity;
+
+    for (let i = 0; i < sorted.length - 1; i++) {
+      for (let j = i + 1; j < sorted.length; j++) {
+        const span = Math.abs(sorted[j].ts - sorted[i].ts);
+        const err = Math.abs(span - targetMs);
+        if (err < bestDiffError || (err === bestDiffError && bestPair && j >= bestPair.j)) {
+          bestDiffError = err;
+          bestPair = { photoA: sorted[i].id, photoB: sorted[j].id, j };
+        }
+      }
+    }
+
+    if (bestPair) {
+      state.comparison.photoA = bestPair.photoA;
+      state.comparison.photoB = bestPair.photoB;
     }
     saveState();
     render();
