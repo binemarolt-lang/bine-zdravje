@@ -577,6 +577,20 @@
       stroke-width: 2.3;
     }
 
+    /* PREHRANA: touch cilji >=44px (iOS) */
+    #view-prehrana .goal-chip, #view-prehrana .food-chip,
+    #view-prehrana .btn, #quickAddModalOverlay .btn, #offSearchModalOverlay .btn,
+    #tdeeHistoryModalOverlay .btn, #fvModalOverlay .btn, #fvModalOverlay .fv-del,
+    #mealEntriesList button, #quickAddModalOverlay .photo-btn-action, #photoModalOverlay .photo-btn-action,
+    #view-prehrana .fv-status-badge, #fvModalOverlay .fv-badge-clickable {
+      min-height: 44px; min-width: 44px; box-sizing: border-box;
+      touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    }
+    #view-prehrana .goal-chip, #view-prehrana .food-chip { display: inline-flex; align-items: center; flex-shrink: 0; }
+    #quickAddModalOverlay input, #offSearchModalOverlay input, #fvModalOverlay .fv-name, #fvModalOverlay .fv-grams { min-height: 44px; box-sizing: border-box; }
+    .modal-close { min-width: 44px; min-height: 44px; width: 44px; height: 44px; }
+    .off-grams-input { min-height: 44px !important; width: 64px !important; }
+
     /* Body Scroll-Lock za mobilni iOS in Android */
     html.modal-open,
     body.modal-open {
