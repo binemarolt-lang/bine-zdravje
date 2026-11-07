@@ -277,10 +277,8 @@
 
   /** Klic iz index.html ob vsakem shranjenem izvidu. Doda vnos z datumom; obstoječega ključa ne spreminja. */
   function appendBloodwork(bw) {
-    // Pri prvem zapisu NE uporabimo semena iz starega ključa: ta izvid je pravkar shranjen in bi se podvojil.
-    let h = null;
-    try { h = JSON.parse(localStorage.getItem(LS_BW_HIST) || 'null'); } catch (e) { h = null; }
-    if (!Array.isArray(h)) h = [];
+    // Mora se klicati PRED prepisom starega ključa (index.html): tedaj bwHistory() prvič vzame predhodni izvid kot seme.
+    const h = bwHistory();
     h.push(Object.assign(normBw(bw), { ts: Date.now() }));
     try { localStorage.setItem(LS_BW_HIST, JSON.stringify(h)); } catch (e) {}
     renderBloodworkTrend();
