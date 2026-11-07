@@ -84,6 +84,7 @@
   };
 
   let state = loadState();
+  let selectedNewPhotoCat = 'obraz';
 
   function loadState() {
     try {
