@@ -182,7 +182,8 @@
     if (typeof window === 'undefined' || !window.SkinStorage) return;
     const SS = window.SkinStorage;
     try {
-      const dbPhotos = Array.isArray(await SS.listPhotos()) ? await SS.listPhotos() : [];
+      const listed = await SS.listPhotos();
+      const dbPhotos = Array.isArray(listed) ? listed : [];
       const unlocked = Boolean(SS.isUnlocked());
       const rebuilt = [];
 
