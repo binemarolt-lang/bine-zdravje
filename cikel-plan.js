@@ -53,6 +53,7 @@
     return out;
   }
 
+  let editing = false;
   function el(id) { return document.getElementById(id); }
 
   function render() {
@@ -67,8 +68,8 @@
           EQ od 1. dne na 10 enotah, test se dviguje 12 → 12 → 18 → 24 → 30 enot. En s.c. vbod dnevno, največ 40 enot (0,40 mL).
         </div>
         <label style="font-size:0.72rem;color:var(--text-3);font-weight:700;text-transform:uppercase;">Datum prvega vboda</label>
-        <input type="date" id="cpStartInput" value="${isoDate(new Date())}" style="width:100%;padding:8px;margin:6px 0 10px;background:var(--surface-2);border:1px solid var(--edge-2);border-radius:6px;color:#fff;">
-        <button type="button" class="btn" style="width:100%;padding:10px;font-weight:700;" onclick="CikelPlan.start()">▶ Začni plan</button>`;
+        <input type="date" id="cpStartInput" value="${isoDate(new Date())}" style="width:100%;min-height:44px;box-sizing:border-box;padding:8px;margin:6px 0 10px;background:var(--surface-2);border:1px solid var(--edge-2);border-radius:6px;color:#fff;">
+        <button type="button" class="btn" style="width:100%;min-height:44px;padding:10px;font-weight:700;" onclick="CikelPlan.start()">▶ Začni plan</button>`;
       return;
     }
 
@@ -117,7 +118,7 @@
           <span style="font-size:1.1rem;font-weight:700;margin-left:auto;">= ${tU + eU} enot</span>
         </div>
         <div style="font-size:0.75rem;color:var(--text-3);">Najprej test do črtice ${tU}, nato EQ do skupne črtice ${tU + eU}. En vbod s.c., rotiraj trebuh/bok L↔D. Brizga samo enkrat.</div>
-        <button type="button" class="btn${done ? ' secondary' : ''}" style="width:100%;padding:11px;font-weight:700;margin-top:10px;" onclick="CikelPlan.toggleToday()">${done ? '✓ Danes vbrizgano (' + done + ') · klikni za razveljavitev' : '💉 Označi današnji vbod'}</button>
+        <button type="button" class="btn${done ? ' secondary' : ''}" style="width:100%;min-height:44px;padding:11px;font-weight:700;margin-top:10px;" onclick="CikelPlan.toggleToday()">${done ? '✓ Danes vbrizgano (' + done + ') · klikni za razveljavitev' : '💉 Označi današnji vbod'}</button>
       </div>
 
       <div class="bento-grid">
@@ -157,9 +158,15 @@
         </ul>
       </details>
 
+      ${editing ? `<div style="margin-top:10px;"><label style="font-size:0.72rem;color:var(--text-3);font-weight:700;text-transform:uppercase;">Nov datum prvega vboda</label>
+        <input type="date" id="cpEditInput" value="${s.start}" style="width:100%;min-height:44px;box-sizing:border-box;padding:8px;margin:6px 0 8px;background:var(--surface-2);border:1px solid var(--edge-2);border-radius:6px;color:#fff;">
+        <div style="display:flex;gap:8px;">
+          <button type="button" class="btn" style="flex:1;min-height:44px;padding:8px;font-size:0.8rem;" onclick="CikelPlan.saveStart()">Shrani</button>
+          <button type="button" class="btn secondary" style="flex:1;min-height:44px;padding:8px;font-size:0.8rem;" onclick="CikelPlan.cancelEdit()">Prekliči</button>
+        </div></div>` : ''}
       <div style="display:flex;gap:8px;margin-top:10px;">
-        <button type="button" class="btn secondary" style="flex:1;padding:8px;font-size:0.75rem;" onclick="CikelPlan.changeStart()">Spremeni začetek</button>
-        <button type="button" class="btn secondary" style="flex:1;padding:8px;font-size:0.75rem;" onclick="CikelPlan.reset()">Ponastavi plan</button>
+        <button type="button" class="btn secondary" style="flex:1;min-height:44px;padding:8px;font-size:0.75rem;" onclick="CikelPlan.changeStart()">Spremeni začetek</button>
+        <button type="button" class="btn secondary" style="flex:1;min-height:44px;padding:8px;font-size:0.75rem;" onclick="CikelPlan.reset()">Ponastavi plan</button>
       </div>`;
 
     drawChart(sim, di);
@@ -191,8 +198,13 @@
     toggleToday() {
       const s = load(); s.done = s.done || {};
       const k = isoDate(new Date());
+      s.diaryIds = s.diaryIds || {};
       if (s.done[k]) {
         delete s.done[k];
+        if (s.diaryIds[k] && window.ProtocolDiary && window.ProtocolDiary.deleteEntry) {
+          try { window.ProtocolDiary.deleteEntry(s.diaryIds[k]); } catch (e) {}
+        }
+        delete s.diaryIds[k];
       } else {
         const timeStr = new Date().toTimeString().slice(0, 5);
         s.done[k] = timeStr;
@@ -201,7 +213,7 @@
             const di = dayIndex(s.start, new Date());
             const w = Math.max(0, Math.floor(di / 7));
             const tU = unitsFor(PLAN.testUnits, w), eU = unitsFor(PLAN.eqUnits, w);
-            window.ProtocolDiary.addEntry({
+            const entry = window.ProtocolDiary.addEntry({
               substance: 'Testosteron + EQ',
               dose: `${tU}T + ${eU}EQ`,
               unit: 'enot (U-100)',
@@ -209,19 +221,22 @@
               slot: 'MORNING_FASTED',
               notes: `Dnevni vbod (${tU} enot Testa + ${eU} enot EQ)`
             });
+            if (entry && entry.id) s.diaryIds[k] = entry.id;
           } catch(e) {}
         }
       }
       save(s); render();
       if (window.ProtocolDiaryUI) window.ProtocolDiaryUI.refreshActiveViews();
     },
-    changeStart() {
-      const s = load();
-      const v = prompt('Datum prvega vboda (LLLL-MM-DD):', s.start || isoDate(new Date()));
-      if (v && /^\d{4}-\d{2}-\d{2}$/.test(v)) { s.start = v; save(s); render(); }
+    changeStart() { editing = true; render(); },
+    cancelEdit() { editing = false; render(); },
+    saveStart() {
+      const v = (el('cpEditInput') || {}).value;
+      if (v && /^\d{4}-\d{2}-\d{2}$/.test(v)) { const s = load(); s.start = v; save(s); }
+      editing = false; render();
     },
     reset() {
-      if (confirm('Ponastavim plan (začetek in odkljukane vbode)?')) { localStorage.removeItem(LS_KEY); render(); }
+      if (confirm('Ponastavim plan (začetek in odkljukane vbode)?')) { localStorage.removeItem(LS_KEY); editing = false; render(); }
     }
   };
 
