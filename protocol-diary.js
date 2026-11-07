@@ -526,6 +526,9 @@
     getDatesWithEntries,
     getStats,
     exportToObsidianMarkdown,
+    exportToCSV,
+    getLastEntryForSubstance,
+    formatDaysAgoEntry,
     formatDisplayDate,
     getLocalDateString,
     getLocalTimeString
