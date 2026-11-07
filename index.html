@@ -3519,6 +3519,10 @@
     }
 
     function applyVaultFilters() {
+      if (!vaultStore || !vaultStore.snovi || !vaultStore.snovi.length) {
+        ensureVaultLoaded().then(() => applyVaultFilters());
+        return;
+      }
       const q = (document.getElementById('vaultSearchBox')?.value || '').toLowerCase().trim();
       let list = vaultStore.snovi || [];
 
