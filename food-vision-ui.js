@@ -696,6 +696,7 @@
     for (const [k, v] of Object.entries(t.micros)) micros[k] = Math.round(v * 1000) / 1000;
     const entry = {
       id: 'm_' + Date.now(),
+      date: (window.prehranaState && prehranaState.selectedDate) || (typeof PrehranaDays !== 'undefined' ? PrehranaDays.isoOf() : new Date().toISOString().slice(0, 10)),
       name: (review.mealName || '').trim() || (typeof getSuggestedMealName === 'function' ? getSuggestedMealName() : 'Obrok'),
       serving: review.items.map(it => `${it.name} ${Math.round(it.grams)} g`).join(', '),
       calories: Math.round(t.calories), protein: r1(t.protein), carbs: r1(t.carbs), fat: r1(t.fat), fiber: r1(t.fiber),
