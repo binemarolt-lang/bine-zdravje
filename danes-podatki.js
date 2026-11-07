@@ -2,11 +2,19 @@
  * Zamenja trdo zapisane številke na zaslonu Danes (82 %, 74 ms / 54, 7h 42m, arhitektura spanja).
  * Dostop: zasebni žeton (X-Dnevno-Token), ki ga telefon dobi enkrat (?dnevno=… ali vpis) in hrani v localStorage.
  * Brez žetona ali brez povezave pokaže pošten prazen prikaz, nikoli izmišljenih številk.
+ *
+ * Dodano: informativna vrstica »Danes še ni vpisano« (brez push obvestil), graf teže iz weightHistory
+ * (samo branje), prikaz zgodovine tlaka, povzetek za zdravnika (natisni/PDF ali kopiraj).
  */
 (function () {
   'use strict';
   const LS_TOKEN = 'bine_zdravje_dnevno_token';
   const LS_CACHE = 'bine_zdravje_dnevno_cache_v1';
+  const LS_DANES = 'bine_zdravje_danes_vnos';
+  const LS_TLAK = 'bine_zdravje_tlak_log';
+  const LS_WEIGHT = 'bine_zdravje_weight_history';
+  const LS_CIKEL = 'bine_cikel_plan_v1';
+  const LS_BW = 'bine_zdravje_bloodwork_data';
 
   // --- žeton: enkratni prevzem iz URL (?dnevno=...), nato odstranimo iz naslovne vrstice
   try {
@@ -25,6 +33,11 @@
   const avg = (xs) => { const v = xs.filter((x) => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
   const hm = (min) => min == null ? '–' : `${Math.floor(min / 60)}h ${String(Math.round(min % 60)).padStart(2, '0')}m`;
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const todayIso = () => new Date().toLocaleDateString('sv-SE');
+  function readJson(key, fb) {
+    try { const v = JSON.parse(localStorage.getItem(key) || 'null'); return v == null ? fb : v; } catch (e) { return fb; }
+  }
 
   async function endpoints() {
     const list = [];
@@ -180,9 +193,181 @@
     } finally { tece = false; }
   }
 
-  window.DanesPodatki = { osvezi, povezi, _izracunaj: izracunaj };
+  // ---------- Zgodovina teže (samo branje weightHistory) ----------
+  /** Vnosi teže: prehranaState.weightHistory (če je dostopen), sicer shranjena kopija v localStorage. Samo branje. */
+  function weightSeries() {
+    let h = null;
+    try { if (typeof prehranaState !== 'undefined' && prehranaState && Array.isArray(prehranaState.weightHistory)) h = prehranaState.weightHistory; } catch (e) { h = null; }
+    if (!h) h = readJson(LS_WEIGHT, []);
+    return (Array.isArray(h) ? h : [])
+      .filter((x) => x && x.date && num(x.weightKg) != null)
+      .slice()
+      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+      .slice(-30);
+  }
+
+  function weightChartHtml(s) {
+    if (s.length < 2) return '<div style="font-size:0.8rem;color:var(--text-3);padding:8px 0;">Premalo podatkov</div>';
+    const W = 320, H = 130, P = 22;
+    const vals = s.map((x) => num(x.weightKg));
+    let lo = Math.min(...vals), hi = Math.max(...vals);
+    if (hi - lo < 0.5) { lo -= 0.5; hi += 0.5; }
+    const pad = (hi - lo) * 0.08; lo -= pad; hi += pad;
+    const x = (i) => P + (W - 2 * P) * i / (s.length - 1);
+    const y = (v) => H - P - (H - 2 * P) * (v - lo) / (hi - lo);
+    const line = s.map((p, i) => x(i).toFixed(1) + ',' + y(num(p.weightKg)).toFixed(1)).join(' ');
+    const dots = s.map((p, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(num(p.weightKg)).toFixed(1)}" r="2.5" fill="var(--rec-green)"><title>${esc(p.date)}: ${num(p.weightKg)} kg</title></circle>`).join('');
+    const minV = Math.min(...vals), maxV = Math.max(...vals);
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" role="img" aria-label="Graf teže">' +
+      '<line x1="' + P + '" x2="' + (W - P) + '" y1="' + (H - P) + '" y2="' + (H - P) + '" stroke="rgba(255,255,255,0.12)"/>' +
+      '<polyline points="' + line + '" fill="none" stroke="var(--rec-green)" stroke-width="2"/>' + dots +
+      '</svg>' +
+      '<div style="display:flex;justify-content:space-between;font-size:0.7rem;color:var(--text-3);margin-top:2px;">' +
+        '<span>' + esc(s[0].date) + '</span>' +
+        '<span>min ' + minV.toFixed(1) + ' · max ' + maxV.toFixed(1) + ' kg · ' + s.length + ' vnosov</span>' +
+        '<span>' + esc(s[s.length - 1].date) + '</span>' +
+      '</div>';
+  }
+
+  // ---------- Današnji vpisi (informativno; brez push obvestil) ----------
+  function vpisiDanes() {
+    const t = todayIso();
+    const dv = readJson(LS_DANES, null) || {};
+    const tlakLog = readJson(LS_TLAK, []);
+    const cikel = readJson(LS_CIKEL, {});
+    const tlak = (Array.isArray(tlakLog) && tlakLog.some((x) => x.date === t)) || (dv.day === t && !!dv.tlak);
+    const teza = (dv.day === t && !!dv.teza) || weightSeries().some((x) => x.date === t);
+    const planZacet = !!(cikel && cikel.start);
+    const vbod = planZacet ? !!(cikel.done && cikel.done[t]) : null; // null = plan ni začet, vrstica ga ne šteje
+    return { tlak, teza, vbod };
+  }
+
+  function renderMissing() {
+    const host = $('danesMissing');
+    if (!host) return;
+    const v = vpisiDanes();
+    const manjka = [];
+    if (!v.tlak) manjka.push('tlak');
+    if (!v.teza) manjka.push('teža');
+    if (v.vbod === false) manjka.push('vbod');
+    const vpisano = [];
+    if (v.tlak) vpisano.push('tlak');
+    if (v.teza) vpisano.push('teža');
+    if (v.vbod === true) vpisano.push('vbod');
+    if (!manjka.length) {
+      host.textContent = 'Danes vpisano: ' + vpisano.join(' / ') + '.';
+      host.style.color = 'var(--rec-green)';
+    } else {
+      host.textContent = 'Danes še ni vpisano: ' + manjka.join(' / ');
+      host.style.color = 'var(--text-2)';
+    }
+  }
+
+  function renderWeight() {
+    const host = $('weightChartRoot');
+    if (!host) return;
+    host.innerHTML = '<div class="bento-label" style="margin-bottom:6px;">Teža (zadnjih 30 vnosov)</div>' + weightChartHtml(weightSeries());
+  }
+
+  // ---------- Povzetek za zdravnika ----------
+  function povzetekPodatki() {
+    const CP = window.CikelPlan;
+    const izvidi = (CP && CP.bloodworkHistory) ? CP.bloodworkHistory() : (() => {
+      const old = readJson(LS_BW, null); return old && old.datum ? [old] : [];
+    })();
+    const tlak = readJson(LS_TLAK, []).slice(-14);
+    const teza = weightSeries();
+    return { izvidi, tlak, teza };
+  }
+
+  const f1 = (v) => v == null || isNaN(Number(v)) ? '–' : String(Number(v));
+
+  function povzetekText(d) {
+    const L = ['Povzetek za zdravnika · ' + todayIso(), 'Samo vpisani podatki, brez diagnoz in priporočil.', ''];
+    L.push('IZVIDI (datum · HCT % · E2 pg/mL · skupni T ng/dL · GGT U/L)');
+    if (!d.izvidi.length) L.push('  ni shranjenih izvidov');
+    d.izvidi.forEach((x) => L.push(`  ${x.datum || '–'} · ${f1(x.hct)} · ${f1(x.e2)} · ${f1(x.totalT)} · ${f1(x.ggt)}`));
+    L.push('');
+    L.push('KRVNI TLAK (zadnjih 14: datum ura · sis/dia · pulz)');
+    if (!d.tlak.length) L.push('  ni meritev');
+    d.tlak.forEach((x) => L.push(`  ${x.date} ${x.time || ''} · ${x.sys}/${x.dia}${x.pulse ? ' · ' + x.pulse : ''}`));
+    L.push('');
+    L.push('TEŽA (zadnjih 30 vnosov: datum · kg)');
+    if (!d.teza.length) L.push('  ni vnosov');
+    d.teza.forEach((x) => L.push(`  ${x.date} · ${num(x.weightKg)}`));
+    return L.join('\n');
+  }
+
+  function povzetekHtml(d) {
+    const tbl = (head, rows) => '<table><thead><tr>' + head.map((h) => '<th>' + esc(h) + '</th>').join('') + '</tr></thead><tbody>' +
+      (rows.length ? rows.map((r) => '<tr>' + r.map((c) => '<td>' + esc(c) + '</td>').join('') + '</tr>').join('') : '<tr><td colspan="' + head.length + '">ni podatkov</td></tr>') +
+      '</tbody></table>';
+    return '<!doctype html><html lang="sl"><head><meta charset="utf-8"><title>Povzetek za zdravnika</title>' +
+      '<style>body{font-family:-apple-system,system-ui,sans-serif;color:#111;margin:16px;font-size:13px}h2{font-size:15px;margin:18px 0 6px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #bbb;padding:4px 6px;text-align:left}th{background:#eee}.note{color:#555;font-size:12px}@media print{button{display:none}}</style>' +
+      '</head><body><h1 style="font-size:17px;margin:0">Povzetek za zdravnika</h1><div class="note">' + esc(todayIso()) + ' · samo vpisani podatki, brez diagnoz in priporočil</div>' +
+      '<h2>Izvidi</h2>' + tbl(['Datum', 'HCT %', 'E2 pg/mL', 'Skupni T ng/dL', 'GGT U/L'],
+        d.izvidi.map((x) => [x.datum || '–', f1(x.hct), f1(x.e2), f1(x.totalT), f1(x.ggt)])) +
+      '<h2>Krvni tlak (zadnjih 14)</h2>' + tbl(['Datum', 'Ura', 'Sis/Dia mmHg', 'Pulz'],
+        d.tlak.map((x) => [x.date, x.time || '', x.sys + '/' + x.dia, x.pulse || ''])) +
+      '<h2>Teža (zadnjih 30 vnosov)</h2>' + tbl(['Datum', 'kg'],
+        d.teza.map((x) => [x.date, f1(x.weightKg)])) +
+      '<p><button onclick="window.print()">Natisni</button></p></body></html>';
+  }
+
+  function copyText(text) {
+    const fallback = () => {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, text.length);
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      ta.remove();
+      return ok;
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).then(() => true, () => fallback());
+    }
+    return Promise.resolve(fallback());
+  }
+
+  function toastMsg(msg) {
+    if (typeof showMascotNotification === 'function') showMascotNotification(msg);
+    else console.log('[Zdravnik]', msg);
+  }
+
+  /** mode: 'print' (okno za tiskanje/PDF) ali 'copy' (kopiraj besedilo). */
+  function exportDoctor(mode) {
+    const d = povzetekPodatki();
+    if (mode === 'copy') {
+      copyText(povzetekText(d)).then((ok) => toastMsg(ok ? 'Povzetek kopiran' : 'Kopiranje ni uspelo'));
+      return;
+    }
+    const w = window.open('', '_blank');
+    if (!w) {
+      copyText(povzetekText(d)).then((ok) => toastMsg(ok ? 'Okno za tisk je blokirano — povzetek kopiran' : 'Okno za tisk je blokirano'));
+      return;
+    }
+    w.document.open();
+    w.document.write(povzetekHtml(d));
+    w.document.close();
+  }
+
+  /** Osveži vse danes-vezane dele (vrstica, graf teže, zgodovina tlaka). */
+  function renderDanes() {
+    renderMissing();
+    renderWeight();
+    if (window.BpVision && BpVision.renderHistory) BpVision.renderHistory('bpHistRoot');
+  }
+
+  window.DanesPodatki = { osvezi, povezi, renderDanes, exportDoctor, _izracunaj: izracunaj, _vpisiDanes: vpisiDanes };
   if (typeof document !== 'undefined') {
-    const go = () => { osvezi(); setInterval(osvezi, 15 * 60 * 1000); document.addEventListener('visibilitychange', () => { if (!document.hidden) osvezi(); }); };
+    const go = () => {
+      renderDanes();
+      osvezi();
+      setInterval(osvezi, 15 * 60 * 1000);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) { osvezi(); renderDanes(); } });
+    };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
   }
 })();
