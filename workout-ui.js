@@ -1132,9 +1132,6 @@
 
     renderDashboard();
     renderBodyMapColors();
-    ensureExerciseDb().then(() => {
-      renderBodyMapColors();
-    }).catch(() => {});
   }
 
   let historyExpanded = false;
