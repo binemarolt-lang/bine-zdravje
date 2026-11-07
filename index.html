@@ -904,8 +904,8 @@
       word-break: break-word;
     }
     .snov-close-btn {
-      width: 36px;
-      height: 36px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
       background: var(--surface-2);
       border: 1px solid var(--edge-2);
@@ -1160,8 +1160,9 @@
       border: 1px solid var(--edge-2);
       color: #fff;
       padding: 9px 10px;
+      min-height: 44px;
       border-radius: 10px;
-      font-size: 0.8rem;
+      font-size: 16px; /* iOS: brez zooma ob fokusu */
       font-weight: 600;
       cursor: pointer;
       outline: none;
@@ -1225,6 +1226,18 @@
     #catFilterButtons {
       -webkit-overflow-scrolling: touch;
       scrollbar-width: none;
+    }
+    #catFilterButtons .status-pill {
+      min-height: 44px;
+      padding: 0 14px;
+      justify-content: center;
+      flex-shrink: 0;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .vault-search-input {
+      min-height: 44px;
+      font-size: 16px !important; /* iOS: <16px sproži zoom ob fokusu */
     }
     #catFilterButtons::-webkit-scrollbar {
       display: none;
@@ -1784,6 +1797,27 @@
       background: #60a5fa;
       color: #06070a;
       border-color: #60a5fa;
+    }
+    /* KOŽA/LASJE: touch cilji >=44px (iOS) */
+    #view-estetika button, #shCameraModalOverlay button {
+      min-height: 44px; min-width: 44px; box-sizing: border-box;
+      touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    }
+    #view-estetika .sh-subtabs .sh-tab-btn { flex-shrink: 0; }
+    #view-estetika input[type="range"], #shCameraModalOverlay input[type="range"] {
+      height: 44px; touch-action: pan-y; -webkit-appearance: auto; margin: 0;
+    }
+    #view-estetika input[type="checkbox"] { width: 24px; height: 24px; flex-shrink: 0; }
+    #view-estetika label { min-height: 44px; box-sizing: border-box; display: flex; align-items: center; }
+    .sh-divider-handle { width: 44px; height: 44px; }
+    .sh-split-divider::before { content: ""; position: absolute; top: 0; bottom: 0; left: -20px; right: -20px; }
+    #view-estetika .sh-photo-del {
+      position: absolute; top: 0; right: 0; background: transparent; border: none; padding: 0;
+      display: flex; align-items: flex-start; justify-content: flex-end;
+    }
+    #view-estetika .sh-photo-del span {
+      display: flex; align-items: center; justify-content: center; margin: 4px;
+      width: 22px; height: 22px; border-radius: 50%; background: rgba(0,0,0,0.7); color: #fff; font-size: 12px;
     }
   </style>
 </head>
@@ -2493,7 +2527,7 @@
         <div class="card-header">
           <div class="card-title">📚 Vault Enciklopedija (133 Snovi · 239 Trditev)</div>
         </div>
-        <input type="text" id="vaultSearchBox" placeholder="Išči po snoveh, peptidih, nootropikih, hormonih..." oninput="filterVaultList()" style="margin-top: 4px;">
+        <input type="text" id="vaultSearchBox" placeholder="Išči po snoveh, peptidih, nootropikih, hormonih..." oninput="filterVaultList()" class="vault-search-input" autocomplete="off" autocapitalize="off" enterkeyhint="search" style="margin-top: 4px;">
         
         <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;" id="catFilterButtons"></div>
 
@@ -3318,7 +3352,7 @@
       const cats = ['Vse', 'AAS', 'Peptid', 'Nootropik', 'SARM', 'Suplement', 'Adaptogen'];
       const bar = document.getElementById('catFilterButtons');
       bar.innerHTML = cats.map(c => `
-        <button class="status-pill ${c === currentVaultCat ? 'active' : ''}" style="cursor: pointer; white-space: nowrap;" onclick="filterVaultByCat('${c}', this)">${c}</button>
+        <button type="button" class="status-pill ${c === currentVaultCat ? 'active' : ''}" style="cursor: pointer; white-space: nowrap;" onclick="filterVaultByCat('${c}', this)">${c}</button>
       `).join('');
     }
 
@@ -3340,7 +3374,17 @@
       let list = vaultStore.snovi || [];
 
       if (currentVaultCat !== 'Vse') {
-        list = list.filter(s => s.razred && s.razred.some(r => r.toLowerCase().includes(currentVaultCat.toLowerCase())));
+        // razred[] je v podatkih neenoten (npr. "Anabolicni steroid", "oralni 17-alfa-alkilirani AAS"), zato ključne besede
+        const catKeys = {
+          'AAS': ['aas', 'anabolic', 'androgeni steroid', 'steroid', 'nandrolon', 'dht-derivat', 'testosteron', 'endogeni androgen', 'trt'],
+          'Peptid': ['peptid', 'bioregulator', 'tuftsin', 'glp-1'],
+          'Nootropik': ['nootropik', 'racetam', 'ampakin', 'memory', 'kolinergik', 'dopaminergik', 'focus', 'bdnf', 'nevroprotekcija', 'nevrotrofin', 'anti-fatigue'],
+          'SARM': ['sarm', 'androgeni receptor'],
+          'Suplement': ['suplement', 'postbiotik', 'mitohondrij', 'longevity', 'koencim', 'vitamin'],
+          'Adaptogen': ['adaptogen', 'aktoprotektor', 'antihipoksant']
+        };
+        const keys = (catKeys[currentVaultCat] || [currentVaultCat]).map(k => k.toLowerCase());
+        list = list.filter(s => s.razred && s.razred.some(r => { const rl = String(r).toLowerCase(); return keys.some(k => rl.includes(k)); }));
       }
 
       if (q) {

@@ -795,7 +795,7 @@
       /* Polnozaslonski sheet za aktivni trening */
       .wui-sheet-fullscreen { position: fixed; inset: 0; z-index: 9999; background: var(--surface-1, #08090A); display: flex; flex-direction: column; overflow: hidden; }
       .wui-sheet-header { background: var(--surface-2); border-bottom: 1px solid var(--edge-1); padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
-      .wui-sheet-title-input { background: transparent; border: none; font-size: 1.15rem; font-weight: 800; color: #fff; flex: 1; min-width: 0; padding: 4px 0; outline: none; }
+      .wui-sheet-title-input { background: transparent; border: none; font-size: 1.15rem; font-weight: 800; color: #fff; flex: 1; min-width: 0; padding: 4px 0; outline: none; min-height: 44px; }
       /* (1) Modali morajo biti nad aktivnim sheetom (9999) */
       #wuiModalsContainer .modal-overlay { z-index: 10005; }
       .wui-timer-badge { background: var(--surface-3); border: 1px solid var(--edge-2); border-radius: 8px; padding: 4px 10px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; font-weight: 700; color: var(--rec-green); }
@@ -807,7 +807,7 @@
       .wui-exercise-card.superset-active { border-left: 4px solid var(--strain-blue); }
       .wui-exercise-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
       .wui-exercise-name { font-size: 1rem; font-weight: 800; color: #fff; flex: 1; }
-      .wui-menu-btn { background: var(--surface-3); border: 1px solid var(--edge-2); border-radius: 8px; color: var(--text-2); padding: 6px 10px; font-size: 0.85rem; cursor: pointer; min-height: 38px; }
+      .wui-menu-btn { background: var(--surface-3); border: 1px solid var(--edge-2); border-radius: 8px; color: var(--text-2); padding: 6px 10px; font-size: 0.85rem; cursor: pointer; min-height: 44px; min-width: 44px; }
 
       /* Tabela serij */
       .wui-set-table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0 6px; }
@@ -839,7 +839,7 @@
       @keyframes wuiSlideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
       .wui-rest-info { display: flex; align-items: center; gap: 6px; cursor: pointer; font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 800; color: #fff; }
       .wui-rest-controls { display: flex; gap: 4px; }
-      .wui-rest-btn { background: var(--surface-3); border: 1px solid var(--edge-2); border-radius: 16px; color: #fff; font-size: 0.72rem; font-weight: 700; padding: 6px 8px; cursor: pointer; min-height: 32px; }
+      .wui-rest-btn { background: var(--surface-3); border: 1px solid var(--edge-2); border-radius: 16px; color: #fff; font-size: 0.72rem; font-weight: 700; padding: 6px 10px; cursor: pointer; min-height: 44px; min-width: 44px; }
       .wui-rest-skip { background: rgba(255, 61, 0, 0.2); border-color: var(--rec-red); color: var(--rec-red); }
 
       /* Čipi mišic v izbirniku */
@@ -1335,7 +1335,7 @@
         <input class="wui-sheet-title-input" value="${esc(activeWorkout.name || 'Trening')}" oninput="WorkoutUI.onActiveWorkoutNameChange(this.value)" placeholder="Ime treninga">
         <div style="display: flex; align-items: center; gap: 8px;">
           <span class="wui-timer-badge" id="wuiActiveTimerBadge">${formatDuration(elapsed)}</span>
-          <button class="btn" style="background: linear-gradient(135deg,#00E676 0%,#00B0FF 100%); color:#08090A; font-weight:800; padding:8px 14px;" onclick="WorkoutUI.openSummaryModal()">✓ Zaključi</button>
+          <button class="btn" style="background: linear-gradient(135deg,#00E676 0%,#00B0FF 100%); color:#08090A; font-weight:800; padding:8px 14px; min-height:44px;" onclick="WorkoutUI.openSummaryModal()">✓ Zaključi</button>
         </div>
       </div>
       <div class="wui-sheet-body" id="wuiSheetExercisesList">
@@ -1369,10 +1369,10 @@
 
             <!-- Meni za dodatne možnosti vaje -->
             <div id="wuiExMenu_${exIdx}" style="display: none; background: var(--surface-3); border: 1px solid var(--edge-2); border-radius: 10px; padding: 8px; flex-direction: column; gap: 6px;">
-              <button class="btn secondary" style="font-size: 0.76rem; padding: 6px;" onclick="WorkoutUI.toggleSupersetLink(${exIdx})">🔗 ${supersetActive ? 'Odstrani iz superseta' : 'Poveži v superset'}</button>
-              <button class="btn secondary" style="font-size: 0.76rem; padding: 6px;" onclick="WorkoutUI.moveExercise(${exIdx}, -1)" ${exIdx === 0 ? 'disabled' : ''}>⬆️ Premakni navzgor</button>
-              <button class="btn secondary" style="font-size: 0.76rem; padding: 6px;" onclick="WorkoutUI.moveExercise(${exIdx}, 1)" ${exIdx === activeWorkout.exercises.length - 1 ? 'disabled' : ''}>⬇️ Premakni navzdol</button>
-              <button class="btn secondary" style="font-size: 0.76rem; padding: 6px; color: var(--rec-red);" onclick="WorkoutUI.removeExercise(${exIdx})">🗑️ Odstrani vajo</button>
+              <button class="btn secondary" style="font-size: 0.76rem; padding: 6px; min-height: 44px;" onclick="WorkoutUI.toggleSupersetLink(${exIdx})">🔗 ${supersetActive ? 'Odstrani iz superseta' : 'Poveži v superset'}</button>
+              <button class="btn secondary" style="font-size: 0.76rem; padding: 6px; min-height: 44px;" onclick="WorkoutUI.moveExercise(${exIdx}, -1)" ${exIdx === 0 ? 'disabled' : ''}>⬆️ Premakni navzgor</button>
+              <button class="btn secondary" style="font-size: 0.76rem; padding: 6px; min-height: 44px;" onclick="WorkoutUI.moveExercise(${exIdx}, 1)" ${exIdx === activeWorkout.exercises.length - 1 ? 'disabled' : ''}>⬇️ Premakni navzdol</button>
+              <button class="btn secondary" style="font-size: 0.76rem; padding: 6px; min-height: 44px; color: var(--rec-red);" onclick="WorkoutUI.removeExercise(${exIdx})">🗑️ Odstrani vajo</button>
             </div>
 
             <!-- Opomba vaje -->

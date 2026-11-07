@@ -461,8 +461,8 @@
                  style="position: relative;"
                  onclick="SkinHairUI.selectPhotoForCompare('${p.id}')">
               <img src="${p.thumbnail || p.url}" style="width: 100%; height: 80px; object-fit: cover; border-radius: 6px;" alt="">
-              <button type="button" title="Izbriši" style="position: absolute; top: 3px; right: 3px; background: rgba(0,0,0,0.65); border: none; border-radius: 50%; color: #fff; width: 18px; height: 18px; font-size: 10px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center;"
-                      onclick="event.stopPropagation(); SkinHairUI.deletePhoto('${p.id}')">✕</button>
+              <button type="button" class="sh-photo-del" title="Izbriši" aria-label="Izbriši fotografijo"
+                      onclick="event.stopPropagation(); SkinHairUI.deletePhoto('${p.id}')"><span>✕</span></button>
               <div style="font-size: 0.65rem; color: var(--text-2); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                 ${p.date || 'Danes'}
               </div>
@@ -550,7 +550,7 @@
           ${zones.map(z => {
             const currentGrade = state.acneZones[z.id] || 0;
             return `
-              <div style="background: var(--surface-2); padding: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+              <div style="background: var(--surface-2); padding: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                 <div>
                   <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-1);">
                     ${z.name} <span style="font-size: 0.7rem; color: var(--text-3);">(Ponder x${z.factor})</span>

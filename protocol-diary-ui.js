@@ -76,10 +76,10 @@
         </div>
 
         <div style="display: flex; gap: 8px; margin-top: 12px;">
-          <button type="button" class="btn" style="flex: 2; padding: 10px; font-weight: 700; font-size: 0.8rem;" onclick="ProtocolDiaryUI.openNewEntryModal()">
+          <button type="button" class="btn" style="flex: 2; padding: 10px; min-height: 44px; font-weight: 700; font-size: 0.8rem;" onclick="ProtocolDiaryUI.openNewEntryModal()">
             + ✍️ Vnos po meri
           </button>
-          <button type="button" class="btn secondary" style="flex: 1; padding: 10px; font-weight: 600; font-size: 0.78rem;" onclick="ProtocolDiaryUI.exportToObsidian()" title="Kopiraj Markdown tabelo za Obsidian">
+          <button type="button" class="btn secondary" style="flex: 1; padding: 10px; min-height: 44px; font-weight: 600; font-size: 0.78rem;" onclick="ProtocolDiaryUI.exportToObsidian()" title="Kopiraj Markdown tabelo za Obsidian">
             📋 Izvozi
           </button>
         </div>
@@ -95,7 +95,7 @@
         <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;">
           ${Diary.PRESET_INTAKES.map(p => `
             <button type="button" class="btn secondary" 
-                    style="padding: 7px 11px; font-size: 0.76rem; border-radius: 10px; display: inline-flex; align-items: center; gap: 5px; border-color: rgba(255,255,255,0.12);"
+                    style="padding: 0 12px; min-height: 44px; font-size: 0.76rem; border-radius: 10px; display: inline-flex; align-items: center; gap: 5px; border-color: rgba(255,255,255,0.12);"
                     onclick="ProtocolDiaryUI.quickLog('${p.id}')">
               <span>${p.icon}</span>
               <strong>${p.shortName}</strong>
@@ -113,13 +113,13 @@
           <!-- Filtri kategorij -->
           <div style="display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px;">
             <button type="button" class="sh-tab-btn ${currentCategoryFilter === 'all' ? 'active' : ''}" 
-                    style="font-size: 0.68rem; padding: 4px 8px;" onclick="ProtocolDiaryUI.setFilter('all')">Vse</button>
+                    style="font-size: 0.72rem; padding: 0 12px; min-height: 44px; flex-shrink: 0;" onclick="ProtocolDiaryUI.setFilter('all')">Vse</button>
             <button type="button" class="sh-tab-btn ${currentCategoryFilter === 'anabolik' ? 'active' : ''}" 
-                    style="font-size: 0.68rem; padding: 4px 8px; color: #f87171;" onclick="ProtocolDiaryUI.setFilter('anabolik')">💉 Anaboliki</button>
+                    style="font-size: 0.72rem; padding: 0 12px; min-height: 44px; flex-shrink: 0; white-space: nowrap; color: #f87171;" onclick="ProtocolDiaryUI.setFilter('anabolik')">💉 Anaboliki</button>
             <button type="button" class="sh-tab-btn ${currentCategoryFilter === 'lasje' ? 'active' : ''}" 
-                    style="font-size: 0.68rem; padding: 4px 8px; color: #c084fc;" onclick="ProtocolDiaryUI.setFilter('lasje')">💈 Lasje</button>
+                    style="font-size: 0.72rem; padding: 0 12px; min-height: 44px; flex-shrink: 0; white-space: nowrap; color: #c084fc;" onclick="ProtocolDiaryUI.setFilter('lasje')">💈 Lasje</button>
             <button type="button" class="sh-tab-btn ${currentCategoryFilter === 'suplement' ? 'active' : ''}" 
-                    style="font-size: 0.68rem; padding: 4px 8px; color: #34d399;" onclick="ProtocolDiaryUI.setFilter('suplement')">💊 Suplementi</button>
+                    style="font-size: 0.72rem; padding: 0 12px; min-height: 44px; flex-shrink: 0; white-space: nowrap; color: #34d399;" onclick="ProtocolDiaryUI.setFilter('suplement')">💊 Suplementi</button>
           </div>
         </div>
 
@@ -194,7 +194,7 @@
                   </div>
                 </div>
 
-                <button type="button" style="background: none; border: none; color: var(--text-3); cursor: pointer; padding: 4px 6px; font-size: 0.75rem; border-radius: 4px;"
+                <button type="button" style="background: none; border: none; color: var(--text-3); cursor: pointer; padding: 0; min-width: 44px; min-height: 44px; flex-shrink: 0; font-size: 0.9rem; border-radius: 4px; touch-action: manipulation;" aria-label="Izbriši vnos"
                         title="Izbriši vnos" onclick="ProtocolDiaryUI.deleteEntry('${e.id}')">
                   ✕
                 </button>
@@ -234,26 +234,26 @@
           <span style="font-size: 0.75rem; color: var(--text-2);">
             Zabeleži vnos ali preveri zgodovino
           </span>
-          <button type="button" class="btn secondary" style="font-size: 0.7rem; padding: 3px 8px;" onclick="switchNav('estetika'); if(window.SkinHairUI) SkinHairUI.switchSubTab('dnevnik');">
+          <button type="button" class="btn secondary" style="font-size: 0.7rem; padding: 0 10px; min-height: 44px;" onclick="switchNav('estetika'); if(window.SkinHairUI) SkinHairUI.switchSubTab('dnevnik');">
             📖 Celoten dnevnik →
           </button>
         </div>
 
         <!-- Hitri gumbi za danes -->
         <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 8px;">
-          <button type="button" class="btn secondary" style="padding: 5px 9px; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('test_eq_daily')">
+          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('test_eq_daily')">
             💉 Test+EQ
           </button>
-          <button type="button" class="btn secondary" style="padding: 5px 9px; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('finasteride_1mg')">
+          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('finasteride_1mg')">
             💈 Finasterid 1mg
           </button>
-          <button type="button" class="btn secondary" style="padding: 5px 9px; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('minoxidil_topical')">
+          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('minoxidil_topical')">
             💈 Minoksidil 5%
           </button>
-          <button type="button" class="btn secondary" style="padding: 5px 9px; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('omega3_dha_epa')">
+          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('omega3_dha_epa')">
             🐟 Omega-3
           </button>
-          <button type="button" class="btn secondary" style="padding: 5px 9px; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('vitamin_d3_k2')">
+          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('vitamin_d3_k2')">
             ☀️ Vit D3+K2
           </button>
         </div>
@@ -319,7 +319,6 @@
       overlay = document.createElement('div');
       overlay.id = 'pdiaryModalOverlay';
       overlay.className = 'modal-overlay';
-      overlay.style.display = 'none';
       overlay.onclick = (e) => {
         if (e.target.id === 'pdiaryModalOverlay') closeNewEntryModal();
       };
@@ -335,14 +334,14 @@
           <div class="modal-sheet-handle"></div>
           <div class="modal-header-row">
             <h3 style="margin: 0; font-size: 0.95rem;">✍️ Zabeleži Vnos v Dnevnik</h3>
-            <button type="button" class="modal-close" onclick="ProtocolDiaryUI.closeNewEntryModal()">✕</button>
+            <button type="button" class="modal-close" style="width: 44px; height: 44px;" aria-label="Zapri" onclick="ProtocolDiaryUI.closeNewEntryModal()">✕</button>
           </div>
         </div>
         <div class="modal-body" style="padding: 14px; display: flex; flex-direction: column; gap: 10px;">
           <div>
             <label style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Substanca / Dopolnilo</label>
             <input type="text" id="pdiaryInpSubstance" placeholder="npr. Testosteron, Finasterid, Omega-3..." 
-                   list="pdiarySubstancesList" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 600;">
+                   list="pdiarySubstancesList" style="width: 100%; padding: 8px; min-height: 44px; font-size: 16px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 600;">
             <datalist id="pdiarySubstancesList">
               ${Diary.PRESET_INTAKES.map(p => `<option value="${p.name}">`).join('')}
               <option value="Raloksifen">
@@ -363,11 +362,11 @@
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
             <div>
               <label style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Odmerek</label>
-              <input type="text" id="pdiaryInpDose" placeholder="npr. 30 ali 1" value="" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;">
+              <input type="text" id="pdiaryInpDose" placeholder="npr. 30 ali 1" value="" style="width: 100%; padding: 8px; min-height: 44px; font-size: 16px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;">
             </div>
             <div>
               <label style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Enota</label>
-              <select id="pdiaryInpUnit" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff;">
+              <select id="pdiaryInpUnit" style="width: 100%; padding: 8px; min-height: 44px; font-size: 16px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff;">
                 <option value="mg">mg</option>
                 <option value="enot (U-100)">enot (U-100)</option>
                 <option value="mL">mL</option>
@@ -383,7 +382,7 @@
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
             <div>
               <label style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Kategorija</label>
-              <select id="pdiaryInpCat" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff;">
+              <select id="pdiaryInpCat" style="width: 100%; padding: 8px; min-height: 44px; font-size: 16px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff;">
                 <option value="anabolik">💉 Anaboliki & Zaščita</option>
                 <option value="lasje">💈 Lasje & Skalp</option>
                 <option value="suplement" selected>💊 Suplementi & Zdravje</option>
@@ -392,7 +391,7 @@
             </div>
             <div>
               <label style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Cirkadiana reža</label>
-              <select id="pdiaryInpSlot" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff;">
+              <select id="pdiaryInpSlot" style="width: 100%; padding: 8px; min-height: 44px; font-size: 16px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff;">
                 ${Object.entries(Diary.TIMING_SLOTS).map(([k, v]) => `
                   <option value="${k}">${v.icon} ${v.label}</option>
                 `).join('')}
@@ -403,36 +402,43 @@
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
             <div>
               <label style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Datum</label>
-              <input type="date" id="pdiaryInpDate" value="${today}" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff;">
+              <input type="date" id="pdiaryInpDate" value="${today}" style="width: 100%; padding: 8px; min-height: 44px; font-size: 16px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff;">
             </div>
             <div>
               <label style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Ura</label>
-              <input type="time" id="pdiaryInpTime" value="${nowTime}" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff;">
+              <input type="time" id="pdiaryInpTime" value="${nowTime}" style="width: 100%; padding: 8px; min-height: 44px; font-size: 16px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff;">
             </div>
           </div>
 
           <div>
             <label style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Opomba (neobvezno)</label>
-            <input type="text" id="pdiaryInpNotes" placeholder="npr. vbod v ramo, z obrokom..." style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff;">
+            <input type="text" id="pdiaryInpNotes" placeholder="npr. vbod v ramo, z obrokom..." style="width: 100%; padding: 8px; min-height: 44px; font-size: 16px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff;">
           </div>
 
-          <button type="button" class="btn" style="width: 100%; padding: 11px; font-weight: 700; margin-top: 6px;" onclick="ProtocolDiaryUI.saveNewEntryFromModal()">
+          <button type="button" class="btn" style="width: 100%; padding: 11px; min-height: 48px; font-weight: 700; margin-top: 6px;" onclick="ProtocolDiaryUI.saveNewEntryFromModal()">
             💾 Shrani v Dnevnik
           </button>
         </div>
       </div>
     `;
 
-    overlay.style.display = 'flex';
-    document.documentElement.classList.add('modal-open');
-    document.body.classList.add('modal-open');
+    overlay.style.display = '';
+    overlay.classList.add('open');
+    if (typeof lockBodyScroll === 'function') lockBodyScroll();
+    else {
+      document.documentElement.classList.add('modal-open');
+      document.body.classList.add('modal-open');
+    }
   }
 
   function closeNewEntryModal() {
     const overlay = document.getElementById('pdiaryModalOverlay');
-    if (overlay) overlay.style.display = 'none';
-    document.documentElement.classList.remove('modal-open');
-    document.body.classList.remove('modal-open');
+    if (overlay) { overlay.classList.remove('open'); overlay.style.display = ''; }
+    if (typeof unlockBodyScroll === 'function') unlockBodyScroll();
+    else {
+      document.documentElement.classList.remove('modal-open');
+      document.body.classList.remove('modal-open');
+    }
   }
 
   function saveNewEntryFromModal() {
@@ -459,17 +465,30 @@
   /**
    * Izvoz v Obsidian
    */
+  function copyTextFallback(text) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px;';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.setSelectionRange(0, text.length);
+      const ok = document.execCommand && document.execCommand('copy');
+      document.body.removeChild(ta);
+      return !!ok;
+    } catch (e) { return false; }
+  }
+
   function exportToObsidian() {
     if (!Diary) return;
     const md = Diary.exportToObsidianMarkdown();
+    const done = () => showToast('✓ Markdown kopiran v odložišče! (Prilepi v Obsidian)', true);
+    const fail = () => { if (copyTextFallback(md)) done(); else prompt('Kopiraj Markdown za Obsidian:', md); };
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(md).then(() => {
-        showToast('✓ Markdown kopiran v odložišče! (Prilepi v Obsidian)', true);
-      }).catch(() => {
-        prompt('Kopiraj Markdown za Obsidian:', md);
-      });
+      navigator.clipboard.writeText(md).then(done).catch(fail);
     } else {
-      prompt('Kopiraj Markdown za Obsidian:', md);
+      fail();
     }
   }
 
