@@ -26,7 +26,8 @@
     barKg: 20,
     plates: [25, 20, 15, 10, 5, 2.5, 1.25],
     restDefaultSec: 120,
-    oneRmFormula: 'weighted'
+    oneRmFormula: 'weighted',
+    intensityMode: 'rir'
   };
 
   const MUSCLE_NAMES_SL = {
@@ -242,6 +243,11 @@
       if (s.rir === null || s.rir === undefined || s.rir === '') {
         if (prevSet.rir !== null && prevSet.rir !== undefined && prevSet.rir !== '') {
           s.rir = Number(prevSet.rir);
+        }
+      }
+      if (s.rpe === null || s.rpe === undefined || s.rpe === '') {
+        if (prevSet.rpe !== null && prevSet.rpe !== undefined && prevSet.rpe !== '') {
+          s.rpe = Number(prevSet.rpe);
         }
       }
     }
@@ -561,6 +567,11 @@
   let cachedDb = null;
   let lastPickerCallback = null;
   let tempPhotoDataUrl = null;
+  let livePrs = {};
+  let wakeLockSentinel = null;
+  let wantWakeLock = false;
+  let wakeRequesting = false;
+  let wakeBound = false;
 
   function getSettings() {
     return Object.assign({}, DEFAULT_SETTINGS, getStorage(LS_SETTINGS, {}));
@@ -1050,6 +1061,13 @@
               <label style="font-size: 0.72rem; color: var(--text-3); text-transform: uppercase;">Privzeti čas počitka (sekunde):</label>
               <input type="number" step="5" inputmode="numeric" id="wuiSettingRest" class="wui-input" style="max-width: none;">
             </div>
+            <div>
+              <label style="font-size: 0.72rem; color: var(--text-3); text-transform: uppercase;">Intenzivnost serije (RIR ali RPE):</label>
+              <select id="wuiSettingIntensity" class="wui-input" style="max-width: none; text-align: left; font-size: 16px !important;">
+                <option value="rir">RIR (rezerva ponovitev)</option>
+                <option value="rpe">RPE (zaznan napor 1–10)</option>
+              </select>
+            </div>
             <div style="display: flex; gap: 8px; margin-top: 6px;">
               <button class="btn secondary" style="flex: 1;" onclick="WorkoutUI.closeSettingsModal()">Prekliči</button>
               <button class="btn" style="flex: 1; background: var(--rec-green); color: #08090A; font-weight: 800;" onclick="WorkoutUI.saveSettingsForm()">Shrani nastavitve</button>
@@ -1083,6 +1101,12 @@
 
     injectStyles();
     injectModals();
+    if (typeof document !== 'undefined' && !wakeBound) {
+      wakeBound = true;
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && wantWakeLock) requestWakeLock();
+      });
+    }
 
     let cont = document.getElementById('workoutUiContainer');
     if (!cont) {
@@ -1225,6 +1249,8 @@
         <div class="card-header">
           <div class="card-title">📅 Zgodovina treningov</div>
           <div style="display: flex; align-items: center; gap: 8px;">
+            <button type="button" class="btn secondary" style="padding: 4px 8px; font-size: 0.68rem; border-radius: 6px; cursor: pointer;" onclick="WorkoutUI.importCsvFile()" title="Uvozi Hevy ali Strong CSV">📥 CSV</button>
+            <button type="button" class="btn secondary" style="padding: 4px 8px; font-size: 0.68rem; border-radius: 6px; cursor: pointer;" onclick="WorkoutUI.exportCsvFile()" title="Izvozi zgodovino v Hevy CSV">📤 CSV</button>
             <button type="button" class="btn secondary" style="padding: 4px 8px; font-size: 0.68rem; border-radius: 6px; cursor: pointer;" onclick="WorkoutUI.importGoogleHealthWorkouts(true)" title="Uvozi prejšnje vadbe iz Google Health">📥 Google Health</button>
             <span style="font-size: 0.75rem; color: var(--text-3); font-family: 'JetBrains Mono', monospace;">${history.length}</span>
           </div>
@@ -1293,6 +1319,7 @@
       document.body.appendChild(sheet);
     }
     sheet.style.display = 'flex';
+    requestWakeLock();
     if (typeof root.lockBodyScroll === 'function') root.lockBodyScroll();
 
     if (activeTimerInterval) clearInterval(activeTimerInterval);
@@ -1330,6 +1357,7 @@
     if (!sheet || !activeWorkout) return;
 
     const history = getWorkouts();
+    const isRpe = getSettings().intensityMode === 'rpe';
     const elapsed = Math.floor((Date.now() - (activeWorkout.start || Date.now())) / 1000);
 
     let html = `
@@ -1361,6 +1389,7 @@
               <div style="flex: 1;">
                 <div class="wui-exercise-name">${esc(ex.name)}</div>
                 ${supersetActive ? `<span class="status-pill" style="color:var(--strain-blue); margin-top:2px; font-size:0.65rem;">🔗 Superset ${esc(ex.supersetId)}</span>` : ''}
+                ${livePrs[ex.exId] ? `<span class="status-pill" style="color:var(--rec-yellow); margin-top:2px; font-size:0.65rem;">🏆 PR: ${esc(livePrs[ex.exId].join(' · '))}</span>` : ''}
               </div>
               <div style="display: flex; gap: 4px;">
                 <button type="button" class="wui-menu-btn" data-exid="${esc(ex.exId)}" data-exname="${esc(ex.name)}" onclick="WorkoutUI.openStatsModal(this.dataset.exid, this.dataset.exname)" title="Statistika">📊</button>
@@ -1375,6 +1404,9 @@
               <button class="btn secondary" style="font-size: 0.76rem; padding: 6px; min-height: 44px;" onclick="WorkoutUI.toggleSupersetLink(${exIdx})">🔗 ${supersetActive ? 'Odstrani iz superseta' : 'Poveži v superset'}</button>
               <button class="btn secondary" style="font-size: 0.76rem; padding: 6px; min-height: 44px;" onclick="WorkoutUI.moveExercise(${exIdx}, -1)" ${exIdx === 0 ? 'disabled' : ''}>⬆️ Premakni navzgor</button>
               <button class="btn secondary" style="font-size: 0.76rem; padding: 6px; min-height: 44px;" onclick="WorkoutUI.moveExercise(${exIdx}, 1)" ${exIdx === activeWorkout.exercises.length - 1 ? 'disabled' : ''}>⬇️ Premakni navzdol</button>
+              <label style="font-size: 0.72rem; color: var(--text-3); display: flex; align-items: center; justify-content: space-between; gap: 8px;">Počitek po vaji (s)
+                <input type="number" step="5" min="0" inputmode="numeric" class="wui-input" style="max-width: 96px; font-size: 16px !important;" value="${ex.restSec || ''}" placeholder="${getSettings().restDefaultSec}" onchange="WorkoutUI.onExerciseRestChange(${exIdx}, this.value)">
+              </label>
               <button class="btn secondary" style="font-size: 0.76rem; padding: 6px; min-height: 44px; color: var(--rec-red);" onclick="WorkoutUI.removeExercise(${exIdx})">🗑️ Odstrani vajo</button>
             </div>
 
@@ -1382,6 +1414,9 @@
             <div>
               <input type="text" class="wui-input" style="width: 100%; max-width: none; text-align: left; font-size: 0.78rem !important; padding: 6px 8px; min-height: 32px;" value="${esc(ex.note || '')}" placeholder="Opomba k vaji (npr. pavza 1s na dnu)..." oninput="WorkoutUI.onExerciseNoteChange(${exIdx}, this.value)">
             </div>
+
+            <!-- Predlog naslednje serije (WorkoutEngine.suggestNext) -->
+            ${(() => { const sg = suggestionFor(ex.exId); return sg ? `<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; background: var(--surface-2); border: 1px dashed var(--edge-2); border-radius: 10px; padding: 6px 10px;"><span style="font-size: 0.8rem; color: var(--text-2);" title="${esc(sg.reason || '')}">Predlog: <b style="color: #fff;">${esc(suggestionLabel(sg))}</b></span><button type="button" class="btn secondary" style="min-height: 44px; padding: 6px 12px; font-size: 0.78rem;" onclick="WorkoutUI.applySuggestion(${exIdx})">⬇ Prenesi v serijo</button></div>` : ''; })()}
 
             <!-- Tabela serij -->
             <table class="wui-set-table">
@@ -1391,7 +1426,7 @@
                   <th style="width: 52px;">PREJ.</th>
                   <th>KG</th>
                   <th>PON</th>
-                  <th style="width: 38px;">RIR</th>
+                  <th style="width: 38px;">${isRpe ? 'RPE' : 'RIR'}</th>
                   <th style="width: 44px;">✓</th>
                   <th style="width: 40px;"></th>
                 </tr>
@@ -1427,7 +1462,7 @@
                 <input type="number" step="1" inputmode="numeric" class="wui-input" value="${s.reps !== null && s.reps !== undefined ? s.reps : ''}" placeholder="${placeholderReps}" oninput="WorkoutUI.onSetRepsChange(${exIdx}, ${sIdx}, this.value)">
               </td>
               <td>
-                <input type="number" step="1" inputmode="numeric" class="wui-input" style="max-width: 38px; padding: 8px 0;" value="${s.rir !== null && s.rir !== undefined ? s.rir : ''}" placeholder="${placeholderRir}" oninput="WorkoutUI.onSetRirChange(${exIdx}, ${sIdx}, this.value)">
+                <input type="number" step="${isRpe ? '0.5' : '1'}" inputmode="${isRpe ? 'decimal' : 'numeric'}" class="wui-input" style="max-width: 38px; padding: 8px 0;" value="${isRpe ? (s.rpe != null ? s.rpe : '') : (s.rir != null ? s.rir : '')}" placeholder="${isRpe ? (prevSet && prevSet.rpe != null ? prevSet.rpe : '8') : placeholderRir}" oninput="WorkoutUI.${isRpe ? 'onSetRpeChange' : 'onSetRirChange'}(${exIdx}, ${sIdx}, this.value)">
               </td>
               <td>
                 <button type="button" class="wui-check-btn" aria-label="Označi kot opravljeno" onclick="WorkoutUI.toggleSetDone(${exIdx}, ${sIdx})" title="Označi kot opravljeno">✓</button>
@@ -1458,6 +1493,214 @@
     `;
 
     sheet.innerHTML = html;
+  }
+
+  // ========== POMOŽNE: ČIŠČENJE SERIJ, PREDLOG, ŽIVI PR, SUPERSET, WAKE LOCK, CSV ==========
+
+  const fmtNum = v => String(Math.round(Number(v) * 100) / 100).replace('.', ',');
+
+  /** Odstrani serije, ki niso označene opravljene, ali nimajo ne kg ne ponovitev. */
+  function pruneIncompleteSets(workout) {
+    let removed = 0;
+    const exercises = [];
+    for (const ex of (workout && workout.exercises) || []) {
+      const keep = (ex.sets || []).filter(s => {
+        const noW = s.w === null || s.w === undefined || s.w === '';
+        const noReps = s.reps === null || s.reps === undefined || s.reps === '';
+        const good = !!s.done && !(noW && noReps);
+        if (!good) removed++;
+        return good;
+      });
+      if (keep.length) exercises.push(Object.assign({}, ex, { sets: keep }));
+    }
+    return { workout: Object.assign({}, workout, { exercises }), removed };
+  }
+
+  /** Predlog iz WorkoutEngine.suggestNext; null, če za vajo ni zgodovine. */
+  function suggestionFor(exId) {
+    const eng = getEngine();
+    if (!eng || typeof eng.suggestNext !== 'function') return null;
+    try { return eng.suggestNext(exId, getWorkouts(), { db: cachedDb }); } catch (e) { return null; }
+  }
+
+  function suggestionLabel(sg) {
+    if (!sg) return '';
+    const reps = sg.reps != null ? sg.reps : '';
+    return Number(sg.w) > 0 ? `${fmtNum(sg.w)} kg x ${reps}` : `${reps} pon.`;
+  }
+
+  /** 1-klik prenos predloga v prvo neopravljeno serijo (če ni nobene, doda novo). */
+  function applySuggestion(exIdx) {
+    if (!activeWorkout || !activeWorkout.exercises[exIdx]) return;
+    const ex = activeWorkout.exercises[exIdx];
+    const sg = suggestionFor(ex.exId);
+    if (!sg) return;
+    ex.sets = ex.sets || [];
+    let target = ex.sets.find(s => !s.done);
+    if (!target) {
+      target = { w: null, reps: null, rir: null, type: 'normal', done: false };
+      ex.sets.push(target);
+    }
+    if (sg.w != null) target.w = Number(sg.w);
+    if (sg.reps != null) target.reps = Number(sg.reps);
+    saveActiveDraft(activeWorkout);
+    renderActiveWorkoutBody();
+    toast(`Predlog prenesen: ${suggestionLabel(sg)}`);
+  }
+
+  function prLabel(p) {
+    if (p.kind === 'weight') return `teža ${fmtNum(p.value)} kg`;
+    if (p.kind === 'e1rm') return `e1RM ${fmtNum(p.value)} kg`;
+    if (p.kind === 'volume') return `volumen ${fmtNum(p.value)} kg`;
+    if (p.kind === 'reps@weight') return `${p.value} pon. pri ${fmtNum(p.weight)} kg`;
+    return String(p.kind);
+  }
+
+  /** PR-ji, ki jih ta serija prinese glede na zgodovino in prej opravljene serije iste vaje. */
+  function liveSetPRs(exId, setObj) {
+    const eng = getEngine();
+    if (!eng || typeof eng.detectPRs !== 'function' || !activeWorkout) return [];
+    const history = getWorkouts();
+    if (!history.some(h => (h.exercises || []).some(e => e.exId === exId))) return [];
+    const ex = activeWorkout.exercises.find(e => e.exId === exId);
+    const name = ex ? ex.name : exId;
+    const others = ((ex && ex.sets) || []).filter(s => s !== setObj && s.done && s.type !== 'warmup');
+    const prevWorkout = { id: 'live-prev', start: activeWorkout.start - 1, exercises: [{ exId, name, sets: others }] };
+    const cur = { id: 'live', start: activeWorkout.start, exercises: [{ exId, name, sets: [setObj] }] };
+    try { return eng.detectPRs(cur, [...history, prevWorkout], cachedDb) || []; } catch (e) { return []; }
+  }
+
+  /** Superset: počitek se zažene šele, ko so pri tem krogu opravljene vse vaje superseta. */
+  function supersetRoundDone(ex, sIdx) {
+    if (!ex.supersetId || !activeWorkout) return true;
+    const group = activeWorkout.exercises.filter(e => e.supersetId && e.supersetId === ex.supersetId);
+    return group.every(e => !e.sets[sIdx] || !!e.sets[sIdx].done);
+  }
+
+  // Wake Lock: zaslon ostane prižgan med aktivnim treningom
+  async function requestWakeLock() {
+    wantWakeLock = true;
+    try {
+      if (typeof navigator === 'undefined' || !navigator.wakeLock) return;
+      if (wakeRequesting || (wakeLockSentinel && !wakeLockSentinel.released)) return;
+      wakeRequesting = true;
+      wakeLockSentinel = await navigator.wakeLock.request('screen');
+      if (wakeLockSentinel && typeof wakeLockSentinel.addEventListener === 'function') {
+        wakeLockSentinel.addEventListener('release', () => { wakeLockSentinel = null; });
+      }
+    } catch (e) {
+      wakeLockSentinel = null;
+    } finally {
+      wakeRequesting = false;
+    }
+  }
+
+  function releaseWakeLock() {
+    wantWakeLock = false;
+    try {
+      if (wakeLockSentinel) {
+        const p = wakeLockSentinel.release();
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+      }
+    } catch (e) {}
+    wakeLockSentinel = null;
+  }
+
+  // CSV: izvoz (Hevy-kompatibilen) in uvoz (Hevy/Strong) prek workout-io.js
+  function getIO() {
+    if (typeof window !== 'undefined' && window.WorkoutIO) return window.WorkoutIO;
+    if (typeof require !== 'undefined') {
+      try { return require('./workout-io.js'); } catch (e) {}
+    }
+    return null;
+  }
+
+  function downloadBlob(blob, fname) {
+    try {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fname;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+      toast(`📤 Izvoženo: ${fname}`);
+    } catch (e) {
+      toast('Izvoz ni uspel: ' + e.message);
+    }
+  }
+
+  /** Izvoz: na napravah z navigator.share (iOS) odpre deljenje datoteke, sicer prenese. */
+  function exportCsvFile() {
+    const io = getIO();
+    const history = getWorkouts();
+    if (!io || !history.length) { toast('Ni treningov za izvoz.'); return; }
+    const csv = io.exportCsv(history);
+    const fname = `bine-trening-${new Date().toISOString().slice(0, 10)}.csv`;
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+    try {
+      const file = typeof File === 'function' ? new File([blob], fname, { type: 'text/csv' }) : null;
+      if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: 'Trening CSV' })
+          .catch(err => { if (!err || err.name !== 'AbortError') downloadBlob(blob, fname); });
+        return;
+      }
+    } catch (e) { /* brez navigator.share – prenos */ }
+    downloadBlob(blob, fname);
+  }
+
+  /** Uvoz: <input type=file> → WorkoutIO.importCsv (Hevy ali Strong), dedupe po id. */
+  function importCsvFile() {
+    if (typeof document === 'undefined') return;
+    let inp = document.getElementById('wuiCsvFileInput');
+    if (!inp) {
+      inp = document.createElement('input');
+      inp.type = 'file';
+      inp.id = 'wuiCsvFileInput';
+      inp.accept = '.csv,text/csv';
+      inp.style.display = 'none';
+      inp.addEventListener('change', () => {
+        const f = inp.files && inp.files[0];
+        inp.value = '';
+        if (f) readAndImportCsv(f);
+      });
+      document.body.appendChild(inp);
+    }
+    inp.click();
+  }
+
+  function readAndImportCsv(file) {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const io = getIO();
+        if (!io) throw new Error('modul za CSV ni naložen');
+        await ensureExerciseDb().catch(() => null);
+        const matchMod = (typeof window !== 'undefined' && window.ExerciseMatch) || root.ExerciseMatch || null;
+        const matcher = matchMod && typeof matchMod.isLoaded === 'function' && matchMod.isLoaded() ? matchMod : null;
+        const parsed = io.importCsv(String(reader.result || ''), matcher, { unit: getSettings().unit });
+        if (!parsed.length) {
+          toast('V datoteki ni prepoznanih treningov (pričakovan Hevy ali Strong CSV).');
+          return;
+        }
+        const current = getWorkouts();
+        const ids = new Set(current.map(w => w.id));
+        let added = 0;
+        for (const w of parsed) {
+          if (!ids.has(w.id)) { current.push(w); ids.add(w.id); added++; }
+        }
+        current.sort((a, b) => (b.start || new Date(b.date).getTime()) - (a.start || new Date(a.date).getTime()));
+        saveWorkouts(current);
+        renderDashboard();
+        renderBodyMapColors();
+        toast(`📥 Uvoženih ${added} novih treningov (${parsed.length - added} je že bilo).`);
+      } catch (e) {
+        toast('CSV uvoz ni uspel: ' + e.message);
+      }
+    };
+    reader.onerror = () => toast('Datoteke ni mogoče prebrati.');
+    reader.readAsText(file, 'utf-8');
   }
 
   // ========== DOGODKI V AKTIVNEM TRENINGU ==========
@@ -1521,6 +1764,7 @@
       source: 'manual'
     };
 
+    livePrs = {};
     saveActiveDraft(activeWorkout);
     renderDashboard();
     openActiveModal();
@@ -1530,6 +1774,8 @@
     if (!skipConfirm && !confirm('Ali res želite zavreči trenutni aktivni trening?')) return;
     activeWorkout = null;
     saveActiveDraft(null);
+    releaseWakeLock();
+    livePrs = {};
     closeActiveModal();
     skipRestTimer();
     renderDashboard();
@@ -1545,6 +1791,22 @@
   function onExerciseNoteChange(exIdx, val) {
     if (!activeWorkout || !activeWorkout.exercises[exIdx]) return;
     activeWorkout.exercises[exIdx].note = val;
+    saveActiveDraft(activeWorkout);
+  }
+
+  function onSetRpeChange(exIdx, sIdx, val) {
+    if (!activeWorkout || !activeWorkout.exercises[exIdx]) return;
+    const s = activeWorkout.exercises[exIdx].sets[sIdx];
+    if (!s) return;
+    const n = val !== '' ? parseFloat(val) : NaN;
+    s.rpe = isNaN(n) ? null : n;
+    saveActiveDraft(activeWorkout);
+  }
+
+  function onExerciseRestChange(exIdx, val) {
+    if (!activeWorkout || !activeWorkout.exercises[exIdx]) return;
+    const n = parseInt(val, 10);
+    activeWorkout.exercises[exIdx].restSec = n > 0 ? n : undefined;
     saveActiveDraft(activeWorkout);
   }
 
@@ -1599,9 +1861,18 @@
       s.done = true;
       if (!s.ts) s.ts = Date.now();
 
-      // Sproži avtomatski odštevalnik počitka
-      const restSec = ex.restSec || getSettings().restDefaultSec;
-      startRestTimer(restSec, ex.name);
+      // Živi PR glede na zgodovino in prej opravljene serije te vaje
+      const livePr = liveSetPRs(ex.exId, s);
+      if (livePr.length) {
+        livePrs[ex.exId] = livePr.map(prLabel);
+        toast(`🏆 Nov osebni rekord: ${ex.name} (${livePrs[ex.exId].join(', ')})`);
+      }
+
+      // Odštevalnik počitka; pri superset-u šele, ko so vse vaje tega kroga opravljene
+      if (supersetRoundDone(ex, sIdx)) {
+        const restSec = ex.restSec || getSettings().restDefaultSec;
+        startRestTimer(restSec, ex.name);
+      }
     } else {
       s.done = false;
     }
@@ -1618,6 +1889,7 @@
       w: lastSet ? lastSet.w : null,
       reps: lastSet ? lastSet.reps : null,
       rir: lastSet ? lastSet.rir : null,
+      rpe: lastSet && lastSet.rpe != null ? lastSet.rpe : null,
       type: 'normal',
       done: false
     });
@@ -2128,6 +2400,16 @@
       </div>
     `;
 
+    // Opozorilo o serijah, ki bodo ob shranjevanju odstranjene
+    const pruneInfo = pruneIncompleteSets(activeWorkout);
+    if (pruneInfo.removed > 0) {
+      html += `
+        <div style="background: rgba(255, 159, 10, 0.15); border: 1px solid var(--rec-yellow); border-radius: 10px; padding: 10px; font-size: 0.8rem; color: #fff;">
+          ⚠️ Ob shranjevanju bo odstranjenih nedokončanih ali praznih serij: <b>${pruneInfo.removed}</b>.
+        </div>
+      `;
+    }
+
     // Opombe treninga
     html += `
       <div>
@@ -2155,9 +2437,12 @@
     const notesEl = typeof document !== 'undefined' ? document.getElementById('wuiSummaryNotes') : null;
     if (notesEl) activeWorkout.notes = notesEl.value.trim();
 
-    activeWorkout.end = Date.now();
+    const pruned = pruneIncompleteSets(activeWorkout);
+    const finished = Object.assign({}, pruned.workout, { end: Date.now() });
     const history = getWorkouts();
-    history.unshift(activeWorkout);
+    history.unshift(finished);
+    livePrs = {};
+    releaseWakeLock();
     saveWorkouts(history);
 
     // Počisti aktivni trening
@@ -2170,7 +2455,8 @@
     renderDashboard();
     renderBodyMapColors();
 
-    toast('🎉 Trening uspešno zabeležen in shranjen v dnevnik! Odlično opravljeno! 🏆');
+    const doneMsg = '🎉 Trening uspešno zabeležen in shranjen v dnevnik! Odlično opravljeno! 🏆';
+    toast(pruned.removed ? doneMsg + ` Odstranjenih nedokončanih serij: ${pruned.removed}.` : doneMsg);
   }
 
   // ========== PODROBNOSTI ZAKLJUČENEGA TRENINGA (DETAIL) ==========
@@ -2509,6 +2795,7 @@
     document.getElementById('wuiSettingBar').value = s.barKg;
     document.getElementById('wuiSettingPlates').value = (s.plates || []).join(', ');
     document.getElementById('wuiSettingRest').value = s.restDefaultSec;
+    document.getElementById('wuiSettingIntensity').value = s.intensityMode === 'rpe' ? 'rpe' : 'rir';
   }
 
   function closeSettingsModal() {
@@ -2529,6 +2816,7 @@
     s.barKg = bar;
     s.plates = plates.length ? plates : [25, 20, 15, 10, 5, 2.5, 1.25];
     s.restDefaultSec = rest;
+    s.intensityMode = document.getElementById('wuiSettingIntensity')?.value === 'rpe' ? 'rpe' : 'rir';
     saveSettings(s);
     closeSettingsModal();
     toast('✅ Nastavitve treninga shranjene.');
@@ -2760,7 +3048,15 @@
     closeTemplateModal,
     pickTemplate,
     importGoogleHealthWorkouts,
-    toggleHistoryExpanded
+    toggleHistoryExpanded,
+    exportCsvFile,
+    importCsvFile,
+    applySuggestion,
+    onSetRpeChange,
+    onExerciseRestChange,
+    pruneIncompleteSets,
+    requestWakeLock,
+    releaseWakeLock
   };
 
   // UMD izvoz
