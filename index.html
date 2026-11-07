@@ -3128,21 +3128,43 @@
       }
     }
 
+    let vaultLoadingPromise = null;
+    function ensureVaultLoaded() {
+      if (vaultStore && vaultStore.snovi && vaultStore.snovi.length > 0) {
+        return Promise.resolve(vaultStore);
+      }
+      if (!vaultLoadingPromise) {
+        const grid = document.getElementById('vaultGrid');
+        if (grid && (!grid.children || grid.children.length === 0)) {
+          grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 36px 16px; color: var(--text-3); font-size: 0.85rem;">⏳ Nalagam bazo znanja...</div>';
+        }
+        vaultLoadingPromise = fetch('./baza-znanja-vault.json')
+          .then(res => {
+            if (!res.ok) throw new Error('baza-znanja-vault.json ' + res.status);
+            return res.json();
+          })
+          .then(data => {
+            vaultStore = data || { snovi: [], trditve: [] };
+            renderVaultCategories();
+            applyVaultFilters();
+            return vaultStore;
+          })
+          .catch(e => {
+            console.warn('Lokalni fallback za vault', e);
+            vaultLoadingPromise = null;
+            return vaultStore;
+          });
+      }
+      return vaultLoadingPromise;
+    }
+
     async function initApp() {
       loadUserProtocols();
-      try {
-        const res = await fetch('./baza-znanja-vault.json');
-        vaultStore = await res.json();
-      } catch (e) {
-        console.warn('Lokalni fallback');
-      }
-
       renderDanesSlots();
       handleCikelSliders();
       runVermeulen();
       updatePortoCard();
       renderVaultCategories();
-      renderVaultCards(vaultStore.snovi || []);
       checkInteractions();
       loadDanesVnos();
       loadBloodworkVnos();
@@ -3163,6 +3185,7 @@
       if (view) view.classList.add('active');
       if (id === 'danes' && window.ProtocolDiaryUI) window.ProtocolDiaryUI.renderTodayWidget();
       if (id === 'prehrana' && typeof renderPrehranaView === 'function') renderPrehranaView();
+      if (id === 'vault') ensureVaultLoaded();
       if (id === 'cikel' && window.CikelPlan) window.CikelPlan.render();
       if (id === 'trening') {
         renderBodyMap();
