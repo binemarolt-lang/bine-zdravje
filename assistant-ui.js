@@ -363,7 +363,8 @@
     var dose = num(a.dose);
     if (!substance || dose === null) return fail('Manjkajo podatki o protokolu.');
     var slots = PD.TIMING_SLOTS || {};
-    var slot = a.slot && Object.prototype.hasOwnProperty.call(slots, a.slot) ? a.slot : 'CUSTOM';
+    var slotKey = typeof a.slot === 'string' ? a.slot.trim().toUpperCase().replace(/[\s-]+/g, '_') : '';
+    var slot = Object.prototype.hasOwnProperty.call(slots, slotKey) ? slotKey : 'CUSTOM';
     var unit = str(a.unit, 20) || 'mg';
     PD.addEntry({ substance: substance, dose: String(dose), unit: unit, slot: slot, notes: '' });
     safe(function () { root.ProtocolDiaryUI.renderTodayWidget(); });
