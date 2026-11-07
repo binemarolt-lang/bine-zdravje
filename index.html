@@ -2030,6 +2030,17 @@
         </div>
       </div>
 
+      <!-- ZDRAVJE: informativna vrstica, graf teže, zgodovina tlaka, izvoz za zdravnika -->
+      <div class="card" id="danesZdravjeCard" style="border-top: 2px solid var(--strain-blue);">
+        <div id="danesMissing" style="font-size: 0.82rem; padding: 2px 0 8px; color: var(--text-2);"></div>
+        <div id="weightChartRoot" style="margin-bottom: 12px;"></div>
+        <div id="bpHistRoot" style="margin-bottom: 12px;"></div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <button type="button" class="btn" style="min-height: 44px; padding: 10px 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer;" onclick="DanesPodatki.exportDoctor('print')">🖨️ Izvozi povzetek za zdravnika</button>
+          <button type="button" class="btn secondary" style="min-height: 44px; padding: 10px 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer;" onclick="DanesPodatki.exportDoctor('copy')">📋 Kopiraj povzetek</button>
+        </div>
+      </div>
+
     </div>
 
     <!-- ZAVIHEK 2: CIKEL & FARMAKOKINETIKA -->
@@ -2456,6 +2467,11 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- TREND IZVIDOV (zgodovina v bine_zdravje_bloodwork_history_v1) -->
+      <div class="card" id="bwTrendCard">
+        <div id="bwTrendRoot"></div>
       </div>
 
     </div>
@@ -4163,6 +4179,8 @@
         if (typeof renderPrehranaView === 'function') renderPrehranaView();
       }
       loadDanesVnos();
+      if (window.BpVision && BpVision.syncManual) { try { BpVision.syncManual(tlak); } catch (e) { console.error(e); } }
+      if (window.DanesPodatki && DanesPodatki.renderDanes) { try { DanesPodatki.renderDanes(); } catch (e) { console.error(e); } }
       
       const toast = document.getElementById('mascotToast');
       const toastText = document.getElementById('mascotToastText');
@@ -4479,6 +4497,7 @@
       const bw = { hct, e2, totalT, shbg, apob, ggt, creat, ast, alt, datum: new Date().toISOString().split('T')[0] };
       saveToLocalStorageSafe('bine_zdravje_bloodwork_data', JSON.stringify(bw));
       applyBloodworkValues(bw);
+      if (window.CikelPlan && CikelPlan.appendBloodwork) { try { CikelPlan.appendBloodwork(bw); } catch (e) { console.error(e); } }
 
       document.getElementById('vermT').value = totalT;
       document.getElementById('vermSHBG').value = shbg;
