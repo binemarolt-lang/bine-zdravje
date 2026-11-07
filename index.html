@@ -1923,6 +1923,18 @@
       <!-- INTERAKCIJSKA OPOZORILA V ŽIVO -->
       <div id="liveAlertsContainer"></div>
 
+      <!-- TRENDI 7/30 DNI (HRV, RHR, SPANJE Z OSNOVNIM PASOM) -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📈 Fiziološki Trendi (HRV · RHR · Spanje)</div>
+          <div style="display: flex; gap: 4px;">
+            <button type="button" class="trendi-btn status-pill" data-dni="7" onclick="DanesPodatki.setTrendiDni(7)" style="cursor: pointer; min-height: 36px; padding: 4px 10px;">7 dni</button>
+            <button type="button" class="trendi-btn status-pill" data-dni="30" onclick="DanesPodatki.setTrendiDni(30)" style="cursor: pointer; min-height: 36px; padding: 4px 10px;">30 dni</button>
+          </div>
+        </div>
+        <div id="danesTrendiRoot"></div>
+      </div>
+
       <!-- HYPNOGRAM SPANJA -->
       <div class="card">
         <div class="card-header">
