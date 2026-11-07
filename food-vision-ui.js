@@ -299,15 +299,25 @@
   }
 
   function itemFromAI(ai) {
-    const it = { name: ai.name, grams: ai.grams || 100, confidence: ai.confidence, est: ai.per100g, estFromAI: true, match: null, candidates: [] };
+    const verified = !!ai.verified;
+    const it = {
+      name: ai.name, grams: ai.grams || 100, confidence: ai.confidence,
+      est: ai.per100g, aiEst: ai.ai_per100g || ai.per100g,
+      estFromAI: !verified, match: null, candidates: [],
+      source: ai.source || 'ai', verified, offName: ai.off_name || '',
+      packaged: !!ai.packaged, brand: ai.brand || '', barcode: ai.barcode || null
+    };
     const res = FoodMatch.bestMatch({ usda_query: ai.usda_query, name_en: ai.name_en, name: ai.name, per100g: ai.per100g });
     if (res && res.best) {
-      // Če baza da energijsko povsem drugačno živilo kot AI ocena, raje zaupaj AI oceni.
-      const kc = FoodMatch.per100(res.best.index).calories || 0;
-      const est = Number(ai.per100g && ai.per100g.kcal) || 0;
-      const ratio = est > 0 && kc > 0 ? Math.min(kc, est) / Math.max(kc, est) : 1;
       it.candidates = res.candidates.slice(0, 8);
-      if (ratio >= 0.7) it.match = { index: res.best.index, name: res.best.name };
+      // Potrjenih vrednosti (embalaža / OFF) USDA ne prepiše.
+      if (!verified) {
+        // Če baza da energijsko povsem drugačno živilo kot AI ocena, raje zaupaj AI oceni.
+        const kc = FoodMatch.per100(res.best.index).calories || 0;
+        const est = Number(ai.per100g && ai.per100g.kcal) || 0;
+        const ratio = est > 0 && kc > 0 ? Math.min(kc, est) / Math.max(kc, est) : 1;
+        if (ratio >= 0.7) it.match = { index: res.best.index, name: res.best.name };
+      }
     }
     computeItem(it);
     return it;
@@ -608,6 +618,8 @@
       const n = it.nutr || {};
       const opts = (it.candidates || []).map(c => `<option value="${c.index}" ${it.match && it.match.index === c.index ? 'selected' : ''}>${esc(c.name.slice(0, 70))}</option>`).join('');
       const conf = it.confidence != null ? `<span class="fv-conf" style="color:${it.confidence >= 0.75 ? 'var(--rec-green)' : it.confidence >= 0.5 ? 'var(--rec-yellow)' : 'var(--rec-red)'}">${Math.round(it.confidence * 100)} %</span>` : '';
+      const scanBtn = it.packaged ? `<button type="button" class="fv-scan" onclick="FoodVision.scanBarcode(${i})" style="background:none;border:1px solid var(--edge-2);border-radius:6px;color:var(--text-2);font-size:.66rem;padding:2px 6px;cursor:pointer">📷 Skeniraj črtno kodo</button>` : '';
+      const srcLine = `<div class="fv-src-line" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${sourceBadge(it)}${scanBtn}</div>`;
       return `
       <div class="fv-item" data-i="${i}">
         <div class="fv-row">
@@ -615,6 +627,7 @@
           <input class="fv-grams" type="number" inputmode="decimal" value="${it.grams}" oninput="FoodVision.onGrams(${i}, this.value)"><span style="font-size:.7rem;color:var(--text-3)">g</span>
           <button class="fv-del" onclick="FoodVision.remove(${i})" title="Odstrani">✕</button>
         </div>
+        ${srcLine}
         <div class="fv-match">${conf}
           ${it.match ? `<span>USDA:</span><select onchange="FoodVision.pick(${i}, this.value)">${opts}</select>` : `<span style="color:var(--rec-yellow)">Ni zadetka v bazi — uporabljena ocena AI. Popravi ime.</span>`}
         </div>
