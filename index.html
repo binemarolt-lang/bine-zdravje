@@ -2462,14 +2462,14 @@
         <div class="card-header">
           <div class="card-title">🏋️ Anatomski Body Map & Regeneracija</div>
           <div style="display: flex; gap: 4px;">
-            <button class="status-pill active" id="btnBodyAnt" onclick="setBodyMapView('anterior')">Spredaj</button>
-            <button class="status-pill" id="btnBodyPost" onclick="setBodyMapView('posterior')">Zadaj</button>
+            <button class="status-pill active" id="btnBodyAnt" style="min-height: 44px; min-width: 44px;" onclick="setBodyMapView('anterior')">Spredaj</button>
+            <button class="status-pill" id="btnBodyPost" style="min-height: 44px; min-width: 44px;" onclick="setBodyMapView('posterior')">Zadaj</button>
           </div>
         </div>
 
         <div style="display: flex; gap: 16px; align-items: center; justify-content: center; flex-wrap: wrap; margin: 12px 0;">
           <!-- SVG Body Model Container -->
-          <div style="width: 220px; height: 380px; background: var(--surface-2); border: 1px solid var(--edge-1); border-radius: 12px; padding: 10px; display: flex; align-items: center; justify-content: center;">
+          <div style="width: 100%; max-width: 300px; height: 520px; background: var(--surface-2); border: 1px solid var(--edge-1); border-radius: 12px; padding: 10px; display: flex; align-items: center; justify-content: center;">
             <svg id="bodyMapSvg" viewBox="0 0 1000 2200" style="width: 100%; height: 100%; filter: drop-shadow(0 0 12px rgba(48, 209, 88, 0.15));"></svg>
           </div>
 
@@ -2991,10 +2991,14 @@
       if (setsEl) setsEl.textContent = curSets;
 
       if (listEl) {
-        const exs = muscleExercises[m] || [
-          { name: `Aktivacijska vaja za ${muscleTranslations[m] || m}`, tag: 'Glavni gib' },
-          { name: 'Izolacijsko gibanje s škripcem ali ročkami', tag: 'Hipertrofija' }
-        ];
+        let exs = muscleExercises[m];
+        if (!exs) {
+          // Iz baze vaj: najpopularnejše vaje, kjer je mišica primarna
+          const pool = (window.WorkoutUI && window.WorkoutUI.getDb && window.WorkoutUI.getDb()?.exercises) || [];
+          exs = pool.filter(e => (e.pri || []).includes(m)).sort((a, b) => (b.pop || 0) - (a.pop || 0)).slice(0, 3)
+            .map(e => ({ name: e.sl || e.name, tag: e.eq || 'Vaja' }));
+          if (!exs.length) exs = [{ name: 'Za to mišico še ni priporočenih vaj', tag: '—' }];
+        }
         listEl.innerHTML = exs.map(e => `
           <div style="display: flex; justify-content: space-between; align-items: center; background: var(--surface-3); padding: 8px 12px; border-radius: 8px; font-size: 0.82rem;">
             <span>${e.name}</span>
