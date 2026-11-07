@@ -45,6 +45,10 @@
   var busy = false;
   var greeted = false;
   var syncQueued = false;
+  var attachBtn = null;
+  var DATE_WARN = 'Datum ni podprt, vnese se danes';
+  var DATED_TYPES = { log_food: true, log_weight: true, log_blood_pressure: true };
+  var SRC_NAMES = { label: 'etiketa', off_barcode: 'OpenFoodFacts', off_search: 'OpenFoodFacts', ai: 'ocena AI' };
 
   // ---------- pomožne ----------
   function $(id) { return document.getElementById(id); }
@@ -66,6 +70,14 @@
     var p = function (n) { return String(n).padStart(2, '0'); };
     return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
   }
+  function isoDaysAgo(n) { var d = new Date(); d.setDate(d.getDate() - n); return localDate(d); }
+  // Datum iz akcije: samo yyyy-mm-dd, ne prihodnji, ne starejši od 60 dni; sicer null.
+  function validDate(v) {
+    if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+    return (v <= localDate() && v >= isoDaysAgo(60)) ? v : null;
+  }
+  function foodMacrosUnknown(a) { return ['protein', 'carbs', 'fat'].some(function (k) { return num(a[k]) === null; }); }
+  function uniq(x, i, arr) { return arr.indexOf(x) === i; }
   function el(tag, cls, text) {
     var n = document.createElement(tag);
     if (cls) n.className = cls;
@@ -91,13 +103,79 @@
     };
   }
 
+  // Zadnji PR po vaji: nov rekord 1RM (Epley/WorkoutUI.estimate1RM) glede na prejšnje sete iste vaje.
+  function prsByExercise(workouts) {
+    var chron = workouts.slice().sort(function (a, b) {
+      var x = a.date || '', y = b.date || ''; return x < y ? -1 : x > y ? 1 : 0;
+    });
+    var best = {}, prs = {};
+    chron.forEach(function (w) {
+      (w.exercises || []).forEach(function (ex) {
+        var name = str(ex && ex.name, 60);
+        if (!name) return;
+        (ex.sets || []).forEach(function (s) {
+          if (!s || s.done === false) return;
+          var reps = num(s.reps), kg = num(s.w);
+          if (reps === null || reps < 1 || kg === null || kg <= 0) return;
+          var e = num(safe(function () { return root.WorkoutUI.estimate1RM(kg, reps, num(s.rir) || 0); }, null));
+          if (e === null) return;
+          if (best[name] !== undefined && e > best[name] + 1e-9) {
+            prs[name] = { vaja: name, datum: w.date || null, kg: kg, reps: reps, e1rm: Math.round(e * 10) / 10 };
+          }
+          if (best[name] === undefined || e > best[name]) best[name] = e;
+        });
+      });
+    });
+    return Object.keys(prs).map(function (k) { return prs[k]; })
+      .sort(function (a, b) { return a.datum < b.datum ? 1 : a.datum > b.datum ? -1 : 0; })
+      .slice(0, 5);
+  }
+
+  // Tedenski povzetek (zadnjih 7 dni, vključno z danes). Serij po mišici ni v shrambi brez exercise-db, zato ni.
+  function weekSummary(workouts) {
+    var cutoff = isoDaysAgo(6), today = localDate();
+    var ws = workouts.filter(function (w) { return w.date >= cutoff && w.date <= today; });
+    var sets = 0, vol = 0;
+    ws.forEach(function (w) {
+      (w.exercises || []).forEach(function (ex) {
+        (ex.sets || []).forEach(function (s) {
+          if (!s || s.done === false || s.type === 'warmup') return;
+          sets++;
+          var r = num(s.reps), kg = num(s.w);
+          if (r !== null && kg !== null) vol += r * kg;
+        });
+      });
+    });
+    var hist = ((root.prehranaState && root.prehranaState.weightHistory) || [])
+      .filter(function (h) { return h && h.date >= cutoff && h.date <= today; });
+    var kc = hist.map(function (h) { return num(h.caloriesIn); }).filter(function (x) { return x !== null && x > 0; });
+    return {
+      obdobje: cutoff + ' do ' + today,
+      treningi: ws.length,
+      serije: sets,
+      volumen_kg: Math.round(vol),
+      kcal_povprecje_dni_z_tezo: kc.length ? Math.round(kc.reduce(function (a, b) { return a + b; }, 0) / kc.length) : null,
+      kcal_dni_v_vzorcu: kc.length,
+      beljakovine_povprecje: null // ni shranjeno po dnevih (samo današnji obroki)
+    };
+  }
+
+  function weight14() {
+    var cutoff = isoDaysAgo(13);
+    return ((root.prehranaState && root.prehranaState.weightHistory) || [])
+      .filter(function (h) { return h && h.date >= cutoff; })
+      .slice(-14)
+      .map(function (h) { return { datum: h.date, kg: num(h.weightKg) }; });
+  }
+
   function buildContext() {
+    var workouts = safe(function () { return root.WorkoutUI.getWorkouts() || []; }, []);
     return {
       datum: localDate(),
       zavihek: safe(function () { return document.body.dataset.view || 'danes'; }, 'danes'),
-      zadnji_treningi: safe(function () {
-        return (root.WorkoutUI.getWorkouts() || []).slice(0, 5).map(compactWorkout);
-      }, []),
+      zadnji_treningi: workouts.slice(0, 5).map(compactWorkout),
+      tedenski_povzetek: safe(function () { return weekSummary(workouts); }, null),
+      zadnji_pr: safe(function () { return prsByExercise(workouts); }, []),
       hrana_danes: safe(function () {
         return ((root.prehranaState && root.prehranaState.meals) || []).map(function (m) {
           return { ime: m.name, kcal: m.calories, beljakovine: m.protein, ogljikovi: m.carbs, mascobe: m.fat, cas: m.time };
@@ -113,7 +191,8 @@
         var last = h.length ? h[h.length - 1] : null;
         return {
           trenutna_kg: ps.weightKg == null ? null : ps.weightKg,
-          zadnja_zapisana: last ? { datum: last.date, kg: last.weightKg } : null
+          zadnja_zapisana: last ? { datum: last.date, kg: last.weightKg } : null,
+          zadnjih_14_dni: weight14()
         };
       }, null),
       protokol_danes: safe(function () {
@@ -207,9 +286,12 @@
 
   function describeAction(a) {
     var d = { title: 'Predlog', lines: [], warn: null };
+    var today = localDate();
+    var warns = [];
     switch (a && a.type) {
       case 'log_workout':
         d.title = 'Trening: ' + (str(a.name, 80) || 'Trening');
+        if (a.date && a.date !== today) d.lines.push('Datum: ' + a.date);
         (a.exercises || []).forEach(function (ex) {
           var sets = (ex.sets || []).map(function (s) {
             return (s.w != null ? s.w + ' kg × ' : '') + s.reps + (s.rir != null ? ' (RIR ' + s.rir + ')' : '');
@@ -217,10 +299,15 @@
           d.lines.push(ex.name + ': ' + sets.join(', '));
         });
         break;
-      case 'log_food':
-        d.title = 'Obrok: ' + (a.meal_name || '');
-        d.lines.push(a.kcal + ' kcal · B ' + (a.protein || 0) + ' g · OH ' + (a.carbs || 0) + ' g · M ' + (a.fat || 0) + ' g');
+      case 'log_food': {
+        var unknown = foodMacrosUnknown(a);
+        d.title = (unknown ? 'Obrok (ocena): ' : 'Obrok: ') + (a.meal_name || '');
+        d.lines.push(a.kcal + ' kcal · ' + (unknown
+          ? 'makri: ocena, niso znani (ne zapišejo se kot 0)'
+          : 'B ' + (a.protein || 0) + ' g · OH ' + (a.carbs || 0) + ' g · M ' + (a.fat || 0) + ' g'));
+        if (a._source) d.lines.push(a._source);
         break;
+      }
       case 'log_blood_pressure':
         d.title = 'Krvni tlak';
         d.lines.push(a.sys + '/' + a.dia + ' mmHg' + (a.pulse != null ? ' · pulz ' + a.pulse : ''));
@@ -250,7 +337,10 @@
       default:
         d.title = 'Neznan predlog';
     }
-    if (!capability(a).ok) d.warn = UNS;
+    if (a && a.date && a.date !== today && DATED_TYPES[a.type]) warns.push(DATE_WARN);
+    if (d.warn) warns.unshift(d.warn);
+    if (!capability(a).ok) warns.push(UNS);
+    d.warn = warns.length ? warns.join(' · ') : null;
     return d;
   }
 
@@ -273,7 +363,7 @@
     var now = Date.now();
     var workout = {
       id: 'w_' + now,
-      date: localDate(),
+      date: validDate(a.date) || localDate(),
       start: now,
       end: now,
       name: str(a.name, 80) || 'Trening',
@@ -295,14 +385,26 @@
     var meal = str(a.meal_name, 80);
     var kcal = num(a.kcal);
     if (!meal || kcal === null) return fail('Manjkajo podatki o obroku.');
+    var unknown = foodMacrosUnknown(a);
     root.addPresetFood({
-      name: meal,
+      name: unknown ? meal + ' (ocena)' : meal,
       serving: '1 porcija',
       calories: kcal,
       protein: num(a.protein) || 0,
       carbs: num(a.carbs) || 0,
       fat: num(a.fat) || 0
     });
+    if (unknown) {
+      // addPresetFood zapiše 0 kjer ni vrednosti; neznane makre popravimo na null (v pomnilniku in shrambi).
+      safe(function () {
+        var list = root.prehranaState.meals;
+        var last = list[list.length - 1];
+        ['protein', 'carbs', 'fat'].forEach(function (k) { if (num(a[k]) === null) last[k] = null; });
+        localStorage.setItem('bine_zdravje_meals_v2', JSON.stringify(list));
+        if (typeof root.renderPrehranaView === 'function') root.renderPrehranaView();
+      });
+      return ok('Obrok dodan v Prehrano (makri niso znani, ocena).');
+    }
     return ok('Obrok dodan v Prehrano.');
   }
 
@@ -534,6 +636,116 @@
     }
   }
 
+  // ---------- POST z istim žetonom in endpointi (generično) ----------
+  async function postApi(path, body, timeoutMs) {
+    var token = getToken();
+    var eps = await endpointCandidates();
+    var lastErr = null;
+    for (var i = 0; i < eps.length; i++) {
+      var ctrl = new AbortController();
+      var to = setTimeout(function () { ctrl.abort(); }, timeoutMs);
+      try {
+        var r = await fetch(eps[i] + path, {
+          method: 'POST', signal: ctrl.signal,
+          headers: { 'Content-Type': 'application/json', 'X-Zdravje-Token': token },
+          body: JSON.stringify(body)
+        });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok) {
+          lastErr = new Error(j.error || ('HTTP ' + r.status));
+          lastErr.status = r.status;
+          if (r.status === 401) break;
+          continue;
+        }
+        return j;
+      } catch (e) {
+        lastErr = e.name === 'AbortError' ? new Error('Strežnik se ni odzval pravočasno.') : e;
+      } finally {
+        clearTimeout(to);
+      }
+    }
+    throw lastErr || new Error('Ni endpointa');
+  }
+
+  // Fotografija -> največ 1280 px, JPEG (manjši prenos; server sprejme do 6 MB).
+  function resizeImage(file, maxSide, quality) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var s = Math.min(1, maxSide / Math.max(img.width, img.height));
+          var c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round(img.width * s));
+          c.height = Math.max(1, Math.round(img.height * s));
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          resolve(c.toDataURL('image/jpeg', quality));
+        } catch (e) { reject(e); }
+        finally { URL.revokeObjectURL(url); }
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('Slike ni mogoče odpreti.')); };
+      img.src = url;
+    });
+  }
+
+  // Odgovor /api/food-photo -> akcija log_food (predlog; shrani se šele po Potrdi).
+  function photoToAction(j) {
+    var items = Array.isArray(j && j.items) ? j.items : [];
+    if (!items.length) return { empty: 'Na sliki ne vidim hrane.' };
+    var tot = { kcal: 0, protein: 0, carbs: 0, fat: 0 }, srcs = [], names = [];
+    items.forEach(function (it) {
+      var p = (it && it.per100g) || {}, f = (num(it && it.grams) || 0) / 100;
+      tot.kcal += (num(p.kcal) || 0) * f;
+      tot.protein += (num(p.protein) || 0) * f;
+      tot.carbs += (num(p.carbs) || 0) * f;
+      tot.fat += (num(p.fat) || 0) * f;
+      srcs.push((it && it.source) || 'ai');
+      names.push(str(it && it.name, 40));
+    });
+    if (tot.kcal <= 0) return { empty: 'Iz fotografije nisem dobil zanesljivih vrednosti. Vnesi obrok ročno.' };
+    var labels = srcs.filter(uniq).map(function (k) { return SRC_NAMES[k] || 'ocena'; }).filter(uniq);
+    var estimate = srcs.indexOf('ai') >= 0;
+    var r1 = function (x) { return Math.round(x * 10) / 10; };
+    return {
+      type: 'log_food',
+      meal_name: str(j.meal_name, 80) || names.filter(Boolean).join(', ').slice(0, 80) || 'Obrok s fotografije',
+      kcal: Math.round(tot.kcal),
+      protein: r1(tot.protein),
+      carbs: r1(tot.carbs),
+      fat: r1(tot.fat),
+      _source: 'Vir: fotografija · ' + labels.join(' + ') + (estimate ? ' (del vrednosti je ocena)' : '')
+    };
+  }
+
+  async function sendPhoto(file) {
+    if (busy) return;
+    if (!file || !/^image\//.test(file.type || '')) {
+      appendBubble('assistant', 'To ni slika.', { error: true });
+      return;
+    }
+    busy = true; sendBtn.disabled = true; attachBtn.disabled = true;
+    appendBubble('user', '📷 Fotografija hrane');
+    var typing = appendBubble('assistant', 'Prepoznavam hrano…', { typing: true });
+    try {
+      var dataUrl = await resizeImage(file, 1280, 0.85);
+      var j = await postApi('/api/food-photo', { image: dataUrl, note: '' }, 25000);
+      typing.remove();
+      var act = photoToAction(j);
+      if (act.empty) { appendBubble('assistant', act.empty); }
+      else {
+        appendBubble('assistant', 'Predlog iz fotografije. Preveri količine in potrdi ali zavrni.');
+        appendActionCard(act);
+      }
+    } catch (e) {
+      typing.remove();
+      var msg = e && e.status === 401 ? TOKEN_ERROR : (e && e.status ? e.message : FRIENDLY_ERROR);
+      appendBubble('assistant', msg, { error: true });
+    } finally {
+      busy = false; sendBtn.disabled = false; attachBtn.disabled = false;
+      scrollToBottom();
+    }
+  }
+
   // Gumb je skrit, ko je odprt kateri koli modal ali celozaslonski trening.
   function syncFab() {
     syncQueued = false;
@@ -599,6 +811,12 @@
       '.as-send { min-width: 72px; min-height: 44px; border-radius: 12px; border: none; background: var(--rec-green, #00E676);',
       '  color: #08090A; font-weight: 800; font-size: 0.92rem; cursor: pointer; font-family: inherit; }',
       '.as-send:disabled { opacity: 0.5; cursor: default; }',
+      '.as-icon { flex: 0 0 auto; min-width: 44px; min-height: 44px; border-radius: 12px; padding: 0; cursor: pointer;',
+      '  border: 1px solid var(--edge-2, rgba(255,255,255,0.10)); background: var(--surface-2, #14171A); color: var(--text-1, #F4F5F6);',
+      '  font-size: 1.1rem; touch-action: manipulation; }',
+      '.as-icon:disabled { opacity: 0.45; cursor: default; }',
+      '.as-icon.is-on { border-color: var(--rec-green, #00E676); box-shadow: 0 0 10px var(--rec-green-glow, rgba(0,230,118,0.22)); }',
+      '.as-card-src { font-size: 0.78rem; color: var(--text-2, #A1A7B0); margin-top: 4px; overflow-wrap: anywhere; }',
       '@media (min-width: 641px) {',
       '  #assistantSheet.assistant-overlay { align-items: center; padding: 24px 16px; }',
       '  .assistant-sheet { height: 85dvh !important; max-height: 85dvh !important; max-width: 500px !important;',
@@ -646,6 +864,61 @@
     inputEl.setAttribute('enterkeyhint', 'send');
     sendBtn = el('button', 'as-send', 'Pošlji');
     sendBtn.type = 'submit';
+    attachBtn = el('button', 'as-icon as-attach', '📷');
+    attachBtn.type = 'button';
+    attachBtn.setAttribute('aria-label', 'Priloži fotografijo hrane');
+    attachBtn.title = 'Fotografija hrane';
+    var fileInput = el('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.id = 'assistantPhotoInput';
+    fileInput.style.display = 'none';
+    attachBtn.addEventListener('click', function () { fileInput.click(); });
+    fileInput.addEventListener('change', function () {
+      var f = fileInput.files && fileInput.files[0];
+      fileInput.value = '';
+      if (f) sendPhoto(f);
+    });
+    form.appendChild(attachBtn);
+    form.appendChild(fileInput);
+
+    // Govorni vnos: samo če brskalnik podpira Web Speech API (sicer gumba ni).
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SR) {
+      var micBtn = el('button', 'as-icon as-mic', '🎤');
+      micBtn.type = 'button';
+      micBtn.setAttribute('aria-label', 'Govorni vnos');
+      micBtn.setAttribute('aria-pressed', 'false');
+      var rec = null, listening = false;
+      var stopListening = function () {
+        listening = false;
+        micBtn.classList.remove('is-on');
+        micBtn.setAttribute('aria-pressed', 'false');
+      };
+      micBtn.addEventListener('click', function () {
+        if (listening) { try { rec && rec.stop(); } catch (e) { stopListening(); } return; }
+        try { rec = new SR(); } catch (e) { return; }
+        rec.lang = 'sl-SI';
+        rec.interimResults = false;
+        rec.continuous = false;
+        rec.maxAlternatives = 1;
+        rec.onresult = function (ev) {
+          var t = ev.results && ev.results[0] && ev.results[0][0] ? String(ev.results[0][0].transcript || '').trim() : '';
+          if (t) {
+            inputEl.value = (inputEl.value ? inputEl.value + ' ' : '') + t;
+            autosize();
+          }
+        };
+        rec.onend = stopListening;
+        rec.onerror = stopListening;
+        listening = true;
+        micBtn.classList.add('is-on');
+        micBtn.setAttribute('aria-pressed', 'true');
+        try { rec.start(); } catch (e) { stopListening(); }
+      });
+      form.appendChild(micBtn);
+    }
+
     form.appendChild(inputEl);
     form.appendChild(sendBtn);
 
