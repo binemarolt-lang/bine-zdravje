@@ -2125,6 +2125,16 @@
     <!-- ZAVIHEK 3: PREHRANA & KIWI & TDEE -->
         <!-- ZAVIHEK 3: PREHRANA & KIWI & TDEE -->
     <div id="view-prehrana" class="view">
+      <!-- 📅 IZBRAN DAN: obroki, seštevki, cilji in voda se računajo za ta dan -->
+      <div class="card" style="padding: 10px 12px;">
+        <div id="prehranaDayLabel" style="text-align: center; font-size: 0.92rem; font-weight: 800; color: #fff; line-height: 1.3;">Danes</div>
+        <div id="prehranaDayIso" style="text-align: center; font-size: 0.7rem; color: var(--text-3); margin: 2px 0 8px;"></div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px;">
+          <button type="button" class="btn secondary" style="padding: 10px 4px; font-size: 0.8rem;" onclick="prehranaShiftDay(-1)">‹ Prejšnji</button>
+          <button type="button" class="btn" style="padding: 10px 4px; font-size: 0.8rem;" onclick="prehranaGoToday()">Danes</button>
+          <button type="button" class="btn secondary" style="padding: 10px 4px; font-size: 0.8rem;" onclick="prehranaShiftDay(1)">Naslednji ›</button>
+        </div>
+      </div>
       
       <!-- ⚡ MacroFactor Dinamični TDEE & Coaching Barometer -->
       <div class="card" style="border-top: 2px solid var(--rec-green);">
@@ -2234,6 +2244,14 @@
           </button>
         </div>
 
+        <!-- Kopiranje dneva in shranjeni obroki -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
+          <button type="button" class="btn secondary" style="padding: 10px; font-size: 0.82rem;" onclick="copyYesterdayMeals()">📋 Kopiraj včerajšnji dan</button>
+          <button type="button" class="btn secondary" style="padding: 10px; font-size: 0.82rem;" onclick="saveDayAsMeal()">💾 Shrani kot obrok</button>
+        </div>
+        <button type="button" class="btn secondary" style="width: 100%; padding: 10px; font-size: 0.82rem; margin-top: 8px;" onclick="toggleSavedMealsList()">📚 Dodaj shranjen obrok</button>
+        <div id="savedMealsBox" style="display: none; margin-top: 8px;"></div>
+
         <!-- Predpripravljeni obroki (1-klik vnos) -->
         <div style="margin-top: 10px;">
           <div style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">
@@ -2244,15 +2262,52 @@
           </div>
         </div>
 
+        <!-- Nedavna in pogosta živila: zadnjih 12 unikatnih iz zgodovine -->
+        <div style="margin-top: 10px;">
+          <div style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase; margin-bottom: 6px;">
+            Nedavna in pogosta živila:
+          </div>
+          <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;" id="recentFoodsChips"></div>
+        </div>
+
         <!-- Seznam vnesenih obrokov -->
         <div style="margin-top: 12px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-2); text-transform: uppercase;">Zaužiti obroki danes:</span>
-            <button type="button" class="btn secondary" style="font-size: 0.68rem; padding: 3px 8px;" onclick="clearAllMeals()">Počisti vse</button>
+            <span id="mealsDayTitle" style="font-size: 0.75rem; font-weight: 700; color: var(--text-2); text-transform: uppercase;">Zaužiti obroki danes:</span>
+            <button type="button" class="btn secondary" style="font-size: 0.68rem; padding: 3px 8px;" onclick="clearAllMeals()">Počisti dan</button>
           </div>
           <div id="mealEntriesList" style="display: flex; flex-direction: column; gap: 6px;">
             <!-- Seznam obrokov -->
           </div>
+        </div>
+      </div>
+
+      <!-- 💧 VODA PO DNEVIH, TEŽA NA PREHRANI, IZVOZ CSV -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">💧 Voda, teža & izvoz</div>
+          <span class="status-pill" id="waterBadge">0 / 3600 ml</span>
+        </div>
+        <div class="macro-progress-track">
+          <div class="macro-progress-fill" id="waterBar" style="width: 0%; background: var(--strain-blue);"></div>
+        </div>
+        <div style="font-size: 0.72rem; color: var(--text-3); margin: 6px 0 10px;" id="waterSub">Za izbrani dan</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <button type="button" class="btn secondary" style="padding: 10px; font-size: 0.85rem;" onclick="addWaterMl(250)">+250 ml</button>
+          <button type="button" class="btn secondary" style="padding: 10px; font-size: 0.85rem;" onclick="addWaterMl(500)">+500 ml</button>
+        </div>
+
+        <div style="margin-top: 14px;">
+          <label for="prehranaWeightInput" style="font-size: 0.75rem; font-weight: 700; color: var(--text-2);">Teža danes (kg)</label>
+          <div style="display: flex; gap: 6px; margin-top: 4px;">
+            <input type="number" inputmode="decimal" step="0.1" id="prehranaWeightInput" placeholder="npr. 81.2" style="flex: 1; min-width: 0; min-height: 44px; font-size: 16px; padding: 8px 10px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 8px; color: #fff; box-sizing: border-box;">
+            <button type="button" class="btn" style="padding: 0 14px;" onclick="prehranaSaveWeight()">Shrani</button>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px;">
+          <button type="button" class="btn secondary" style="padding: 10px; font-size: 0.82rem;" onclick="copyMealsCsv()">📋 Kopiraj CSV</button>
+          <button type="button" class="btn secondary" style="padding: 10px; font-size: 0.82rem;" onclick="downloadMealsCsv()">⬇️ Prenesi CSV</button>
         </div>
       </div>
 
@@ -2698,6 +2753,10 @@
           <input type="text" id="offSearchInput" placeholder="Vnesi ime ali črtno kodo (EAN-13)..." onkeydown="if(event.key==='Enter') executeOffSearch()" style="flex: 1; padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 8px; color: #fff; font-size: 0.82rem;">
           <button type="button" class="btn" style="padding: 8px 14px;" onclick="executeOffSearch()">Išči</button>
           <button type="button" class="btn secondary" title="Skeniraj s kamero" style="padding: 8px 12px;" onclick="toggleBarcodeCamera()">📷</button>
+        </div>
+
+        <div style="font-size: 0.7rem; color: var(--text-3); line-height: 1.4;">
+          Ročni vnos črtne kode: vpiši številke pod črtno kodo (8 ali 13 številk) in pritisni „Išči“. Kamera deluje samo tam, kjer brskalnik podpira branje kod.
         </div>
 
         <!-- Video okvir za skener črtnih kod -->
@@ -4596,6 +4655,7 @@
       goalType: 'FAT_LOSS',
       weightHistory: (typeof TEST_14DAY_HISTORY !== 'undefined') ? JSON.parse(JSON.stringify(TEST_14DAY_HISTORY)) : [],
       meals: [],
+      selectedDate: null,
       tdee: 2888,
       coachPlan: null
     };
@@ -4663,6 +4723,12 @@
         console.warn('Napaka pri branju prehranaState:', e);
       }
 
+      // Migracija: obroki brez datuma dobijo današnji datum (nič drugega se ne spremeni)
+      const migrated = PrehranaDays.migrateMeals(prehranaState.meals, PrehranaDays.isoOf());
+      prehranaState.meals = migrated.meals;
+      if (migrated.changed) savePrehranaState();
+      prehranaState.selectedDate = PrehranaDays.isoOf();
+
       window.prehranaState = prehranaState;
       updateGoalButtonsUI(prehranaState.goalType);
       renderPresetFoodChips();
@@ -4680,16 +4746,17 @@
         chip.className = 'food-chip';
         chip.setAttribute('data-food-id', food.id || `preset_${idx}`);
         chip.innerHTML = `<span>+ ${escapeHtml(food.name.split('(')[0].trim())}</span> <small style="color:var(--text-3); font-size:0.65rem;">(${food.calories}k)</small>`;
-        chip.onclick = () => addPresetFood(food);
+        chip.onclick = () => addPresetFood(food, prehranaState.selectedDate);
         container.appendChild(chip);
       });
     }
 
-    function addPresetFood(food) {
+    function addPresetFood(food, dateIso) {
       if (!food) return;
       if (!Array.isArray(prehranaState.meals)) prehranaState.meals = [];
       const entry = {
         id: 'm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        date: dateIso || PrehranaDays.isoOf(),
         name: food.name,
         serving: food.serving || '1 porcija',
         calories: Number(food.calories) || 0,
@@ -4757,11 +4824,21 @@
       const elRaw = document.getElementById('mfRawWeight');
       if (elRaw) elRaw.textContent = `${Number(latestRaw).toFixed(1)} kg`;
 
-      // 2. Seštej zaužito hrano danes
+      // 2. Seštej zaužito hrano IZBRANEGA dne (privzeto danes)
+      const todayIso = PrehranaDays.isoOf();
+      const selIso = prehranaState.selectedDate || todayIso;
+      const isToday = selIso === todayIso;
+      const dayItems = [];
+      prehranaState.meals.forEach((m, idx) => { if (m && m.date === selIso) dayItems.push({ m: m, idx: idx }); });
+      const dayMeals = dayItems.map(x => x.m);
+      renderDayNav(selIso, todayIso);
+      const mealsDayTitle = document.getElementById('mealsDayTitle');
+      if (mealsDayTitle) mealsDayTitle.textContent = isToday ? 'Zaužiti obroki danes:' : 'Zaužiti obroki (' + prehranaShortDate(selIso) + '):';
+
       let totKcal = 0, totProt = 0, totCarb = 0, totFat = 0;
       const aggregatedMicros = {};
 
-      prehranaState.meals.forEach(m => {
+      dayMeals.forEach(m => {
         if (!m) return;
         totKcal += Number(m.calories) || 0;
         totProt += Number(m.protein) || 0;
@@ -4830,20 +4907,25 @@
 
       const elWater = document.getElementById('mfWaterTarget');
       if (elWater) elWater.textContent = `${plan.waterLiters || 3.6} L`;
+      renderWaterUI(selIso, plan.waterLiters);
+      renderRecentFoodChips();
+      renderSavedMealsList();
 
       // 3. Render seznama obrokov
       const mealsList = document.getElementById('mealEntriesList');
       const countBadge = document.getElementById('mealCountBadge');
-      if (countBadge) countBadge.textContent = `Danes: ${prehranaState.meals.length} ${sklonObrok(prehranaState.meals.length)} (${Math.round(totKcal)} kcal, ${Math.round(totProt)}g B)`;
+      if (countBadge) countBadge.textContent = `${isToday ? 'Danes' : prehranaShortDate(selIso)}: ${dayItems.length} ${sklonObrok(dayItems.length)} (${Math.round(totKcal)} kcal, ${Math.round(totProt)}g B)`;
+      const todayList = PrehranaDays.forDay(prehranaState.meals, todayIso);
+      const todaySum = PrehranaDays.sumDay(todayList);
       const danesBadge = document.getElementById('danesMealCountBadge');
-      if (danesBadge) danesBadge.textContent = `${prehranaState.meals.length} ${sklonObrok(prehranaState.meals.length)} (${Math.round(totKcal)} kcal)`;
+      if (danesBadge) danesBadge.textContent = `${todayList.length} ${sklonObrok(todayList.length)} (${Math.round(todaySum.kcal)} kcal)`;
 
       if (mealsList) {
         mealsList.innerHTML = '';
-        if (prehranaState.meals.length === 0) {
-          mealsList.innerHTML = `<div style="text-align: center; color: var(--text-3); font-size: 0.78rem; padding: 14px;">Danes še ni vnesene hrane. Izberi predlog zgoraj ali dodaj obrok.</div>`;
+        if (dayItems.length === 0) {
+          mealsList.innerHTML = `<div style="text-align: center; color: var(--text-3); font-size: 0.78rem; padding: 14px;">Za ta dan še ni vnesene hrane. Izberi predlog, kopiraj včerajšnji dan ali dodaj obrok.</div>`;
         } else {
-          prehranaState.meals.forEach((m, idx) => {
+          dayItems.forEach(({ m, idx }) => {
             if (!m) return;
             const row = document.createElement('div');
             row.className = 'meal-item-row';
@@ -4980,13 +5062,285 @@
     }
 
     function clearAllMeals() {
-      if (confirm('Ali res želiš počistiti današnje vnose hrane?')) {
-        prehranaState.meals = [];
+      const sel = prehranaState.selectedDate || PrehranaDays.isoOf();
+      const n = PrehranaDays.forDay(prehranaState.meals, sel).length;
+      if (n === 0) { showMascotNotification('Za ta dan ni obrokov.'); return; }
+      if (confirm(`Ali res želiš izbrisati vse obroke za ${prehranaLongDate(sel)}?`)) {
+        prehranaState.meals = prehranaState.meals.filter(m => !(m && m.date === sel));
         editingMealIndex = null;
         savePrehranaState();
         renderPrehranaView();
-        showMascotNotification('Vsi današnji obroki so bili očiščeni.');
+        showMascotNotification('Obroki za izbrani dan so izbrisani.');
       }
+    }
+
+    // --- IZBRAN DAN, KOPIRANJE, SHRANJENI OBROKI, VODA, TEŽA, CSV ---
+    function prehranaLongDate(iso) {
+      const p = iso.split('-').map(Number);
+      return new Date(p[0], p[1] - 1, p[2]).toLocaleDateString('sl-SI', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    }
+
+    function prehranaShortDate(iso) {
+      const p = iso.split('-').map(Number);
+      return p[2] + '. ' + p[1] + '.';
+    }
+
+    function renderDayNav(selIso, todayIso) {
+      const lbl = document.getElementById('prehranaDayLabel');
+      if (lbl) lbl.textContent = (selIso === todayIso ? 'Danes · ' : '') + prehranaLongDate(selIso);
+      const isoEl = document.getElementById('prehranaDayIso');
+      if (isoEl) isoEl.textContent = selIso;
+    }
+
+    function prehranaShiftDay(delta) {
+      const cur = prehranaState.selectedDate || PrehranaDays.isoOf();
+      prehranaState.selectedDate = PrehranaDays.shiftIso(cur, delta);
+      renderPrehranaView();
+    }
+
+    function prehranaGoToday() {
+      prehranaState.selectedDate = PrehranaDays.isoOf();
+      renderPrehranaView();
+    }
+
+    function newMealId() {
+      return 'm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+    }
+
+    function copyYesterdayMeals() {
+      const sel = prehranaState.selectedDate || PrehranaDays.isoOf();
+      const prev = PrehranaDays.shiftIso(sel, -1);
+      const src = PrehranaDays.forDay(prehranaState.meals, prev);
+      if (src.length === 0) { showMascotNotification(`Za ${prehranaShortDate(prev)} ni obrokov za kopiranje.`); return; }
+      const have = PrehranaDays.forDay(prehranaState.meals, sel).length;
+      if (have > 0 && !confirm(`Izbrani dan že ima ${have} ${sklonObrok(have)}. Naj dodam še kopijo včerajšnjih obrokov (${src.length})?`)) return;
+      const copies = PrehranaDays.copyDay(prehranaState.meals, prev, sel, newMealId);
+      prehranaState.meals = prehranaState.meals.concat(copies);
+      savePrehranaState();
+      renderPrehranaView();
+      showMascotNotification(`Kopiranih obrokov: ${copies.length}`);
+    }
+
+    function loadSavedMeals() {
+      try {
+        const a = JSON.parse(localStorage.getItem('bine_zdravje_saved_meals_v1') || '[]');
+        return Array.isArray(a) ? a : [];
+      } catch (e) { return []; }
+    }
+
+    function storeSavedMeals(list) {
+      try {
+        localStorage.setItem('bine_zdravje_saved_meals_v1', JSON.stringify(list.slice(0, 50)));
+      } catch (e) { showMascotNotification('Pomnilnik brskalnika je poln.'); }
+    }
+
+    // „Shrani kot obrok“: vsi obroki izbranega dne se shranijo kot en sestavljen obrok
+    function saveDayAsMeal() {
+      const sel = prehranaState.selectedDate || PrehranaDays.isoOf();
+      const items = PrehranaDays.forDay(prehranaState.meals, sel);
+      if (items.length === 0) { showMascotNotification('Za ta dan ni obrokov, ki bi jih shranil.'); return; }
+      const suggested = items.map(m => PrehranaDays.baseName(m.name)).join(' + ').slice(0, 60);
+      const name = (window.prompt('Ime shranjenega obroka:', suggested) || '').trim();
+      if (!name) return;
+      const sum = PrehranaDays.sumDay(items);
+      const micros = {};
+      items.forEach(m => {
+        if (!m.micros || typeof m.micros !== 'object') return;
+        for (const [k, v] of Object.entries(m.micros)) {
+          const num = Number(v);
+          if (!isNaN(num)) micros[k] = (micros[k] || 0) + num;
+        }
+      });
+      const list = loadSavedMeals();
+      list.unshift({
+        id: 's_' + Date.now(),
+        name: name,
+        serving: items.map(m => PrehranaDays.baseName(m.name)).join(', '),
+        calories: Math.round(sum.kcal),
+        protein: Math.round(sum.protein * 10) / 10,
+        carbs: Math.round(sum.carbs * 10) / 10,
+        fat: Math.round(sum.fat * 10) / 10,
+        micros: micros
+      });
+      storeSavedMeals(list);
+      renderSavedMealsList();
+      showMascotNotification(`Shranjen obrok: ${name}`);
+    }
+
+    function toggleSavedMealsList() {
+      const box = document.getElementById('savedMealsBox');
+      if (!box) return;
+      const willOpen = box.style.display === 'none';
+      box.style.display = willOpen ? 'block' : 'none';
+      if (willOpen) renderSavedMealsList();
+    }
+
+    function renderSavedMealsList() {
+      const box = document.getElementById('savedMealsBox');
+      if (!box || box.style.display === 'none') return;
+      const list = loadSavedMeals();
+      box.innerHTML = '';
+      if (list.length === 0) {
+        box.innerHTML = '<div style="font-size: 0.78rem; color: var(--text-3); padding: 8px 0;">Še nimaš shranjenih obrokov. Na dnevu z obroki klikni „Shrani kot obrok“.</div>';
+        return;
+      }
+      list.forEach((s, i) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--edge-1);';
+        row.innerHTML = `
+          <div style="flex: 1; min-width: 0;">
+            <div style="font-size: 0.82rem; font-weight: 700; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(s.name || 'Obrok')}</div>
+            <div style="font-size: 0.7rem; color: var(--text-2);">${Math.round(Number(s.calories) || 0)} kcal · ${Number(s.protein) || 0} g B</div>
+          </div>
+          <button type="button" class="btn" style="min-height: 44px; padding: 0 12px; font-size: 0.78rem;" onclick="addSavedMeal(${i})">+ Dodaj</button>
+          <button type="button" onclick="deleteSavedMeal(${i})" aria-label="Izbriši shranjen obrok" title="Izbriši" style="min-height: 44px; min-width: 44px; background: none; border: none; color: var(--text-3); font-size: 1.1rem; cursor: pointer;">✕</button>
+        `;
+        box.appendChild(row);
+      });
+    }
+
+    function addSavedMeal(i) {
+      const s = loadSavedMeals()[i];
+      if (!s) return;
+      addPresetFood({
+        name: s.name,
+        serving: s.serving || '1 porcija',
+        calories: s.calories,
+        protein: s.protein,
+        carbs: s.carbs,
+        fat: s.fat,
+        micros: s.micros || {}
+      }, prehranaState.selectedDate);
+    }
+
+    function deleteSavedMeal(i) {
+      const list = loadSavedMeals();
+      if (!list[i]) return;
+      if (!confirm(`Izbrišem shranjen obrok „${list[i].name}“?`)) return;
+      list.splice(i, 1);
+      storeSavedMeals(list);
+      renderSavedMealsList();
+    }
+
+    // Predlogi živil: zadnjih 12 unikatnih iz zgodovine (1-klik)
+    function renderRecentFoodChips() {
+      const box = document.getElementById('recentFoodsChips');
+      if (!box) return;
+      const list = PrehranaDays.recentUnique(prehranaState.meals, 12);
+      box.innerHTML = '';
+      if (list.length === 0) {
+        box.innerHTML = '<span style="font-size: 0.75rem; color: var(--text-3);">Še ni živil v zgodovini.</span>';
+        return;
+      }
+      list.forEach(m => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'food-chip';
+        chip.innerHTML = `<span>+ ${escapeHtml(PrehranaDays.baseName(m.name))}</span> <small style="color:var(--text-3); font-size:0.65rem;">(${Math.round(Number(m.calories) || 0)}k)</small>`;
+        chip.onclick = () => addPresetFood({
+          name: m.name,
+          serving: m.serving,
+          calories: m.calories,
+          protein: m.protein,
+          carbs: m.carbs,
+          fat: m.fat,
+          micros: m.micros || {}
+        }, prehranaState.selectedDate);
+        box.appendChild(chip);
+      });
+    }
+
+    // Voda: po dnevih v localStorage (bine_zdravje_water_v1 = { "yyyy-mm-dd": ml })
+    function loadWaterStore() {
+      try {
+        const o = JSON.parse(localStorage.getItem('bine_zdravje_water_v1') || '{}');
+        return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {};
+      } catch (e) { return {}; }
+    }
+
+    function addWaterMl(ml) {
+      const sel = prehranaState.selectedDate || PrehranaDays.isoOf();
+      const next = PrehranaDays.waterAdd(loadWaterStore(), sel, ml);
+      try {
+        localStorage.setItem('bine_zdravje_water_v1', JSON.stringify(next));
+      } catch (e) { showMascotNotification('Pomnilnik brskalnika je poln.'); return; }
+      renderPrehranaView();
+      showMascotNotification(`Voda: +${ml} ml`);
+    }
+
+    function renderWaterUI(selIso, waterLiters) {
+      const target = Math.round((Number(waterLiters) || 3.6) * 1000);
+      const have = PrehranaDays.waterGet(loadWaterStore(), selIso);
+      const badge = document.getElementById('waterBadge');
+      if (badge) badge.textContent = `${have} / ${target} ml`;
+      const bar = document.getElementById('waterBar');
+      if (bar) bar.style.width = Math.min(100, Math.round((have / target) * 100)) + '%';
+      const sub = document.getElementById('waterSub');
+      if (sub) {
+        const dayName = selIso === PrehranaDays.isoOf() ? 'Danes' : prehranaShortDate(selIso);
+        sub.textContent = have >= target
+          ? `${dayName}: cilj dosežen`
+          : `${dayName}: še ${target - have} ml do cilja`;
+      }
+    }
+
+    // Teža na zavihku Prehrana: ista pot kot assistant-ui applyWeight (vnosTeza → saveDanesVnos → weightHistory, en zapis na dan)
+    function prehranaSaveWeight() {
+      const inp = document.getElementById('prehranaWeightInput');
+      const raw = String(inp ? inp.value : '').replace(',', '.');
+      const kg = Math.round((parseFloat(raw) || 0) * 10) / 10;
+      if (!(kg >= 20 && kg <= 300)) { showMascotNotification('Vnesi veljavno težo (20–300 kg).'); return; }
+      const vt = document.getElementById('vnosTeza');
+      if (vt) vt.value = String(kg);
+      saveDanesVnos();
+      const today = PrehranaDays.isoOf();
+      const kcalToday = Math.round(PrehranaDays.sumDay(PrehranaDays.forDay(prehranaState.meals, today)).kcal);
+      prehranaState.weightHistory = PrehranaDays.upsertWeight(prehranaState.weightHistory, today, kg, kcalToday);
+      savePrehranaState();
+      renderTdeeHistoryTable();
+      renderPrehranaView();
+      if (inp) inp.value = '';
+      showMascotNotification(`Teža shranjena: ${kg} kg`);
+    }
+
+    // CSV izvoz vseh obrokov
+    function mealsCsvText() {
+      return PrehranaDays.mealsToCsv(prehranaState.meals);
+    }
+
+    async function copyMealsCsv() {
+      const text = mealsCsvText();
+      let ok = false;
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+          ok = true;
+        }
+      } catch (e) { ok = false; }
+      if (!ok) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position: fixed; top: 0; left: 0; opacity: 0;';
+        document.body.appendChild(ta);
+        ta.select();
+        ta.setSelectionRange(0, text.length);
+        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+        ta.remove();
+      }
+      showMascotNotification(ok ? 'CSV je kopiran v odložišče.' : 'Kopiranje ni uspelo – uporabi „Prenesi CSV“.');
+    }
+
+    function downloadMealsCsv() {
+      const blob = new Blob(['\uFEFF' + mealsCsvText()], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'prehrana-' + PrehranaDays.isoOf() + '.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
     }
 
     function savePrehranaState() {
@@ -5166,6 +5520,7 @@
       } else {
         const entry = {
           id: 'm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          date: prehranaState.selectedDate || PrehranaDays.isoOf(),
           name,
           calories: kcal,
           protein: Math.round(p),
@@ -5219,8 +5574,9 @@
       if (resBox) resBox.innerHTML = '<div style="text-align: center; color: var(--text-2); padding: 20px;">Iščem po bazi 3M+ živil...</div>';
 
       // Če je številska črtna koda
-      if (/^\d{8,14}$/.test(q)) {
-        const product = await OpenFoodFactsClient.getProductByBarcode(q);
+      const digits = q.replace(/[\s-]/g, '');
+      if (/^\d{8,14}$/.test(digits)) {
+        const product = await OpenFoodFactsClient.getProductByBarcode(digits);
         renderOffResults(product ? [product] : []);
       } else {
         const products = await OpenFoodFactsClient.searchProducts(q, 10);
@@ -5305,6 +5661,7 @@
         time: new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' })
       };
 
+      entry.date = prehranaState.selectedDate || PrehranaDays.isoOf();
       prehranaState.meals.push(entry);
       savePrehranaState();
       renderPrehranaView();
@@ -5338,6 +5695,7 @@
         time: new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' })
       };
 
+      entry.date = prehranaState.selectedDate || PrehranaDays.isoOf();
       prehranaState.meals.push(entry);
       savePrehranaState();
       renderPrehranaView();
@@ -5378,6 +5736,14 @@
       const box = document.getElementById('barcodeCameraBox');
       const video = document.getElementById('barcodeVideo');
       if (!box || !video) return;
+      if (!('BarcodeDetector' in window) || !navigator.mediaDevices) {
+        // iPhone Safari / brskalniki brez BarcodeDetectorja: kamere ne vklapljamo, ponudimo ročni vnos
+        stopBarcodeCamera();
+        const res = document.getElementById('offSearchResults');
+        if (res) res.innerHTML = '<div style="font-size: 0.8rem; color: var(--text-2); padding: 12px; line-height: 1.4;">Branje črtne kode s kamero ni na voljo v tem brskalniku. Vnesi EAN ročno zgoraj (8 ali 13 številk pod črtno kodo) in pritisni „Išči“.</div>';
+        document.getElementById('offSearchInput')?.focus();
+        return;
+      }
 
       try {
         barcodeStream = await navigator.mediaDevices.getUserMedia({
