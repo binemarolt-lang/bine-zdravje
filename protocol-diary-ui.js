@@ -584,6 +584,18 @@
     }
   }
 
+  function exportToCSV() {
+    if (!Diary || typeof Diary.exportToCSV !== 'function') return;
+    const csv = Diary.exportToCSV();
+    const done = () => showToast('✓ CSV kopiran v odložišče!', true);
+    const fail = () => { if (copyTextFallback(csv)) done(); else prompt('Kopiraj CSV dnevnika:', csv); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(csv).then(done).catch(fail);
+    } else {
+      fail();
+    }
+  }
+
   // =========================================================================
   // GLOBALNO DRSTANJE LEVO / DESNO (SWIPE GESTURE NAVIGATION)
   // =========================================================================

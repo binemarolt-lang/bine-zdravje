@@ -784,7 +784,43 @@
 
   // Prevzemi obstoječe foto gumbe (FAB, "Foto Obrok").
   window.handleDirectFoodPhotoUpload = handleFile;
-  ensureDb().catch(() => {}); // predhodno naloži bazo v ozadju
+
+  // Lenobno nalaganje food-db.json ob prvi uporabi (odpiranje zavihka Prehrana ali foto vnos)
+  function setupLazyFoodDb() {
+    if (document.body && document.body.dataset.view === 'prehrana') {
+      ensureDb().catch(() => {});
+      return;
+    }
+    const trigger = () => {
+      ensureDb().catch(() => {});
+    };
+    document.addEventListener('click', (e) => {
+      if (e.target && e.target.closest && (
+        e.target.closest('[onclick*="prehrana"]') ||
+        e.target.closest('.fab-photo-food') ||
+        e.target.closest('[onclick*="Photo"]') ||
+        e.target.closest('[onclick*="openQuickAddModal"]')
+      )) {
+        trigger();
+      }
+    }, { passive: true });
+    if (typeof MutationObserver !== 'undefined' && document.body) {
+      const obs = new MutationObserver(() => {
+        if (document.body && document.body.dataset.view === 'prehrana') {
+          trigger();
+          obs.disconnect();
+        }
+      });
+      obs.observe(document.body, { attributes: true, attributeFilter: ['data-view'] });
+    }
+  }
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setupLazyFoodDb);
+    } else {
+      setupLazyFoodDb();
+    }
+  }
 
   // Avtomatski preizkus zdravja ob zagonu (brez motenja uporabnika)
   setTimeout(() => {
