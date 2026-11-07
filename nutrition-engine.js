@@ -594,6 +594,145 @@ const TEST_14DAY_HISTORY = [
   { date: "2026-11-03", weightKg: 81.1, caloriesIn: 2490 }
 ];
 
+// ---------- PREHRANA: dnevi, voda, teža, kopiranje, CSV (čiste funkcije brez DOM) ----------
+const PrehranaDays = (function () {
+  const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
+  const pad = (n) => String(n).padStart(2, '0');
+
+  // Lokalni datum yyyy-mm-dd
+  function isoOf(d) {
+    const x = d || new Date();
+    return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate());
+  }
+
+  function isValidIso(s) {
+    if (typeof s !== 'string' || !ISO_RE.test(s)) return false;
+    const [y, m, d] = s.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
+  }
+
+  // Premik datuma za delta dni (UTC aritmetika, brez DST težav)
+  function shiftIso(iso, delta) {
+    const [y, m, d] = iso.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d + delta));
+    return dt.getUTCFullYear() + '-' + pad(dt.getUTCMonth() + 1) + '-' + pad(dt.getUTCDate());
+  }
+
+  // Obroki brez veljavnega datuma dobijo `today`; nič drugega se ne spremeni.
+  function migrateMeals(meals, today) {
+    let changed = false;
+    const list = (Array.isArray(meals) ? meals : []).map((m) => {
+      if (!m || typeof m !== 'object') return m;
+      if (isValidIso(m.date)) return m;
+      changed = true;
+      return Object.assign({}, m, { date: today });
+    });
+    return { meals: list, changed: changed };
+  }
+
+  function forDay(meals, iso) {
+    return (Array.isArray(meals) ? meals : []).filter((m) => m && m.date === iso);
+  }
+
+  function sumDay(list) {
+    return (list || []).reduce((t, m) => {
+      t.kcal += Number(m.calories) || 0;
+      t.protein += Number(m.protein) || 0;
+      t.carbs += Number(m.carbs) || 0;
+      t.fat += Number(m.fat) || 0;
+      return t;
+    }, { kcal: 0, protein: 0, carbs: 0, fat: 0 });
+  }
+
+  // Kopije obrokov z novim id-jem in datumom; izvirniki se ne spremenijo.
+  function copyDay(meals, fromIso, toIso, makeId) {
+    return forDay(meals, fromIso).map((m) =>
+      Object.assign(JSON.parse(JSON.stringify(m)), { id: makeId(), date: toIso })
+    );
+  }
+
+  // Ime brez oklepajev na koncu, npr. "Nutella (30g)" -> "Nutella"
+  function baseName(name) {
+    const s = String(name || '').trim();
+    const b = s.replace(/\s*\([^()]*\)\s*$/, '').trim();
+    return b || s;
+  }
+
+  // Zadnjih `limit` unikatnih živil (od najnovejšega), po osnovnem imenu.
+  function recentUnique(meals, limit) {
+    const max = limit || 12;
+    const list = Array.isArray(meals) ? meals : [];
+    const seen = new Set();
+    const out = [];
+    for (let i = list.length - 1; i >= 0 && out.length < max; i--) {
+      const m = list[i];
+      if (!m || !m.name) continue;
+      const key = baseName(m.name).toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(m);
+    }
+    return out;
+  }
+
+  // Voda v mililitrih po dnevih: { "2026-11-07": 1250 }
+  function waterGet(store, iso) {
+    return Number(store && store[iso]) || 0;
+  }
+
+  function waterAdd(store, iso, ml) {
+    const s = store && typeof store === 'object' ? store : {};
+    const next = Math.max(0, (Number(s[iso]) || 0) + (Number(ml) || 0));
+    return Object.assign({}, s, { [iso]: next });
+  }
+
+  // En zapis na dan v weightHistory (današnji se prepiše, ne podvaja).
+  function upsertWeight(history, iso, kg, caloriesIn) {
+    const h = (Array.isArray(history) ? history : []).slice();
+    const idx = h.findIndex((x) => x && x.date === iso);
+    if (idx >= 0) {
+      const patch = { weightKg: kg };
+      if (typeof caloriesIn === 'number') patch.caloriesIn = caloriesIn;
+      h[idx] = Object.assign({}, h[idx], patch);
+    } else {
+      h.push({ date: iso, weightKg: kg, caloriesIn: typeof caloriesIn === 'number' ? caloriesIn : 0 });
+    }
+    h.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    return h;
+  }
+
+  function csvCell(v) {
+    const s = v == null ? '' : String(v);
+    return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+
+  // CSV vseh obrokov (vrstni red po datumu, nato po vrstnem redu vnosa). Brez BOM.
+  function mealsToCsv(meals) {
+    const head = ['datum', 'cas', 'ime', 'porcija', 'kcal', 'beljakovine_g', 'ogljikovi_g', 'mascobe_g'];
+    const list = (Array.isArray(meals) ? meals : []).map((m, i) => ({ m: m, i: i })).filter((x) => x.m);
+    list.sort((a, b) => {
+      const da = String(a.m.date || ''), db = String(b.m.date || '');
+      if (da !== db) return da < db ? -1 : 1;
+      return a.i - b.i;
+    });
+    const rows = list.map((x) => {
+      const m = x.m;
+      return [
+        m.date || '', m.time || '', m.name || '', m.serving || '',
+        Math.round(Number(m.calories) || 0), Number(m.protein) || 0,
+        Number(m.carbs) || 0, Number(m.fat) || 0
+      ].map(csvCell).join(',');
+    });
+    return [head.join(',')].concat(rows).join('\r\n') + '\r\n';
+  }
+
+  return {
+    isoOf, isValidIso, shiftIso, migrateMeals, forDay, sumDay, copyDay,
+    baseName, recentUnique, waterGet, waterAdd, upsertWeight, csvCell, mealsToCsv
+  };
+})();
+
 // Izvoz za okolje (brskalnik ali Node)
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -603,11 +742,13 @@ if (typeof module !== 'undefined' && module.exports) {
     MetabolicEngine,
     PRESET_FOODS,
     OpenFoodFactsClient,
-    TEST_14DAY_HISTORY
+    TEST_14DAY_HISTORY,
+    PrehranaDays
   };
 }
 
 if (typeof window !== 'undefined') {
+  window.PrehranaDays = PrehranaDays;
   window.ATHLETE_MALE_DRI = ATHLETE_MALE_DRI;
   window.KIWI_WEIGHTS = KIWI_WEIGHTS;
   window.NutritionEngine = NutritionEngine;
