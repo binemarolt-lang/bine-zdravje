@@ -4172,7 +4172,7 @@
       const teza = document.getElementById('vnosTeza').value;
       const tlak = document.getElementById('vnosTlak').value;
       const opomba = document.getElementById('vnosOpomba').value;
-      const data = { teza, tlak, opomba, date: new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' }) };
+      const data = { teza, tlak, opomba, day: new Date().toLocaleDateString('sv-SE'), date: new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' }) };
       saveToLocalStorageSafe('bine_zdravje_danes_vnos', JSON.stringify(data));
       if (teza && !isNaN(parseFloat(teza)) && typeof prehranaState !== 'undefined') {
         prehranaState.weightKg = parseFloat(teza);
