@@ -323,13 +323,22 @@
   }
 
   /**
-   * Hitri vnos iz predloge z obvestilom
+   * Hitri vnos iz predloge z obvestilom in prikazom zadnjega vnosa
    */
   function quickLog(presetId) {
     if (!Diary) return;
+    const preset = Diary.PRESET_INTAKES.find(p => p.id === presetId);
+    const prevEntry = preset && typeof Diary.getLastEntryForSubstance === 'function'
+      ? (Diary.getLastEntryForSubstance(preset.name) || Diary.getLastEntryForSubstance(preset.shortName))
+      : null;
+    const prevAgo = prevEntry && typeof Diary.formatDaysAgoEntry === 'function'
+      ? Diary.formatDaysAgoEntry(prevEntry)
+      : null;
+
     const entry = Diary.logPreset(presetId);
     if (entry) {
-      showToast(`✓ Zabeleženo: ${entry.substance} (${entry.dose} ${entry.unit})`, true);
+      const lastText = prevAgo ? ` • zadnji vnos: ${prevAgo}` : '';
+      showToast(`✓ Zabeleženo: ${entry.substance} (${entry.dose} ${entry.unit})${lastText}`, true);
       refreshActiveViews();
     }
   }
@@ -349,6 +358,36 @@
   function setFilter(cat) {
     currentCategoryFilter = cat;
     renderDiaryView();
+  }
+
+  function setPeriodFilter(period) {
+    currentPeriodFilter = period;
+    renderDiaryView();
+  }
+
+  function getPeriodFilter() {
+    return currentPeriodFilter;
+  }
+
+  function updateLastEntryHint(substanceName) {
+    const hintEl = document.getElementById('pdiaryLastEntryHint');
+    if (!hintEl || !Diary) return;
+    const name = (substanceName || '').trim();
+    if (!name) {
+      hintEl.textContent = 'zadnji vnos: vnesi substanco za vpogled';
+      hintEl.style.color = 'var(--text-3)';
+      return;
+    }
+    const last = typeof Diary.getLastEntryForSubstance === 'function' ? Diary.getLastEntryForSubstance(name) : null;
+    if (last) {
+      const ago = (typeof Diary.formatDaysAgoEntry === 'function') ? Diary.formatDaysAgoEntry(last) : null;
+      const doseStr = last.dose ? ` (${last.dose} ${last.unit})` : '';
+      hintEl.textContent = `zadnji vnos: ${ago || 'pred kratkim'}${doseStr}`;
+      hintEl.style.color = 'var(--strain-blue, #38bdf8)';
+    } else {
+      hintEl.textContent = 'zadnji vnos: še ni zabeležen v dnevniku';
+      hintEl.style.color = 'var(--text-3)';
+    }
   }
 
   function refreshActiveViews() {
@@ -390,7 +429,11 @@
           <div>
             <label style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Substanca / Dopolnilo</label>
             <input type="text" id="pdiaryInpSubstance" placeholder="npr. Testosteron, Finasterid, Omega-3..." 
-                   list="pdiarySubstancesList" style="width: 100%; padding: 8px; min-height: 44px; font-size: 16px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 600;">
+                   list="pdiarySubstancesList" style="width: 100%; padding: 8px; min-height: 44px; font-size: 16px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 600;"
+                   oninput="ProtocolDiaryUI.updateLastEntryHint(this.value)" onchange="ProtocolDiaryUI.updateLastEntryHint(this.value)">
+            <div id="pdiaryLastEntryHint" style="font-size: 0.74rem; color: var(--text-3); margin-top: 4px; min-height: 18px; font-weight: 500;">
+              zadnji vnos: vnesi substanco za vpogled
+            </div>
             <datalist id="pdiarySubstancesList">
               ${Diary.PRESET_INTAKES.map(p => `<option value="${p.name}">`).join('')}
               <option value="Raloksifen">
