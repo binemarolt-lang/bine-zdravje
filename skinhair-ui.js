@@ -133,63 +133,233 @@
     }
   }
 
+  // ========== TREZOR FOTOGRAFIJ (PIN, opcijsko) ==========
+  // Stanje trezorja je le v RAM-u / IndexedDB (SkinStorage). PIN se NIKOLI ne shranjuje v state, localStorage ali log.
+  let vaultStatus = { configured: null, unlocked: false }; // configured: null = še ni znano
+  let vaultMessage = '';
+  let vaultListenersAttached = false;
+
+  const VAULT_INPUT_STYLE = 'flex: 1; min-width: 120px; min-height: 44px; font-size: 16px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border, #3a3a3c); background: var(--surface-2); color: var(--text-1);';
+  const VAULT_BTN_STYLE = 'min-height: 44px; min-width: 110px; font-size: 0.85rem; font-weight: 600;';
+
+  async function refreshVaultStatus() {
+    if (typeof window === 'undefined' || !window.SkinStorage) {
+      vaultStatus = { configured: false, unlocked: false };
+      return;
+    }
+    try {
+      vaultStatus = {
+        configured: Boolean(await window.SkinStorage.isPinConfigured()),
+        unlocked: Boolean(window.SkinStorage.isUnlocked())
+      };
+    } catch (e) {
+      console.warn('[SkinHairUI] Stanja trezorja ni mogoče prebrati:', e);
+      vaultStatus = { configured: null, unlocked: false };
+    }
+  }
+
+  function readPinInput(id) {
+    const el = document.getElementById(id);
+    const value = el ? el.value : '';
+    if (el) el.value = '';
+    return value;
+  }
+
+  function isValidPin(pin) {
+    return /^[0-9]{4,12}$/.test(pin);
+  }
+
+  async function safeGetPhoto(id) {
+    try {
+      return await window.SkinStorage.getPhoto(id);
+    } catch (e) {
+      return null; // npr. šifrirana fotografija, ko je sef zaklenjen
+    }
+  }
+
+  // Ponovno zgradi seznam fotografij iz skinHairDB. Šifrirane fotografije so vidne le, ko je sef odklenjen.
   async function rehydratePhotosFromStorage() {
     if (typeof window === 'undefined' || !window.SkinStorage) return;
+    const SS = window.SkinStorage;
     try {
-      let changed = false;
-      // 1. Obnovi blob URL-je za obstoječe fotografije v stanju
-      if (Array.isArray(state.photos)) {
-        for (const p of state.photos) {
-          if (p.storage === 'indexedDB' || (p.id && p.id.startsWith('photo_'))) {
-            if (!p.url || p.url.startsWith('blob:')) {
-              const rec = await window.SkinStorage.getPhoto(p.id);
-              if (rec && rec.photoUrl) {
-                p.url = rec.photoUrl;
-                p.thumbnail = rec.thumbnailUrl || rec.photoUrl;
-                changed = true;
-              }
-            }
-          }
+      const dbPhotos = Array.isArray(await SS.listPhotos()) ? await SS.listPhotos() : [];
+      const unlocked = Boolean(SS.isUnlocked());
+      const rebuilt = [];
+
+      for (const dbp of dbPhotos) {
+        if (dbp.isEncrypted && !unlocked) continue; // zaklenjeno: ne prikažemo
+        const rec = await safeGetPhoto(dbp.id);
+        if (!rec || !rec.photoUrl) continue;
+        rebuilt.push({
+          id: dbp.id,
+          date: dbp.date,
+          timestamp: dbp.timestamp,
+          category: dbp.category || 'obraz',
+          url: rec.photoUrl,
+          thumbnail: rec.thumbnailUrl || rec.photoUrl,
+          storage: 'indexedDB'
+        });
+      }
+
+      // Sprosti stare object URL-je fotografij iz baze in ohrani ostale vnose (npr. lokalni FileReader fallback)
+      const others = [];
+      for (const p of (state.photos || [])) {
+        if (p.storage === 'indexedDB') {
+          if (p.url && p.url.startsWith('blob:')) SS.revokeSecureUrl(p.url);
+          if (p.thumbnail && p.thumbnail.startsWith('blob:') && p.thumbnail !== p.url) SS.revokeSecureUrl(p.thumbnail);
+        } else {
+          others.push(p);
         }
       }
 
-      // 2. Preveri fotografije v skinHairDB, ki morda še niso v state.photos
-      const dbPhotos = await window.SkinStorage.listPhotos();
-      if (Array.isArray(dbPhotos)) {
-        for (const dbp of dbPhotos) {
-          if (!state.photos.some(p => p.id === dbp.id)) {
-            const rec = await window.SkinStorage.getPhoto(dbp.id);
-            if (rec && rec.photoUrl) {
-              state.photos.unshift({
-                id: dbp.id,
-                date: dbp.date,
-                timestamp: dbp.timestamp,
-                category: dbp.category || 'obraz',
-                url: rec.photoUrl,
-                thumbnail: rec.thumbnailUrl || rec.photoUrl,
-                storage: 'indexedDB'
-              });
-              changed = true;
-            }
-          }
-        }
-      }
-
-      if (changed) {
-        render();
-      }
+      state.photos = rebuilt.concat(others);
     } catch (e) {
       console.warn('[SkinHairUI] Rehidracija fotografij iz skinHairDB:', e);
     }
   }
 
+  function attachVaultListeners() {
+    if (vaultListenersAttached || typeof window === 'undefined') return;
+    vaultListenersAttached = true;
+    // Samodejni zaklep (neaktivnost) mora skriti šifrirane fotografije tudi, če uporabnik ni kliknil "Zakleni"
+    window.addEventListener('skin-vault:locked', async () => {
+      await refreshVaultStatus();
+      await rehydratePhotosFromStorage();
+      render();
+    });
+  }
+
+  function renderVaultCard() {
+    const s = vaultStatus;
+    let label = 'Nalagam…';
+    let color = 'var(--text-3)';
+    if (s.configured === false) {
+      label = 'Izključeno (privzeto)';
+    } else if (s.configured === true && s.unlocked) {
+      label = 'Odklenjeno';
+      color = '#34d399';
+    } else if (s.configured === true) {
+      label = 'Zaklenjeno';
+      color = '#fbbf24';
+    }
+
+    let controls = '';
+    if (s.configured === false) {
+      controls = `
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
+          <input id="shVaultPin" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" maxlength="12" placeholder="Nov PIN (4–12 številk)" style="${VAULT_INPUT_STYLE}">
+          <input id="shVaultPin2" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" maxlength="12" placeholder="Potrdi PIN" style="${VAULT_INPUT_STYLE}">
+        </div>
+        <button type="button" class="btn primary" style="${VAULT_BTN_STYLE} width: 100%;" onclick="SkinHairUI.vaultEnable()">Vklopi PIN</button>`;
+    } else if (s.configured === true) {
+      controls = s.unlocked
+        ? `<button type="button" class="btn secondary" style="${VAULT_BTN_STYLE} width: 100%;" onclick="SkinHairUI.vaultLock()">Zakleni</button>`
+        : `<div style="display: flex; gap: 8px; flex-wrap: wrap;">
+             <input id="shVaultPin" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password" maxlength="12" placeholder="PIN" style="${VAULT_INPUT_STYLE}">
+             <button type="button" class="btn primary" style="${VAULT_BTN_STYLE}" onclick="SkinHairUI.vaultUnlock()">Odkleni</button>
+           </div>`;
+      controls += `
+        <details style="margin-top: 10px;">
+          <summary style="min-height: 44px; display: flex; align-items: center; font-size: 0.8rem; color: var(--text-2); cursor: pointer;">Izklopi zaščito…</summary>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px;">
+            <input id="shVaultPinOff" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password" maxlength="12" placeholder="PIN za izklop" style="${VAULT_INPUT_STYLE}">
+            <button type="button" class="btn secondary" style="${VAULT_BTN_STYLE}" onclick="SkinHairUI.vaultDisable()">Izklopi zaščito</button>
+          </div>
+          <div style="font-size: 0.7rem; color: var(--text-3); margin-top: 4px;">Izklop je mogoč le, ko v trezorju ni šifriranih fotografij.</div>
+        </details>`;
+    }
+
+    return `
+      <div class="card" style="margin-bottom: 12px;">
+        <div class="card-header">
+          <div class="card-title">🔒 Zaščita fotografij</div>
+          <span style="font-size: 0.75rem; font-weight: 600; color: ${color};">${label}</span>
+        </div>
+        <div style="font-size: 0.72rem; color: var(--text-3); margin: 6px 0 10px;">
+          Opcijsko: PIN šifrira NOVE fotografije v brskalniku (AES-256-GCM). Fotografije, shranjene pred vklopom, ostanejo nešifrirane (samodejne pretvorbe ni). Zaklep skrije šifrirane fotografije. Pozabljen PIN pomeni, da šifrirane fotografije ne bodo več dostopne.
+        </div>
+        ${controls}
+        ${vaultMessage ? `<div role="status" style="font-size: 0.78rem; color: var(--text-1); margin-top: 8px;">${vaultMessage}</div>` : ''}
+      </div>`;
+  }
+
+  async function vaultEnable() {
+    const SS = window.SkinStorage;
+    const p1 = readPinInput('shVaultPin');
+    const p2 = readPinInput('shVaultPin2');
+    if (!SS) { vaultMessage = 'Modul trezorja ni na voljo.'; return render(); }
+    if (!isValidPin(p1)) { vaultMessage = 'PIN mora imeti 4 do 12 številk.'; return render(); }
+    if (p1 !== p2) { vaultMessage = 'PIN-a se ne ujemata.'; return render(); }
+    try {
+      await SS.setupVaultPin(p1);
+      vaultMessage = 'Zaščita vklopljena. Nove fotografije bodo šifrirane; stare ostanejo nešifrirane.';
+    } catch (e) {
+      vaultMessage = 'Vklop ni uspel: ' + (e && e.message ? e.message : 'neznana napaka');
+    }
+    await refreshVaultStatus();
+    await rehydratePhotosFromStorage();
+    render();
+  }
+
+  async function vaultUnlock() {
+    const SS = window.SkinStorage;
+    const pin = readPinInput('shVaultPin');
+    if (!SS) return;
+    if (!isValidPin(pin)) { vaultMessage = 'PIN mora imeti 4 do 12 številk.'; return render(); }
+    try {
+      const res = await SS.unlockVault(pin);
+      vaultMessage = res.success ? 'Odklenjeno.' : 'Napačen PIN.';
+    } catch (e) {
+      vaultMessage = 'Odklepanje ni uspelo.';
+    }
+    await refreshVaultStatus();
+    await rehydratePhotosFromStorage();
+    render();
+  }
+
+  async function vaultLock() {
+    if (!window.SkinStorage) return;
+    window.SkinStorage.lockVault();
+    vaultMessage = 'Zaklenjeno. Šifrirane fotografije so skrite.';
+    await refreshVaultStatus();
+    await rehydratePhotosFromStorage();
+    render();
+  }
+
+  async function vaultDisable() {
+    const SS = window.SkinStorage;
+    const pin = readPinInput('shVaultPinOff');
+    if (!SS) return;
+    if (!isValidPin(pin)) { vaultMessage = 'Za izklop vnesi PIN (4 do 12 številk).'; return render(); }
+    try {
+      const res = await SS.disableVaultPin(pin);
+      if (res.success) {
+        vaultMessage = 'Zaščita izklopljena. Nove fotografije bodo shranjene brez šifriranja.';
+      } else if (res.error === 'NAPAČEN_PIN') {
+        vaultMessage = 'Napačen PIN.';
+      } else if (res.error === 'SIFRIRANE_FOTOGRAFIJE') {
+        vaultMessage = `Izklop ni mogoč: v trezorju je še ${res.count} šifriranih fotografij. Najprej jih izbriši.`;
+      } else {
+        vaultMessage = 'Izklop ni uspel.';
+      }
+    } catch (e) {
+      vaultMessage = 'Izklop ni uspel: ' + (e && e.message ? e.message : 'neznana napaka');
+    }
+    await refreshVaultStatus();
+    await rehydratePhotosFromStorage();
+    render();
+  }
+
   // ========== RENDER FUNKCIJE ==========
 
-  function mount() {
+  async function mount() {
     const container = document.getElementById('view-estetika');
     if (!container) return;
+    attachVaultListeners();
     render();
-    rehydratePhotosFromStorage();
+    await refreshVaultStatus();
+    await rehydratePhotosFromStorage();
+    render();
   }
 
   function render() {
@@ -316,6 +486,8 @@
     const hairScore = hair.hairIndex;
 
     return `
+      ${renderVaultCard()}
+
       <!-- DVOJNI ESTETSKI OBROČ (Twin Aesthetics Rings) -->
       <div class="card" style="margin-bottom: 12px;">
         <div class="card-header">
@@ -1106,6 +1278,15 @@
         return;
       }
     } catch (err) {
+      const msg = String(err && err.message ? err.message : '');
+      if (msg.startsWith('SEF_ZAKLENJEN') || (window.SkinStorage && vaultStatus.configured !== false)) {
+        // Trezor je vklopljen: fotografije ne smemo shraniti nešifrirano
+        vaultMessage = msg.startsWith('SEF_ZAKLENJEN') ? 'Trezor je zaklenjen. Odkleni ga in poskusi znova.' : 'Fotografije ni bilo mogoče šifrirano shraniti.';
+        input.value = '';
+        closeCameraModal();
+        render();
+        return;
+      }
       console.warn('[SkinHairUI] Shranjevanje v SkinStorage ni uspelo, fallback na FileReader:', err);
     }
 
@@ -1299,6 +1480,10 @@ finasterid: ${state.hairProtocol.finasterideTaken ? 'da' : 'ne'}
     setNewPhotoCategory: setNewPhotoCategory,
     handleNativePhotoUpload: handleNativePhotoUpload,
     rehydratePhotosFromStorage: rehydratePhotosFromStorage,
+    vaultEnable: vaultEnable,
+    vaultUnlock: vaultUnlock,
+    vaultLock: vaultLock,
+    vaultDisable: vaultDisable,
     exportToObsidian: exportToObsidian
   };
 }));

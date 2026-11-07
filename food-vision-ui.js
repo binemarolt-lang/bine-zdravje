@@ -629,7 +629,7 @@
         </div>
         ${srcLine}
         <div class="fv-match">${conf}
-          ${it.match ? `<span>USDA:</span><select onchange="FoodVision.pick(${i}, this.value)">${opts}</select>` : `<span style="color:var(--rec-yellow)">Ni zadetka v bazi — uporabljena ocena AI. Popravi ime.</span>`}
+          ${it.verified ? `<span style="color:var(--text-3)">${it.source === 'label' ? 'Hranila s tabele na embalaži' : 'Hranila iz Open Food Facts'}${it.barcode ? ' · EAN ' + esc(it.barcode) : ''}</span>` : it.match ? `<span>USDA:</span><select onchange="FoodVision.pick(${i}, this.value)">${opts}</select>` : `<span style="color:var(--rec-yellow)">Ni zadetka v bazi — uporabljena ocena AI. Popravi ime.</span>`}
         </div>
         <div class="fv-macros"><span><b>${n.calories || 0}</b> kcal</span><span style="color:var(--rec-green)">B ${r1(n.protein)} g</span><span style="color:var(--strain-blue)">OH ${r1(n.carbs)} g</span><span style="color:var(--rec-yellow)">M ${r1(n.fat)} g</span></div>
         <div class="fv-micros">${microLine(n.micros || {})}</div>
