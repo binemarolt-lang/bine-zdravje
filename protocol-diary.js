@@ -419,6 +419,78 @@
     return md;
   }
 
+  /**
+   * Izvoz celotnega dnevnika v CSV zapis (kopiranje / preglednice)
+   */
+  function exportToCSV() {
+    const entries = state.entries || [];
+    const header = ['Datum', 'Čas', 'Kategorija', 'Substanca', 'Odmerek', 'Enota', 'Reža', 'Opomba'];
+    const rows = [header.map(h => `"${h}"`).join(',')];
+
+    entries.forEach(e => {
+      const catLabel = CATEGORIES[e.category]?.label || e.category;
+      const slotLabel = TIMING_SLOTS[e.slot]?.label || e.slot;
+      const row = [
+        e.date || '',
+        e.time || '',
+        catLabel || '',
+        e.substance || '',
+        e.dose || '',
+        e.unit || '',
+        slotLabel || '',
+        e.notes || ''
+      ].map(val => `"${String(val !== null && val !== undefined ? val : '').replace(/"/g, '""')}"`);
+      rows.push(row.join(','));
+    });
+
+    return rows.join('\r\n');
+  }
+
+  /**
+   * Pridobi zadnji vnos za določeno substanco (npr. 'Finasterid', 'Testosteron')
+   */
+  function getLastEntryForSubstance(substanceName) {
+    if (!substanceName) return null;
+    const clean = substanceName.trim().toLowerCase();
+    if (!clean) return null;
+    return state.entries.find(e => {
+      const s = (e.substance || '').toLowerCase();
+      return s === clean || s.includes(clean) || clean.includes(s);
+    }) || null;
+  }
+
+  /**
+   * Izračuna relativni čas v slovenščini za določen vnos ('pred 2 dnevoma', 'pred 1 dnem', 'danes')
+   */
+  function formatDaysAgoEntry(entry) {
+    if (!entry) return null;
+    const todayStr = getLocalDateString();
+    if (entry.date === todayStr) return 'danes';
+
+    let entryDate;
+    if (entry.date) {
+      const parts = entry.date.split('-');
+      if (parts.length === 3) {
+        entryDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      }
+    }
+    if (!entryDate && entry.timestamp) {
+      entryDate = new Date(entry.timestamp);
+    }
+    if (!entryDate || isNaN(entryDate.getTime())) return null;
+
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const entryStart = new Date(entryDate.getFullYear(), entryDate.getMonth(), entryDate.getDate());
+    const diffDays = Math.max(0, Math.round((todayStart - entryStart) / (1000 * 60 * 60 * 24)));
+
+    if (diffDays === 0) return 'danes';
+    if (diffDays === 1) return 'pred 1 dnem';
+    if (diffDays === 2) return 'pred 2 dnevoma';
+    if (diffDays === 3 || diffDays === 4) return `pred ${diffDays} dnevi`;
+    return `pred ${diffDays} dnevi`;
+  }
+
   function dispatchDiaryEvent(type, detail = {}) {
     if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
       try {
