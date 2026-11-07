@@ -28,6 +28,8 @@ const ASSETS = [
   './protocol-diary.js',
   './protocol-diary-ui.js',
   './assistant-ui.js',
+  './error-guard.js',
+  './backup-ui.js',
   './icon-192.png',
   './icon-512.png'
 ];
