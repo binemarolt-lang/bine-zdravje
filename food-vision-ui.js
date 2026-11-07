@@ -763,6 +763,7 @@
     onQuickMealName,
     saveQuickMeal,
     checkHealth,
+    scanBarcode,
     close,
     onName,
     onGrams,
