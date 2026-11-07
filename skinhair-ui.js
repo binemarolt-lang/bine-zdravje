@@ -1022,7 +1022,11 @@
       if (div) div.style.left = `${val}%`;
     } else {
       state.comparison.opacityBlendPct = val;
-      render();
+      // brez render(): ponovno risanje med vlečenjem uniči drsnik in prekine dotik na iPhonu
+      const imgs = document.querySelectorAll('#shCompareWrapper .sh-blend-img');
+      if (imgs[1]) imgs[1].style.opacity = val / 100;
+      const lbl = document.querySelector('#shCompareWrapper .sh-blend-container > div');
+      if (lbl) lbl.textContent = `Bledenje: ${val}%`;
     }
     saveState();
   }
