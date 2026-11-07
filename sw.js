@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bine-zdravje-v41';
+const CACHE_NAME = 'bine-zdravje-v42';
 const ASSETS = [
   './',
   './index.html',
