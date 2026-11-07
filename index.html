@@ -1974,7 +1974,7 @@
           <div style="font-weight: 700; font-size: 0.88rem; color: var(--text-1);">📖 Dnevnik Vnosov & Protokolov</div>
           <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 2px;">Zgodovina injiciranj, raloksifena in vseh dopolnil</div>
         </div>
-        <button type="button" class="btn secondary" style="font-size: 0.75rem; padding: 6px 12px; white-space: nowrap;" onclick="switchNav('estetika'); if(window.SkinHairUI) SkinHairUI.switchSubTab('dnevnik');">
+        <button type="button" class="btn secondary" style="font-size: 0.75rem; padding: 6px 12px; min-height: 44px; white-space: nowrap;" onclick="switchNav('estetika'); if(window.SkinHairUI) SkinHairUI.switchSubTab('dnevnik');">
           Odpri Dnevnik →
         </button>
       </div>
@@ -2021,7 +2021,7 @@
               <span>Testosteron cipionat:</span>
               <strong id="sliderValTest">400 mg / teden</strong>
             </div>
-            <input type="range" id="rangeTest" min="100" max="600" step="25" value="400" oninput="handleCikelSliders()">
+            <input type="range" id="rangeTest" style="min-height: 44px; background-clip: content-box; padding: 19px 0; touch-action: pan-y;" min="100" max="600" step="25" value="400" oninput="handleCikelSliders()">
           </div>
 
           <div class="slider-row">
@@ -2029,7 +2029,7 @@
               <span>Boldenon undecilenat (EQ):</span>
               <strong id="sliderValEq">150 mg / teden</strong>
             </div>
-            <input type="range" id="rangeEq" min="0" max="350" step="25" value="150" oninput="handleCikelSliders()">
+            <input type="range" id="rangeEq" style="min-height: 44px; background-clip: content-box; padding: 19px 0; touch-action: pan-y;" min="0" max="350" step="25" value="150" oninput="handleCikelSliders()">
           </div>
 
           <div style="display: flex; justify-content: space-between; align-items: center; background: var(--surface-2); border: 1px solid var(--edge-1); padding: 10px 14px; border-radius: 10px;">
@@ -2037,7 +2037,7 @@
               <div style="font-size: 0.82rem; font-weight: 700;">Simuliraj Front-Load Boldenona</div>
               <div style="font-size: 0.72rem; color: var(--text-3);">1.95× začetni odmerek (MaxPharma)</div>
             </div>
-            <input type="checkbox" id="chkFrontload" style="width: 20px; height: 20px;" onchange="handleCikelSliders()">
+            <input type="checkbox" id="chkFrontload" style="width: 28px; height: 28px; margin: 8px; flex-shrink: 0;" onchange="handleCikelSliders()">
           </div>
         </div>
 
