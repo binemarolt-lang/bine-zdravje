@@ -585,7 +585,7 @@
   function onName(i, v) {
     const it = review.items[i]; it.name = v;
     clearTimeout(timers[i]);
-    timers[i] = setTimeout(() => { it.estFromAI = false; rematch(it, v); refreshItem(i); }, 300);
+    timers[i] = setTimeout(() => { if (!review || review.items[i] !== it) return; it.estFromAI = false; rematch(it, v); refreshItem(i); }, 300);
   }
   function onGrams(i, v) { const it = review.items[i]; it.grams = Math.max(0, Number(v) || 0); computeItem(it); refreshItem(i); }
   function pick(i, idx) {

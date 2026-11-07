@@ -431,6 +431,10 @@
       background: var(--strain-blue);
       color: #08090A;
     }
+    /* Danes: tipke >=44px (iOS) in vnosna polja 16px (brez samodejnega zooma ob fokusu) */
+    #view-danes .btn, #view-danes .photo-btn-action, #view-danes .fv-status-badge, #view-danes #danesVir { min-height: 44px; }
+    #view-danes .fv-status-badge { min-width: 44px; justify-content: center; }
+    #view-danes input[type="text"], #view-danes input[type="number"] { font-size: 16px !important; min-height: 44px; }
 
     /* Slot groups */
     .slot-card {
@@ -1973,8 +1977,8 @@
         </button>
 
         <div id="danesZgodovina" style="font-size: 0.74rem; color: var(--text-3); display: flex; justify-content: space-between; border-top: 1px solid var(--edge-1); padding-top: 8px;">
-          <span>Zadnja teža: <strong id="histTeza" style="color: #fff;">84.2 kg</strong></span>
-          <span>Tlak: <strong id="histTlak" style="color: #fff;">122/74</strong></span>
+          <span>Zadnja teža: <strong id="histTeza" style="color: #fff;">–</strong></span>
+          <span>Tlak: <strong id="histTlak" style="color: #fff;">–</strong></span>
         </div>
       </div>
 
@@ -4040,7 +4044,7 @@
       const toastText = document.getElementById('mascotToastText');
       const toastImg = document.getElementById('mascotToastImg');
       if (toast && toastText && toastImg) {
-        toastText.textContent = `Vnos shranjen: ${teza || '84.2'} kg · Tlak ${tlak || '120/75'}!`;
+        toastText.textContent = `Vnos shranjen: ${teza ? teza + ' kg' : 'brez teže'} · Tlak ${tlak || '–'}!`;
         toastImg.src = './assets/anime/thumbsup.gif';
         toast.style.display = 'flex';
         clearTimeout(window._toastTimeout);
