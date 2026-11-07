@@ -16,6 +16,7 @@
   var LS_TOKEN = 'bine_zdravje_fv_token';
   var LS_ENDPOINT = 'bine_zdravje_fv_endpoint';
   var LS_WORKOUTS = 'bine_zdravje_workouts_v1';
+  var LS_BP_LOG = 'bine_zdravje_tlak_log';
   var ENDPOINT_FILE = './food-vision-endpoint.json';
   var FALLBACK_ENDPOINTS = ['http://100.101.68.31:8091', 'http://127.0.0.1:8091'];
   var HISTORY_MAX = 10;
@@ -308,9 +309,42 @@
   function applyBp(a) {
     var sys = num(a.sys), dia = num(a.dia), pulse = num(a.pulse);
     if (sys === null || dia === null) return fail('Manjkata vrednosti tlaka.');
-    // Opomba se ne shrani: dnevnik tlaka je v aplikaciji brez polja za opombo.
-    root.BpVision.save(Math.round(sys), Math.round(dia), pulse === null ? null : Math.round(pulse));
-    return ok('Tlak shranjen: ' + Math.round(sys) + '/' + Math.round(dia) + '.');
+    sys = Math.round(sys); dia = Math.round(dia);
+    var pulseR = pulse === null ? null : Math.round(pulse);
+    root.BpVision.save(sys, dia, pulseR);
+    // Opomba gre kot dodatno polje `note` v zadnji zapis dnevnika (obstoječi bralniki ga ignorirajo).
+    var note = str(a.note, 160);
+    if (note) {
+      safe(function () {
+        var log = root.BpVision.getLog();
+        var last = log[log.length - 1];
+        if (last && last.sys === sys && last.dia === dia) {
+          last.note = note;
+          localStorage.setItem(LS_BP_LOG, JSON.stringify(log));
+        }
+      });
+    }
+    return ok('Tlak shranjen: ' + sys + '/' + dia + '.');
+  }
+
+  // Zgodovina teže (prehranaState.weightHistory): en zapis na dan, današnji se prepiše.
+  function recordWeightHistory(kg) {
+    var ps = root.prehranaState;
+    if (!ps) return;
+    if (!Array.isArray(ps.weightHistory)) ps.weightHistory = [];
+    var today = localDate();
+    var kcalToday = (ps.meals || []).reduce(function (s, m) { return s + (Number(m.calories) || 0); }, 0);
+    var idx = -1;
+    ps.weightHistory.forEach(function (h, i) { if (h && h.date === today) idx = i; });
+    if (idx >= 0) {
+      ps.weightHistory[idx].weightKg = kg;
+    } else {
+      ps.weightHistory.push({ date: today, weightKg: kg, caloriesIn: kcalToday });
+      ps.weightHistory.sort(function (x, y) { return x.date < y.date ? -1 : x.date > y.date ? 1 : 0; });
+    }
+    if (typeof root.savePrehranaState === 'function') root.savePrehranaState();
+    if (typeof root.renderTdeeHistoryTable === 'function') root.renderTdeeHistoryTable();
+    if (typeof root.renderPrehranaView === 'function') root.renderPrehranaView();
   }
 
   function applyWeight(a) {
@@ -319,6 +353,7 @@
     var input = $('vnosTeza');
     input.value = String(Math.round(kg * 10) / 10);
     root.saveDanesVnos(); // obstoječi mehanizem Danes → teža
+    safe(function () { recordWeightHistory(Math.round(kg * 10) / 10); });
     return ok('Teža shranjena: ' + input.value + ' kg.');
   }
 
