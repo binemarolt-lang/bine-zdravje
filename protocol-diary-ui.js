@@ -19,6 +19,7 @@
   }
 
   let currentCategoryFilter = 'all';
+  let currentPeriodFilter = 'all'; // '7' | '30' | 'all'
 
   function showToast(text, isHappy = true) {
     const toast = document.getElementById('mascotToast');
@@ -45,8 +46,25 @@
     const todayEntries = Diary.getTodayEntries();
     const allDates = Diary.getDatesWithEntries();
 
-    // Filtriraj datume glede na izbrano kategorijo
+    // Filtriraj datume glede na izbrano obdobje (7 / 30 / vse) in kategorijo
+    const now = new Date();
+    const todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
     const filteredDates = allDates.filter(d => {
+      // 1. Filter po obdobju
+      if (currentPeriodFilter !== 'all') {
+        const daysLimit = parseInt(currentPeriodFilter, 10);
+        if (!isNaN(daysLimit)) {
+          const parts = d.split('-');
+          if (parts.length === 3) {
+            const dMid = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)).getTime();
+            const diffDays = Math.round((todayMid - dMid) / (1000 * 60 * 60 * 24));
+            if (diffDays > daysLimit) return false;
+          }
+        }
+      }
+
+      // 2. Filter po kategoriji
       const dayEntries = Diary.getEntriesForDate(d);
       if (currentCategoryFilter === 'all') return dayEntries.length > 0;
       return dayEntries.some(e => e.category === currentCategoryFilter);
@@ -75,12 +93,15 @@
           </div>
         </div>
 
-        <div style="display: flex; gap: 8px; margin-top: 12px;">
-          <button type="button" class="btn" style="flex: 2; padding: 10px; min-height: 44px; font-weight: 700; font-size: 0.8rem;" onclick="ProtocolDiaryUI.openNewEntryModal()">
+        <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
+          <button type="button" class="btn" style="flex: 2; min-width: 130px; padding: 10px; min-height: 44px; font-weight: 700; font-size: 0.8rem;" onclick="ProtocolDiaryUI.openNewEntryModal()">
             + ✍️ Vnos po meri
           </button>
-          <button type="button" class="btn secondary" style="flex: 1; padding: 10px; min-height: 44px; font-weight: 600; font-size: 0.78rem;" onclick="ProtocolDiaryUI.exportToObsidian()" title="Kopiraj Markdown tabelo za Obsidian">
-            📋 Izvozi
+          <button type="button" class="btn secondary" style="flex: 1; min-width: 85px; padding: 10px; min-height: 44px; font-weight: 600; font-size: 0.76rem;" onclick="ProtocolDiaryUI.exportToObsidian()" title="Kopiraj Markdown tabelo za Obsidian">
+            📋 Markdown
+          </button>
+          <button type="button" class="btn secondary" style="flex: 1; min-width: 85px; padding: 10px; min-height: 44px; font-weight: 600; font-size: 0.76rem;" onclick="ProtocolDiaryUI.exportToCSV()" title="Kopiraj CSV tabelo">
+            📊 CSV
           </button>
         </div>
       </div>
@@ -93,22 +114,50 @@
         </div>
 
         <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;">
-          ${Diary.PRESET_INTAKES.map(p => `
+          ${Diary.PRESET_INTAKES.map(p => {
+            const lastEntry = (typeof Diary.getLastEntryForSubstance === 'function')
+              ? (Diary.getLastEntryForSubstance(p.name) || Diary.getLastEntryForSubstance(p.shortName))
+              : null;
+            const lastAgo = (lastEntry && typeof Diary.formatDaysAgoEntry === 'function')
+              ? Diary.formatDaysAgoEntry(lastEntry)
+              : null;
+            return `
             <button type="button" class="btn secondary" 
-                    style="padding: 0 12px; min-height: 44px; font-size: 0.76rem; border-radius: 10px; display: inline-flex; align-items: center; gap: 5px; border-color: rgba(255,255,255,0.12);"
+                    style="padding: 6px 12px; min-height: 44px; font-size: 0.76rem; border-radius: 10px; display: inline-flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; border-color: rgba(255,255,255,0.12);"
                     onclick="ProtocolDiaryUI.quickLog('${p.id}')">
-              <span>${p.icon}</span>
-              <strong>${p.shortName}</strong>
-              <span style="color: var(--text-3); font-size: 0.7rem;">(${p.dose} ${p.unit})</span>
+              <div style="display: flex; align-items: center; gap: 5px;">
+                <span>${p.icon}</span>
+                <strong>${p.shortName}</strong>
+                <span style="color: var(--text-3); font-size: 0.7rem;">(${p.dose} ${p.unit})</span>
+              </div>
+              <div style="font-size: 0.64rem; color: ${lastAgo ? 'var(--strain-blue, #38bdf8)' : 'var(--text-3)'};">
+                ${lastAgo ? `zadnji vnos: ${lastAgo}` : 'zadnji vnos: še ni zabeležen'}
+              </div>
             </button>
-          `).join('')}
+          `;
+          }).join('')}
         </div>
       </div>
 
       <!-- KARTICA 3: ZGODOVINA IN ČASOVNICA VNOSOV -->
       <div class="card">
-        <div class="card-header" style="flex-wrap: wrap; gap: 8px;">
-          <div class="card-title">🕒 Zgodovina & Časovnica Vnosov</div>
+        <div class="card-header" style="flex-direction: column; align-items: stretch; gap: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="card-title">🕒 Zgodovina & Časovnica Vnosov</div>
+          </div>
+
+          <!-- Filter po obdobju (7 / 30 / Vse) -->
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; background: rgba(0,0,0,0.18); padding: 6px 10px; border-radius: 8px;">
+            <span style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Obdobje:</span>
+            <div style="display: flex; gap: 4px;">
+              <button type="button" class="sh-tab-btn ${currentPeriodFilter === '7' ? 'active' : ''}" 
+                      style="font-size: 0.72rem; padding: 0 10px; min-height: 44px; min-width: 44px;" onclick="ProtocolDiaryUI.setPeriodFilter('7')">7 dni</button>
+              <button type="button" class="sh-tab-btn ${currentPeriodFilter === '30' ? 'active' : ''}" 
+                      style="font-size: 0.72rem; padding: 0 10px; min-height: 44px; min-width: 44px;" onclick="ProtocolDiaryUI.setPeriodFilter('30')">30 dni</button>
+              <button type="button" class="sh-tab-btn ${currentPeriodFilter === 'all' ? 'active' : ''}" 
+                      style="font-size: 0.72rem; padding: 0 10px; min-height: 44px; min-width: 44px;" onclick="ProtocolDiaryUI.setPeriodFilter('all')">Vse</button>
+            </div>
+          </div>
           
           <!-- Filtri kategorij -->
           <div style="display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px;">
