@@ -1850,7 +1850,7 @@
   <header>
     <h1 class="sr-only">Bine Zdravje</h1>
     <div class="brand">
-      🧬 BINE <span>ZDRAVJE</span> <small id="appVersionBadge" style="font-size: 0.65rem; color: var(--rec-green); font-weight: 700; border: 1px solid rgba(0,230,118,0.3); padding: 2px 6px; border-radius: 6px; margin-left: 6px; cursor: pointer;" onclick="if(window.checkForAppUpdate) window.checkForAppUpdate(true);" title="Klikni za preverjanje posodobitev">v3.6 ↻</small>
+      🧬 BINE <span>ZDRAVJE</span> <small id="appVersionBadge" style="font-size: 0.65rem; color: var(--rec-green); font-weight: 700; border: 1px solid rgba(0,230,118,0.3); padding: 2px 6px; border-radius: 6px; margin-left: 6px; cursor: pointer;" onclick="if(window.checkForAppUpdate) window.checkForAppUpdate(true);" title="Klikni za preverjanje posodobitev">v3.7 ↻</small>
     </div>
     <div style="display: flex; align-items: center; gap: 8px;">
       <button class="status-pill" onclick="cycleAnimeVibe()" id="vibeBtn" style="cursor: pointer; background: var(--surface-3); border-color: var(--edge-3); color: var(--text-1); min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 0 12px; box-sizing: border-box;" title="Nastavi glasnost anime ozadja">⚡ Vibe: 16%</button>
@@ -3859,7 +3859,7 @@
       window.checkForAppUpdate = triggerUpdateCheck;
 
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=42').then((reg) => {
+        navigator.serviceWorker.register('./sw.js?v=43').then((reg) => {
           swReg = reg;
           window._swReg = reg;
           reg.update().catch(() => {});
@@ -5909,25 +5909,25 @@
 
     initApp();
   </script>
-  <script src="./food-match.js?v=42"></script>
-  <script src="./food-vision-ui.js?v=42"></script>
-  <script src="./bp-ui.js?v=42"></script>
-  <script src="./exercise-match.js?v=42"></script>
-  <script src="./workout-engine.js?v=42"></script>
-  <script src="./recovery-engine.js?v=42"></script>
-  <script src="./workout-parser.js?v=42"></script>
-  <script src="./workout-io.js?v=42"></script>
-  <script src="./workout-ui.js?v=42"></script>
-  <script src="./skin-storage.js?v=42"></script>
-  <script src="./skinhair-engine.js?v=42"></script>
-  <script src="./skinhair-ui.js?v=42"></script>
-  <script src="./danes-podatki.js?v=42"></script>
-  <script src="./cikel-plan.js?v=42"></script>
-  <script src="./protocol-diary.js?v=42"></script>
-  <script src="./protocol-diary-ui.js?v=42"></script>
-  <script src="./assistant-ui.js?v=42"></script>
-  <script src="./error-guard.js?v=42"></script>
-  <script src="./backup-ui.js?v=42"></script>
+  <script src="./food-match.js?v=43"></script>
+  <script src="./food-vision-ui.js?v=43"></script>
+  <script src="./bp-ui.js?v=43"></script>
+  <script src="./exercise-match.js?v=43"></script>
+  <script src="./workout-engine.js?v=43"></script>
+  <script src="./recovery-engine.js?v=43"></script>
+  <script src="./workout-parser.js?v=43"></script>
+  <script src="./workout-io.js?v=43"></script>
+  <script src="./workout-ui.js?v=43"></script>
+  <script src="./skin-storage.js?v=43"></script>
+  <script src="./skinhair-engine.js?v=43"></script>
+  <script src="./skinhair-ui.js?v=43"></script>
+  <script src="./danes-podatki.js?v=43"></script>
+  <script src="./cikel-plan.js?v=43"></script>
+  <script src="./protocol-diary.js?v=43"></script>
+  <script src="./protocol-diary-ui.js?v=43"></script>
+  <script src="./assistant-ui.js?v=43"></script>
+  <script src="./error-guard.js?v=43"></script>
+  <script src="./backup-ui.js?v=43"></script>
   <script>
     if (window.SkinHairUI && typeof window.SkinHairUI.mount === 'function') {
       window.SkinHairUI.mount();
