@@ -617,7 +617,7 @@
             <span style="font-weight: 700; color: var(--text-1);">${state.hair.hairlineRecessionMm} mm</span>
           </div>
           <input type="range" min="0" max="25" value="${state.hair.hairlineRecessionMm}" style="width: 100%;" 
-                 oninput="SkinHairUI.updateHairParam('hairlineRecessionMm', parseInt(this.value, 10))">
+                 oninput="SkinHairUI.updateHairParam('hairlineRecessionMm', parseInt(this.value, 10), true)" onchange="SkinHairUI.updateHairParam('hairlineRecessionMm', parseInt(this.value, 10))">
         </div>
 
         <!-- Pokritost temena v % -->
@@ -627,7 +627,7 @@
             <span style="font-weight: 700; color: var(--text-1);">${state.hair.vertexCoveragePct} %</span>
           </div>
           <input type="range" min="30" max="100" value="${state.hair.vertexCoveragePct}" style="width: 100%;" 
-                 oninput="SkinHairUI.updateHairParam('vertexCoveragePct', parseInt(this.value, 10))">
+                 oninput="SkinHairUI.updateHairParam('vertexCoveragePct', parseInt(this.value, 10), true)" onchange="SkinHairUI.updateHairParam('vertexCoveragePct', parseInt(this.value, 10))">
         </div>
 
         <!-- Dnevni shedding (0-10) -->
@@ -639,7 +639,7 @@
             </span>
           </div>
           <input type="range" min="0" max="10" value="${state.hair.sheddingScore}" style="width: 100%;" 
-                 oninput="SkinHairUI.updateHairParam('sheddingScore', parseInt(this.value, 10))">
+                 oninput="SkinHairUI.updateHairParam('sheddingScore', parseInt(this.value, 10), true)" onchange="SkinHairUI.updateHairParam('sheddingScore', parseInt(this.value, 10))">
         </div>
       </div>
 
@@ -922,10 +922,11 @@
     render();
   }
 
-  function updateHairParam(param, val) {
+  function updateHairParam(param, val, live) {
     state.hair[param] = val;
     saveState();
-    render();
+    // med vlečenjem drsnika (live) ne rišemo znova, sicer se dotik prekine; render ob spustu (onchange)
+    if (!live) render();
   }
 
   function toggleRoutineCompleted(slot, completed) {
