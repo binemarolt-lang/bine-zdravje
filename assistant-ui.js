@@ -291,7 +291,10 @@
     switch (a && a.type) {
       case 'log_workout':
         d.title = 'Trening: ' + (str(a.name, 80) || 'Trening');
-        if (a.date && a.date !== today) d.lines.push('Datum: ' + a.date);
+        if (a.date && a.date !== today) {
+          if (validDate(a.date)) d.lines.push('Datum: ' + a.date);
+          else d.dateWarn = true;
+        }
         (a.exercises || []).forEach(function (ex) {
           var sets = (ex.sets || []).map(function (s) {
             return (s.w != null ? s.w + ' kg × ' : '') + s.reps + (s.rir != null ? ' (RIR ' + s.rir + ')' : '');
@@ -337,7 +340,7 @@
       default:
         d.title = 'Neznan predlog';
     }
-    if (a && a.date && a.date !== today && DATED_TYPES[a.type]) warns.push(DATE_WARN);
+    if (a && a.date && a.date !== today && (DATED_TYPES[a.type] || (a.type === 'log_workout' && d.dateWarn))) warns.push(DATE_WARN);
     if (d.warn) warns.unshift(d.warn);
     if (!capability(a).ok) warns.push(UNS);
     d.warn = warns.length ? warns.join(' · ') : null;
@@ -956,6 +959,14 @@
     buildContext: buildContext
   };
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
-  else mount();
+  // Bližnjice v manifestu (?view=trening|prehrana): odpri zavihek ob zagonu.
+  function openLaunchView() {
+    try {
+      var v = new URLSearchParams(location.search).get('view');
+      if (v && TAB_LABELS[v] && typeof root.switchNav === 'function') root.switchNav(v);
+    } catch (e) { /* brez učinka */ }
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { mount(); openLaunchView(); });
+  else { mount(); openLaunchView(); }
 })(window);
