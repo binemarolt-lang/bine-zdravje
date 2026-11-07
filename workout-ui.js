@@ -854,6 +854,9 @@
       .wui-hist-card { background: var(--surface-2); border: 1px solid var(--edge-1); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; cursor: pointer; transition: border-color 0.15s; }
       .wui-hist-card:hover { border-color: var(--edge-2); }
       .wui-hist-row { display: flex; justify-content: space-between; align-items: center; }
+      /* Tap targeti >=44px za gumbe na dashboardu */
+      #workoutUiContainer button { min-height: 44px; }
+      #workoutUiContainer .status-pill { min-width: 44px; display: inline-flex; align-items: center; justify-content: center; }
     `;
     document.head.appendChild(style);
   }
