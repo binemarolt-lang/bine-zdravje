@@ -2,10 +2,16 @@
  * Plan: EQ 10 enot (185 mg/teden) od 1. dne, test ramp 12,12,18,24,30 enot.
  * U-100 inzulinka, Test 250 mg/mL, EQ 264 mg/mL, 1 s.c. vbod dnevno.
  * Model: 1-kompartment, t1/2 Test 6 d, EQ 14 d, start s 200 mg/teden testa (saturiran).
+ *
+ * Dodano: (a) zgodovina mest vboda (samo organizacijska pomoč, ne medicinski nasvet),
+ *         (b) trend izvidov: zgodovina v bine_zdravje_bloodwork_history_v1 + SVG sparkline.
+ *         Stari ključ bine_zdravje_bloodwork_data se NE spreminja (le bere se kot seme).
  */
 (function () {
   'use strict';
   const LS_KEY = 'bine_cikel_plan_v1';
+  const LS_BW = 'bine_zdravje_bloodwork_data';
+  const LS_BW_HIST = 'bine_zdravje_bloodwork_history_v1';
   const PLAN = {
     naziv: 'Blast: 525 mg Test + 185 mg EQ',
     testConc: 250, eqConc: 264,
@@ -20,6 +26,14 @@
       { teden: 16, naziv: 'Konec blasta', opis: 'Panel pred prehodom na cruise (125–150 mg/teden) ali PCT (6–8 tednov po zadnjem EQ).' }
     ]
   };
+
+  // Mesta vboda (rotacija L↔D). Vrstni red je tudi vrstni red predloga pri neuporabljenih mestih.
+  const SITES = [
+    { id: 'LT', label: 'L trebuh' }, { id: 'DT', label: 'D trebuh' },
+    { id: 'LS', label: 'L stegno' }, { id: 'DS', label: 'D stegno' },
+    { id: 'LD', label: 'L delta' },  { id: 'DD', label: 'D delta' }
+  ];
+  const siteLabel = id => (SITES.find(s => s.id === id) || { label: '–' }).label;
 
   const unitsFor = (arr, w) => arr[Math.min(w, arr.length - 1)];
   const mgPerDay = (units, conc) => units / 100 * conc;
@@ -54,7 +68,49 @@
   }
 
   let editing = false;
+  let picking = false;
   function el(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  /** Mesto, ki je bilo najdlje neuporabljeno (rotacija). Neuporabljeno ima prednost, ob izenačenju prvo v SITES. */
+  function nextSite(sites) {
+    let best = null, bestIdx = Infinity;
+    SITES.forEach(st => {
+      let last = -1;
+      sites.forEach((x, i) => { if (x.site === st.id) last = i; });
+      if (last < bestIdx) { bestIdx = last; best = st; }
+    });
+    return best;
+  }
+
+  function siteHistoryHtml(sites) {
+    const recent = sites.slice(-5).reverse();
+    const nxt = nextSite(sites);
+    let rows = recent.length
+      ? recent.map(x => `<span style="display:inline-block;padding:4px 8px;margin:2px 4px 2px 0;border:1px solid var(--edge-1);border-radius:8px;font-size:0.74rem;">${esc(x.date)} · ${esc(siteLabel(x.site))}</span>`).join('')
+      : '<span style="font-size:0.78rem;color:var(--text-3);">Še ni zabeleženih mest vboda.</span>';
+    return `
+      <div style="margin-top:12px;">
+        <div class="bento-label" style="margin-bottom:6px;">Zadnja mesta vboda (5)</div>
+        <div>${rows}</div>
+        <div style="font-size:0.8rem;margin-top:8px;">Naslednje mesto (rotacija): <strong>${nxt ? esc(nxt.label) : '–'}</strong></div>
+        <div style="font-size:0.7rem;color:var(--text-3);">Organizacijska pomoč za izmenjavo mest — ni medicinski nasvet.</div>
+      </div>`;
+  }
+
+  function chooserHtml() {
+    const btns = SITES.map(st =>
+      `<button type="button" class="btn secondary" style="min-height:44px;padding:10px;font-weight:700;font-size:0.82rem;" onclick="CikelPlan.markToday('${st.id}')">${esc(st.label)}</button>`
+    ).join('');
+    return `
+      <div style="margin-top:10px;">
+        <div class="bento-label" style="margin-bottom:6px;">Kam si se vbrizgal danes?</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">${btns}</div>
+        <button type="button" class="btn secondary" style="width:100%;min-height:44px;padding:10px;font-size:0.8rem;margin-top:8px;" onclick="CikelPlan.cancelPick()">Prekliči</button>
+      </div>`;
+  }
 
   function render() {
     const root = el('cikelPlanRoot');
@@ -80,6 +136,8 @@
     const tU = unitsFor(PLAN.testUnits, w), eU = unitsFor(PLAN.eqUnits, w);
     const todayKey = isoDate(today);
     const done = (s.done || {})[todayKey];
+    const sites = Array.isArray(s.sites) ? s.sites : [];
+    const doneSite = (sites.slice().reverse().find(x => x.date === todayKey) || {}).site;
     const sim = simulate(total);
     const cur = sim[Math.min(Math.max(di, 0), total - 1)];
     const nextUp = (() => {
@@ -107,6 +165,15 @@
         <td style="padding:5px 4px;color:var(--text-3);">${Math.round(p.t)}% / ${Math.round(p.e)}%</td></tr>`;
     }
 
+    let btnHtml;
+    if (done) {
+      btnHtml = `<button type="button" class="btn secondary" style="width:100%;min-height:44px;padding:11px;font-weight:700;margin-top:10px;" onclick="CikelPlan.toggleToday()">✓ Danes vbrizgano (${done}${doneSite ? ' · ' + esc(siteLabel(doneSite)) : ''}) · klikni za razveljavitev</button>`;
+    } else if (picking) {
+      btnHtml = chooserHtml();
+    } else {
+      btnHtml = `<button type="button" class="btn" style="width:100%;min-height:44px;padding:11px;font-weight:700;margin-top:10px;" onclick="CikelPlan.pickSite()">💉 Označi današnji vbod</button>`;
+    }
+
     root.innerHTML = `
       <div class="card-header"><div class="card-title">🗓️ ${PLAN.naziv}</div><span class="status-pill">${status}</span></div>
 
@@ -118,7 +185,8 @@
           <span style="font-size:1.1rem;font-weight:700;margin-left:auto;">= ${tU + eU} enot</span>
         </div>
         <div style="font-size:0.75rem;color:var(--text-3);">Najprej test do črtice ${tU}, nato EQ do skupne črtice ${tU + eU}. En vbod s.c., rotiraj trebuh/bok L↔D. Brizga samo enkrat.</div>
-        <button type="button" class="btn${done ? ' secondary' : ''}" style="width:100%;min-height:44px;padding:11px;font-weight:700;margin-top:10px;" onclick="CikelPlan.toggleToday()">${done ? '✓ Danes vbrizgano (' + done + ') · klikni za razveljavitev' : '💉 Označi današnji vbod'}</button>
+        ${btnHtml}
+        ${siteHistoryHtml(sites)}
       </div>
 
       <div class="bento-grid">
@@ -189,11 +257,115 @@
       `<path d="${path('e')}" fill="none" stroke="var(--c-kinetics)" stroke-width="2"/>`;
   }
 
+  // ---------- Izvidi: zgodovina in sparkline ----------
+  const num = v => (v === null || v === undefined || v === '' || isNaN(Number(v))) ? null : Number(v);
+
+  function readOldBw() {
+    try { return JSON.parse(localStorage.getItem(LS_BW) || 'null'); } catch (e) { return null; }
+  }
+  function normBw(x) {
+    return { datum: String(x.datum || ''), hct: num(x.hct), e2: num(x.e2), totalT: num(x.totalT), ggt: num(x.ggt) };
+  }
+  /** Zgodovina izvidov. Če ključ še ne obstaja, se kot prvi vnos vzame obstoječi izvid (samo branje). */
+  function bwHistory() {
+    let h = null;
+    try { h = JSON.parse(localStorage.getItem(LS_BW_HIST) || 'null'); } catch (e) { h = null; }
+    if (Array.isArray(h)) return h;
+    const old = readOldBw();
+    return old && old.datum ? [normBw(old)] : [];
+  }
+
+  /** Klic iz index.html ob vsakem shranjenem izvidu. Doda vnos z datumom; obstoječega ključa ne spreminja. */
+  function appendBloodwork(bw) {
+    const h = bwHistory();
+    h.push(Object.assign(normBw(bw), { ts: Date.now() }));
+    try { localStorage.setItem(LS_BW_HIST, JSON.stringify(h)); } catch (e) {}
+    renderBloodworkTrend();
+  }
+
+  function sparkHtml(series, band) {
+    const pts = series.filter(p => p.v != null);
+    if (pts.length < 2) return '<div style="font-size:0.78rem;color:var(--text-3);">Premalo podatkov (potrebna sta vsaj 2 izvida).</div>';
+    const W = 300, H = 64, P = 6;
+    let lo = Math.min(...pts.map(p => p.v)), hi = Math.max(...pts.map(p => p.v));
+    if (band) { lo = Math.min(lo, band.lo); hi = Math.max(hi, band.alarm != null ? band.alarm : band.hi); }
+    const pad = (hi - lo) * 0.1 || 1; lo -= pad; hi += pad;
+    const x = i => P + (W - 2 * P) * i / (pts.length - 1);
+    const y = v => H - P - (H - 2 * P) * (v - lo) / (hi - lo);
+    let bandSvg = '';
+    if (band) {
+      bandSvg += `<rect x="${P}" y="${y(band.hi).toFixed(1)}" width="${W - 2 * P}" height="${(y(band.lo) - y(band.hi)).toFixed(1)}" fill="rgba(0,230,118,0.12)"/>`;
+      if (band.alarm != null) bandSvg += `<line x1="${P}" x2="${W - P}" y1="${y(band.alarm).toFixed(1)}" y2="${y(band.alarm).toFixed(1)}" stroke="#FF3D00" stroke-dasharray="3,3"/>`;
+    }
+    const line = pts.map((p, i) => x(i).toFixed(1) + ',' + y(p.v).toFixed(1)).join(' ');
+    const dots = pts.map((p, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="3" fill="var(--strain-blue)"><title>${esc(p.d)}: ${p.v}</title></circle>`).join('');
+    const svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="Trend">${bandSvg}<polyline points="${line}" fill="none" stroke="var(--strain-blue)" stroke-width="2"/>${dots}</svg>`;
+    const list = pts.map(p => `<span style="display:inline-block;margin:1px 6px 1px 0;">${esc(p.d)} <strong style="color:#fff;">${p.v}</strong></span>`).join('');
+    return svg + `<div style="font-size:0.7rem;color:var(--text-3);line-height:1.6;margin-top:2px;">${list}</div>`;
+  }
+
+  function renderBloodworkTrend() {
+    const host = el('bwTrendRoot');
+    if (!host) return;
+    const h = bwHistory();
+    const series = (key, label, band, refTxt) => {
+      const pts = h.map(x => ({ d: x.datum, v: x[key] })).filter(p => p.d);
+      const last = pts.length ? pts[pts.length - 1] : null;
+      return `<div style="background:var(--surface-2);border:1px solid var(--edge-1);border-radius:12px;padding:10px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:0.8rem;">
+          <span style="font-weight:700;">${label}</span>
+          <span style="color:var(--text-3);font-size:0.74rem;">${last && last.v != null ? 'zadnji: <strong style="color:#fff;">' + last.v + '</strong> (' + esc(last.d) + ')' : '–'}</span>
+        </div>
+        <div style="margin-top:6px;">${sparkHtml(pts.map(p => ({ d: p.d, v: p.v })), band)}</div>
+        <div style="font-size:0.68rem;color:var(--text-3);margin-top:4px;">${refTxt}</div>
+      </div>`;
+    };
+    host.innerHTML = `
+      <div class="card-header"><div class="card-title">📈 Trend izvidov</div><span class="status-pill">${h.length} izvidov</span></div>
+      ${series('hct', 'Hematokrit (HCT, %)', { lo: 42, hi: 50, alarm: 54 }, 'Ref. iz kode: optimum 42–50 %, alarm ≥ 54 % (zelena cona, rdeča črtkana).')}
+      ${series('e2', '17-β E2 (pg/mL)', null, 'Referenčnih območij v kodi ni.')}
+      ${series('totalT', 'Skupni T (ng/dL)', null, 'Referenčnih območij v kodi ni.')}
+      ${series('ggt', 'GGT (U/L)', null, 'Referenčnih območij v kodi ni.')}`;
+  }
+
+  // ---------- Javni API ----------
   window.CikelPlan = {
     PLAN, simulate, render,
     start() {
       const v = (el('cpStartInput') || {}).value || isoDate(new Date());
-      const s = load(); s.start = v; s.done = s.done || {}; save(s); render();
+      const s = load(); s.start = v; s.done = s.done || {}; s.sites = s.sites || []; save(s); render();
+    },
+    pickSite() { picking = true; render(); },
+    cancelPick() { picking = false; render(); },
+    /** Označi današnji vbod na izbranem mestu (id iz SITES). */
+    markToday(siteId) {
+      if (!SITES.some(st => st.id === siteId)) return;
+      const s = load(); s.done = s.done || {}; s.sites = Array.isArray(s.sites) ? s.sites : [];
+      const k = isoDate(new Date());
+      if (s.done[k]) { picking = false; render(); return; }
+      const timeStr = new Date().toTimeString().slice(0, 5);
+      s.done[k] = timeStr;
+      s.sites.push({ date: k, site: siteId, time: timeStr });
+      s.diaryIds = s.diaryIds || {};
+      if (window.ProtocolDiary) {
+        try {
+          const di = dayIndex(s.start, new Date());
+          const w = Math.max(0, Math.floor(di / 7));
+          const tU = unitsFor(PLAN.testUnits, w), eU = unitsFor(PLAN.eqUnits, w);
+          const entry = window.ProtocolDiary.addEntry({
+            substance: 'Testosteron + EQ',
+            dose: `${tU}T + ${eU}EQ`,
+            unit: 'enot (U-100)',
+            category: 'anabolik',
+            slot: 'MORNING_FASTED',
+            notes: `Dnevni vbod (${tU} enot Testa + ${eU} enot EQ) · mesto: ${siteLabel(siteId)}`
+          });
+          if (entry && entry.id) s.diaryIds[k] = entry.id;
+        } catch (e) {}
+      }
+      picking = false;
+      save(s); render();
+      if (window.ProtocolDiaryUI) window.ProtocolDiaryUI.refreshActiveViews();
     },
     toggleToday() {
       const s = load(); s.done = s.done || {};
@@ -205,28 +377,12 @@
           try { window.ProtocolDiary.deleteEntry(s.diaryIds[k]); } catch (e) {}
         }
         delete s.diaryIds[k];
+        s.sites = (s.sites || []).filter(x => x.date !== k);
+        save(s); render();
+        if (window.ProtocolDiaryUI) window.ProtocolDiaryUI.refreshActiveViews();
       } else {
-        const timeStr = new Date().toTimeString().slice(0, 5);
-        s.done[k] = timeStr;
-        if (window.ProtocolDiary) {
-          try {
-            const di = dayIndex(s.start, new Date());
-            const w = Math.max(0, Math.floor(di / 7));
-            const tU = unitsFor(PLAN.testUnits, w), eU = unitsFor(PLAN.eqUnits, w);
-            const entry = window.ProtocolDiary.addEntry({
-              substance: 'Testosteron + EQ',
-              dose: `${tU}T + ${eU}EQ`,
-              unit: 'enot (U-100)',
-              category: 'anabolik',
-              slot: 'MORNING_FASTED',
-              notes: `Dnevni vbod (${tU} enot Testa + ${eU} enot EQ)`
-            });
-            if (entry && entry.id) s.diaryIds[k] = entry.id;
-          } catch(e) {}
-        }
+        picking = true; render();
       }
-      save(s); render();
-      if (window.ProtocolDiaryUI) window.ProtocolDiaryUI.refreshActiveViews();
     },
     changeStart() { editing = true; render(); },
     cancelEdit() { editing = false; render(); },
@@ -236,10 +392,16 @@
       editing = false; render();
     },
     reset() {
-      if (confirm('Ponastavim plan (začetek in odkljukane vbode)?')) { localStorage.removeItem(LS_KEY); editing = false; render(); }
-    }
+      if (confirm('Ponastavim plan (začetek in odkljukane vbode)?')) { localStorage.removeItem(LS_KEY); editing = false; picking = false; render(); }
+    },
+    // izvidi
+    appendBloodwork,
+    renderBloodworkTrend,
+    bloodworkHistory: bwHistory,
+    SITES
   };
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render);
-  else render();
+  function boot() { render(); renderBloodworkTrend(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
 })();
