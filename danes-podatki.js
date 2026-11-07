@@ -31,6 +31,13 @@
   const $ = (id) => document.getElementById(id);
   const num = (v) => (v === null || v === undefined || v === '' || isNaN(Number(v))) ? null : Number(v);
   const avg = (xs) => { const v = xs.filter((x) => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+  const stdDev = (xs) => {
+    const v = xs.filter((x) => x != null);
+    if (v.length < 2) return null;
+    const m = v.reduce((a, b) => a + b, 0) / v.length;
+    const variance = v.reduce((a, b) => a + Math.pow(b - m, 2), 0) / (v.length - 1);
+    return Math.sqrt(variance);
+  };
   const hm = (min) => min == null ? '–' : `${Math.floor(min / 60)}h ${String(Math.round(min % 60)).padStart(2, '0')}m`;
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -81,29 +88,88 @@
     const z = [...polni].reverse().find((d) => num(d.hrv) != null || num(d.spanjeMin) != null);
     if (!z) return null;
     const pred = dnevi.filter((d) => d.datum < z.datum).slice(-30);
-    const hrvOsn = avg(pred.map((d) => num(d.hrv)));
-    const rhrOsn = avg(pred.map((d) => num(d.rhr)));
+    const hrvVals = pred.map((d) => num(d.hrv)).filter((x) => x != null);
+    const rhrVals = pred.map((d) => num(d.rhr)).filter((x) => x != null);
+    const hrvOsn = avg(hrvVals);
+    const rhrOsn = avg(rhrVals);
     const spOsn = avg(pred.map((d) => num(d.spanjeMin)));
     const hrv = num(z.hrv), rhr = num(z.rhr), sp = num(z.spanjeMin);
 
-    // Ocena regeneracije 0–100 (orientacijska): 50 % HRV, 25 % RHR, 25 % spanje glede na 8 h potrebe.
+    const hrvSd = stdDev(hrvVals);
+    const rhrSd = stdDev(rhrVals);
+    const hrvLo = (hrvOsn != null && hrvSd != null) ? Math.round(hrvOsn - hrvSd) : null;
+    const hrvHi = (hrvOsn != null && hrvSd != null) ? Math.round(hrvOsn + hrvSd) : null;
+    const rhrLo = (rhrOsn != null && rhrSd != null) ? Math.round(rhrOsn - rhrSd) : null;
+    const rhrHi = (rhrOsn != null && rhrSd != null) ? Math.round(rhrOsn + rhrSd) : null;
+
+    // (1) Opozorilo ob odstopanju HRV/RHR od osnovnega pasu (informativno, brez medicinske ocene)
+    const opozorila = [];
+    if (hrv != null && hrvOsn != null && hrvSd != null) {
+      if (hrv < hrvLo) {
+        opozorila.push({
+          tip: 'hrv-pod',
+          naslov: 'HRV je danes pod tvojim 30-dnevnim območjem',
+          tekst: `HRV je danes pod tvojim 30-dnevnim območjem (${Math.round(hrv)} ms proti običajnemu pasu ${hrvLo}–${hrvHi} ms).`
+        });
+      } else if (hrv > hrvHi) {
+        opozorila.push({
+          tip: 'hrv-nad',
+          naslov: 'HRV je danes nad tvojim 30-dnevnim območjem',
+          tekst: `HRV je danes nad tvojim 30-dnevnim območjem (${Math.round(hrv)} ms proti običajnemu pasu ${hrvLo}–${hrvHi} ms).`
+        });
+      }
+    }
+    if (rhr != null && rhrOsn != null && rhrSd != null) {
+      if (rhr > rhrHi) {
+        opozorila.push({
+          tip: 'rhr-nad',
+          naslov: 'RHR je danes nad tvojim 30-dnevnim območjem',
+          tekst: `Utrip v mirovanju (RHR) je danes nad tvojim 30-dnevnim območjem (${Math.round(rhr)} bpm proti običajnemu pasu ${rhrLo}–${rhrHi} bpm).`
+        });
+      } else if (rhr < rhrLo) {
+        opozorila.push({
+          tip: 'rhr-pod',
+          naslov: 'RHR je danes pod tvojim 30-dnevnim območjem',
+          tekst: `Utrip v mirovanju (RHR) je danes pod tvojim 30-dnevnim območjem (${Math.round(rhr)} bpm proti običajnemu pasu ${rhrLo}–${rhrHi} bpm).`
+        });
+      }
+    }
+
+    // (3) Personaliziran spalni cilj: povprečje zadnjih 14 noči s spodnjo mejo 7 h (420 min). Fallback 8 h (480 min).
+    const nocne = dnevi.filter((d) => d.datum <= z.datum && num(d.spanjeMin) != null);
+    const zadnjih14 = nocne.slice(-14);
+    const avg14Min = avg(zadnjih14.map((d) => num(d.spanjeMin)));
+    const spalniCiljMin = avg14Min != null ? Math.max(7 * 60, Math.round(avg14Min)) : 480;
+
+    // Spalni dolg zadnjih 7 dni kot preprosta vsota razlik (cilj - dejansko)
+    const zadnjih7 = nocne.slice(-7);
+    let spalniDolgMin = null;
+    if (zadnjih7.length > 0) {
+      spalniDolgMin = zadnjih7.reduce((sum, d) => sum + (spalniCiljMin - num(d.spanjeMin)), 0);
+    }
+
+    // Ocena regeneracije 0–100 (orientacijska): 50 % HRV, 25 % RHR, 25 % spanje glede na personaliziran cilj.
     let rec = null;
     const deli = [];
     if (hrv != null && hrvOsn) deli.push([0.5, clamp(50 + (hrv / hrvOsn - 1) * 150, 0, 100)]);
     if (rhr != null && rhrOsn) deli.push([0.25, clamp(50 - (rhr / rhrOsn - 1) * 300, 0, 100)]);
-    if (sp != null) deli.push([0.25, clamp((sp / 480) * 100, 0, 100)]);
+    if (sp != null) deli.push([0.25, clamp((sp / spalniCiljMin) * 100, 0, 100)]);
     if (deli.length) { const w = deli.reduce((a, [x]) => a + x, 0); rec = Math.round(deli.reduce((a, [x, v]) => a + x * v, 0) / w); }
 
     const bud = num(z.budnoMin), lah = num(z.spanjeLahkoMin), glo = num(z.spanjeGlobokoMin), rem = num(z.spanjeRemMin);
     const vsota = [bud, lah, glo, rem].reduce((a, b) => a + (b || 0), 0);
     return {
       datum: z.datum, hrv, rhr, sp, hrvOsn, rhrOsn, spOsn, rec,
+      hrvSd, rhrSd, hrvLo, hrvHi, rhrLo, rhrHi,
+      opozorila,
+      spalniCiljMin, spalniDolgMin,
       hrvRel: hrv != null && hrvOsn ? Math.round((hrv / hrvOsn - 1) * 100) : null,
       faze: vsota > 0 ? { bud, lah, glo, rem, vsota } : null,
       spanjeOd: z.spanjeOd, spanjeDo: z.spanjeDo,
       koraki: num((dnevi.find((d) => d.datum === danes) || {}).koraki),
       azm: num((dnevi.find((d) => d.datum === danes) || {}).azm),
       korakiVceraj: num(z.koraki), azmVceraj: num(z.azm),
+      vsiDnevi: dnevi,
     };
   }
 
@@ -112,7 +178,122 @@
     el.setAttribute('stroke-dashoffset', String(dash * (1 - clamp(frac, 0, 1))));
   }
 
+  let trendiDni = 7;
+  let zadnjiDnevi = null;
+
+  function setTrendiDni(dni) {
+    trendiDni = dni === 30 ? 30 : 7;
+    renderTrendi(zadnjiDnevi);
+  }
+
+  function sparklineSvg(series, unit, colorHex) {
+    if (!series || series.length < 2) {
+      return '<div style="font-size:0.75rem;color:var(--text-3);padding:10px 0;text-align:center;">Premalo podatkov za to obdobje</div>';
+    }
+    const W = 320, H = 76, PX = 14, PY = 10;
+    const vals = series.map((s) => s.val);
+    const m = avg(vals);
+    const sd = stdDev(vals);
+    const bandLo = (m != null && sd != null) ? m - sd : null;
+    const bandHi = (m != null && sd != null) ? m + sd : null;
+
+    let minV = Math.min(...vals);
+    let maxV = Math.max(...vals);
+    if (bandLo != null) minV = Math.min(minV, bandLo);
+    if (bandHi != null) maxV = Math.max(maxV, bandHi);
+    if (maxV - minV < 0.1) { minV -= 1; maxV += 1; }
+    const pad = (maxV - minV) * 0.1;
+    minV -= pad; maxV += pad;
+
+    const getX = (i) => PX + (W - 2 * PX) * i / (series.length - 1);
+    const getY = (v) => H - PY - (H - 2 * PY) * (v - minV) / (maxV - minV);
+
+    let bandRect = '';
+    let meanLine = '';
+    if (bandLo != null && bandHi != null) {
+      const topY = getY(bandHi);
+      const botY = getY(bandLo);
+      const hBand = Math.max(2, botY - topY);
+      bandRect = `<rect x="${PX}" y="${topY.toFixed(1)}" width="${W - 2 * PX}" height="${hBand.toFixed(1)}" fill="rgba(255,255,255,0.06)" rx="4"/>`;
+      meanLine = `<line x1="${PX}" x2="${W - PX}" y1="${getY(m).toFixed(1)}" y2="${getY(m).toFixed(1)}" stroke="rgba(255,255,255,0.22)" stroke-dasharray="3 3"/>`;
+    }
+
+    const pts = series.map((s, i) => `${getX(i).toFixed(1)},${getY(s.val).toFixed(1)}`).join(' ');
+    const dots = series.map((s, i) => `<circle cx="${getX(i).toFixed(1)}" cy="${getY(s.val).toFixed(1)}" r="2.5" fill="${colorHex}"><title>${esc(s.date)}: ${s.val} ${unit}</title></circle>`).join('');
+
+    const latest = series[series.length - 1].val;
+    const firstDate = series[0].date;
+    const lastDate = series[series.length - 1].date;
+
+    return `
+      <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" style="overflow: visible;">
+        ${bandRect}
+        ${meanLine}
+        <polyline points="${pts}" fill="none" stroke="${colorHex}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        ${dots}
+      </svg>
+      <div style="display:flex;justify-content:space-between;font-size:0.68rem;color:var(--text-3);margin-top:2px;margin-bottom:12px;">
+        <span>${esc(firstDate)}</span>
+        <span>zadnja: <b style="color:#fff;">${latest} ${unit}</b> · pas ±1 SD: ${m != null ? m.toFixed(1) : '–'}${sd != null ? ' ± ' + sd.toFixed(1) : ''} ${unit}</span>
+        <span>${esc(lastDate)}</span>
+      </div>
+    `;
+  }
+
+  function renderTrendi(dnevi) {
+    const host = $('danesTrendiRoot');
+    if (!host) return;
+
+    const btns = document.querySelectorAll('.trendi-btn');
+    btns.forEach((b) => {
+      const d = Number(b.dataset.dni);
+      if (d === trendiDni) {
+        b.style.background = 'var(--rec-green)';
+        b.style.color = '#08090A';
+      } else {
+        b.style.background = 'transparent';
+        b.style.color = 'var(--text-2)';
+      }
+    });
+
+    if (!dnevi || !Array.isArray(dnevi) || dnevi.length === 0) {
+      host.innerHTML = `
+        <div style="text-align: center; padding: 20px 12px; color: var(--text-3); font-size: 0.8rem;">
+          <div style="font-size: 1.5rem; margin-bottom: 6px;">📊</div>
+          <div style="color: var(--text-2); font-weight: 600; margin-bottom: 4px;">Ni podatkov ure za prikaz trendov</div>
+          <div>Ko bo ura povezana in podatki naloženi, se tukaj prikažejo ${trendiDni}-dnevni trendi z osnovnim pasom (±1 SD). Brez povezave se ne prikazujejo izmišljene številke.</div>
+        </div>
+      `;
+      return;
+    }
+
+    const slice = dnevi.slice(-trendiDni);
+    const hrvSeries = slice.map((d) => ({ date: d.datum, val: num(d.hrv) })).filter((x) => x.val != null);
+    const rhrSeries = slice.map((d) => ({ date: d.datum, val: num(d.rhr) })).filter((x) => x.val != null);
+    const spSeries = slice.map((d) => ({ date: d.datum, val: num(d.spanjeMin) != null ? Math.round((num(d.spanjeMin) / 60) * 10) / 10 : null })).filter((x) => x.val != null);
+
+    let html = '';
+    html += '<div style="margin-bottom: 6px;">';
+    html += '<div class="bento-label" style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>HRV (Variabilnost srčnega utripa)</span><span style="color:var(--rec-green);">ms</span></div>';
+    html += sparklineSvg(hrvSeries, 'ms', 'var(--rec-green)');
+    html += '</div>';
+
+    html += '<div style="margin-bottom: 6px;">';
+    html += '<div class="bento-label" style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>RHR (Utrip v mirovanju)</span><span style="color:#FF6B5B;">bpm</span></div>';
+    html += sparklineSvg(rhrSeries, 'bpm', '#FF6B5B');
+    html += '</div>';
+
+    html += '<div style="margin-bottom: 6px;">';
+    html += '<div class="bento-label" style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Spanje (trajanje)</span><span style="color:var(--sleep-purple, #B388FF);">h</span></div>';
+    html += sparklineSvg(spSeries, 'h', 'var(--sleep-purple, #B388FF)');
+    html += '</div>';
+
+    host.innerHTML = html;
+  }
+
   function prikazi(v, res) {
+    zadnjiDnevi = (v && v.vsiDnevi) ? v.vsiDnevi : (res && res.data && Array.isArray(res.data.dnevi) ? res.data.dnevi : null);
+
     const recEl = $('heroRecoveryNum');
     if (recEl) recEl.textContent = v && v.rec != null ? v.rec + '%' : '–';
     setRing('ringRecovery', 477.5, v && v.rec != null ? v.rec / 100 : 0);
@@ -131,7 +312,14 @@
     const spEl = $('heroSpanje');
     if (spEl) spEl.textContent = v ? hm(v.sp) : '–';
     const spSub = $('heroSpanjeSub');
-    if (spSub) spSub.textContent = v && v.sp != null ? `${Math.round((v.sp / 480) * 100)} % od 8 h` : '–';
+    if (spSub) {
+      if (v && v.sp != null && v.spalniCiljMin != null) {
+        const pct = Math.round((v.sp / v.spalniCiljMin) * 100);
+        spSub.textContent = `${pct} % od cilja (${hm(v.spalniCiljMin)})`;
+      } else {
+        spSub.textContent = '–';
+      }
+    }
 
     // aktivnost: koraki danes (če jih še ni, včerajšnji dan), zunanji obroč = aktivne minute / 22
     const kEl = $('heroStrainNum'), kSub = $('heroStrainSub');
@@ -153,7 +341,39 @@
       if (leg) leg.textContent = f ? `${imena[id]} ${pct} % · ${hm(min)}` : `${imena[id]} –`;
     }
     const glob = $('hypnoSummary');
-    if (glob) glob.textContent = f ? `Globoko: ${hm(f.glo)}${v.spanjeOd ? ` · ${v.spanjeOd}–${v.spanjeDo}` : ''}` : '';
+    if (glob) {
+      let txt = f ? `Globoko: ${hm(f.glo)}${v.spanjeOd ? ` · ${v.spanjeOd}–${v.spanjeDo}` : ''}` : '';
+      if (v && v.spalniCiljMin != null) {
+        const dolgStr = v.spalniDolgMin != null
+          ? (v.spalniDolgMin > 0 ? `+${hm(v.spalniDolgMin)} dolga` : '0 min dolga')
+          : '–';
+        txt += (txt ? ' · ' : '') + `Cilj: ${hm(v.spalniCiljMin)} · Dolg (7 dni): ${dolgStr}`;
+      }
+      glob.textContent = txt;
+    }
+
+    // Opozorila ob odstopanju HRV / RHR od 30-dnevnega osnovnega pasu
+    const alertBox = $('danesHrvAlert');
+    if (alertBox) {
+      if (v && v.opozorila && v.opozorila.length > 0) {
+        alertBox.style.display = 'block';
+        alertBox.innerHTML = v.opozorila.map((o) => `
+          <div style="background: rgba(255, 194, 61, 0.12); border: 1px solid var(--rec-yellow, #FFC23D); border-radius: 12px; padding: 10px 14px; font-size: 0.8rem; color: #fff; margin-bottom: 6px;">
+            <div style="display: flex; align-items: center; gap: 6px; font-weight: 700; color: var(--rec-yellow, #FFC23D); margin-bottom: 2px;">
+              <span>⚡</span> <span>${esc(o.naslov)}</span>
+            </div>
+            <div>${esc(o.tekst)}</div>
+            <div style="font-size: 0.7rem; color: var(--text-3); margin-top: 4px;">Informativno obvestilo o odstopanju od 30-dnevnega pasu ±1 SD (brez medicinske ocene).</div>
+          </div>
+        `).join('');
+      } else {
+        alertBox.style.display = 'none';
+        alertBox.innerHTML = '';
+      }
+    }
+
+    // Trendi 7 / 30 dni za HRV, RHR in spanje
+    renderTrendi(zadnjiDnevi);
 
     // izvor podatkov
     const vir = $('danesVir');
@@ -365,10 +585,11 @@
   function renderDanes() {
     renderMissing();
     renderWeight();
+    renderTrendi(zadnjiDnevi);
     if (window.BpVision && BpVision.renderHistory) BpVision.renderHistory('bpHistRoot');
   }
 
-  window.DanesPodatki = { osvezi, povezi, renderDanes, exportDoctor, _izracunaj: izracunaj, _vpisiDanes: vpisiDanes };
+  window.DanesPodatki = { osvezi, povezi, renderDanes, exportDoctor, setTrendiDni, _izracunaj: izracunaj, _vpisiDanes: vpisiDanes };
   if (typeof document !== 'undefined') {
     const go = () => {
       renderDanes();
