@@ -293,6 +293,12 @@
           <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('test_eq_daily')">
             💉 Test+EQ
           </button>
+          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('ghk_cu_morning')">
+            💉 GHK-Cu
+          </button>
+          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('caffeine_preworkout')">
+            ☕ Kofein
+          </button>
           <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('dutasteride_05')">
             💈 Dutasterid
           </button>

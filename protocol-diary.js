@@ -20,13 +20,37 @@
   const PRESET_INTAKES = [
     // Binetov dejanski jutranji protokol (9.11.2026, po njegovih besedah)
     {
+      id: "ghk_cu_morning",
+      name: "GHK-Cu",
+      shortName: "GHK-Cu",
+      category: "lasje",
+      icon: "💉",
+      dose: "3",
+      unit: "mg",
+      slot: "MORNING_FASTED",
+      color: "#22d3ee",
+      defaultNotes: "s.c. zjutraj"
+    },
+    {
+      id: "caffeine_preworkout",
+      name: "Kofein pred treningom",
+      shortName: "Kofein",
+      category: "nootropik",
+      icon: "☕",
+      dose: "200",
+      unit: "mg",
+      slot: "PRE_WORKOUT",
+      color: "#a3a3a3",
+      defaultNotes: "200 ali 400 mg"
+    },
+    {
       id: "ezetimibe",
       name: "Ezetimib",
       shortName: "Ezetimib",
       category: "suplement",
       icon: "💊",
-      dose: "1",
-      unit: "tableta",
+      dose: "10",
+      unit: "mg",
       slot: "MORNING_FASTED",
       color: "#fbbf24",
       defaultNotes: "Od 7.11.2026"
