@@ -18,6 +18,67 @@
 
   // Privzeti hitri vnosi prilagojeni za Binetov cikel in protokol za lase
   const PRESET_INTAKES = [
+    // Binetov dejanski jutranji protokol (9.11.2026, po njegovih besedah)
+    {
+      id: "dutasteride_05",
+      name: "Dutasterid 0,5 mg",
+      shortName: "Dutasterid",
+      category: "lasje",
+      icon: "💈",
+      dose: "0.5",
+      unit: "mg",
+      slot: "MORNING_FASTED",
+      color: "#c084fc",
+      defaultNotes: "Vsak drugi dan (od 27.9.2026)"
+    },
+    {
+      id: "minoxidil_oral_sl",
+      name: "Minoksidil oralni (pod jezik)",
+      shortName: "Minoksidil SL",
+      category: "lasje",
+      icon: "💈",
+      dose: "1.25",
+      unit: "mg",
+      slot: "MORNING_FASTED",
+      color: "#a855f7",
+      defaultNotes: "Pod jezik, vsak dan"
+    },
+    {
+      id: "tadalafil_5_sl",
+      name: "Tadalafil (pod jezik)",
+      shortName: "Tadalafil",
+      category: "suplement",
+      icon: "💊",
+      dose: "5",
+      unit: "mg",
+      slot: "MORNING_FASTED",
+      color: "#f472b6",
+      defaultNotes: "Pod jezik, zjutraj"
+    },
+    {
+      id: "cdp_choline",
+      name: "CDP-holin (citikolin)",
+      shortName: "CDP-holin",
+      category: "nootropik",
+      icon: "🧠",
+      dose: "1",
+      unit: "mala žlička",
+      slot: "WITH_BREAKFAST",
+      color: "#60a5fa",
+      defaultNotes: "Forest Vitamin prašek, zjutraj"
+    },
+    {
+      id: "vitamin_d3_4000",
+      name: "Vitamin D3 4000 IU (Forest Vitamin)",
+      shortName: "Vit D3",
+      category: "suplement",
+      icon: "☀️",
+      dose: "4000",
+      unit: "IU",
+      slot: "WITH_BREAKFAST",
+      color: "#facc15",
+      defaultNotes: "1 soft kapsula, zjutraj"
+    },
     {
       id: 'test_eq_daily',
       name: 'Testosteron + EQ (dnevni odmerek)',
