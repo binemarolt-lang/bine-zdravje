@@ -20,6 +20,42 @@
   const PRESET_INTAKES = [
     // Binetov dejanski jutranji protokol (9.11.2026, po njegovih besedah)
     {
+      id: "ezetimibe",
+      name: "Ezetimib",
+      shortName: "Ezetimib",
+      category: "suplement",
+      icon: "💊",
+      dose: "1",
+      unit: "tableta",
+      slot: "MORNING_FASTED",
+      color: "#fbbf24",
+      defaultNotes: "Od 7.11.2026"
+    },
+    {
+      id: "evening_powder_mix",
+      name: "Mešanica: glicin + NAC + vitamin C + badelj",
+      shortName: "Mešanica",
+      category: "suplement",
+      icon: "🥄",
+      dose: "1",
+      unit: "žlička",
+      slot: "BEFORE_BED",
+      color: "#34d399",
+      defaultNotes: "Zvečer, ~2,7 g glicin / 0,55 g NAC / ~1 g C / 0,25 g badelj (ocena)"
+    },
+    {
+      id: "klow_evening",
+      name: "KLOW (GHK-Cu + BPC-157 + TB-500 + KPV)",
+      shortName: "KLOW",
+      category: "anabolik",
+      icon: "💉",
+      dose: "2",
+      unit: "mg GHK-Cu",
+      slot: "BEFORE_BED",
+      color: "#2dd4bf",
+      defaultNotes: "s.c. zvečer"
+    },
+    {
       id: "dutasteride_05",
       name: "Dutasterid 0,5 mg",
       shortName: "Dutasterid",

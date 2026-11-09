@@ -308,6 +308,15 @@
           <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('vitamin_d3_4000')">
             ☀️ D3
           </button>
+          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('ezetimibe')">
+            💊 Ezetimib
+          </button>
+          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('evening_powder_mix')">
+            🥄 Mešanica
+          </button>
+          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('klow_evening')">
+            💉 KLOW
+          </button>
         </div>
 
         ${todayEntries.length > 0 ? `
