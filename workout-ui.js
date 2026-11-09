@@ -25,7 +25,7 @@
     unit: 'kg',
     barKg: 20,
     plates: [25, 20, 15, 10, 5, 2.5, 1.25],
-    restDefaultSec: 120,
+    restDefaultSec: 240,
     oneRmFormula: 'weighted',
     intensityMode: 'rir'
   };
@@ -574,7 +574,14 @@
   let wakeBound = false;
 
   function getSettings() {
-    return Object.assign({}, DEFAULT_SETTINGS, getStorage(LS_SETTINGS, {}));
+    const stored = getStorage(LS_SETTINGS, {}) || {};
+    // Migracija 9.11.2026: privzeti počitek 2 min -> 4 min (Bine). Shranjeno 120 s se enkrat dvigne na 240 s.
+    if (!stored.restV240) {
+      if (!stored.restDefaultSec || Number(stored.restDefaultSec) === 120) stored.restDefaultSec = 240;
+      stored.restV240 = true;
+      setStorage(LS_SETTINGS, stored);
+    }
+    return Object.assign({}, DEFAULT_SETTINGS, stored);
   }
 
   function saveSettings(s) {
@@ -1489,7 +1496,12 @@
       </div>
     `;
 
+    // Ohrani položaj drsenja: brez tega innerHTML ustvari nov seznam in vrže na vrh (glitch pri kljukici).
+    const prevList = document.getElementById('wuiSheetExercisesList');
+    const prevScroll = prevList ? prevList.scrollTop : 0;
     sheet.innerHTML = html;
+    const newList = document.getElementById('wuiSheetExercisesList');
+    if (newList && prevScroll) newList.scrollTop = prevScroll;
   }
 
   // ========== POMOŽNE: ČIŠČENJE SERIJ, PREDLOG, ŽIVI PR, SUPERSET, WAKE LOCK, CSV ==========
@@ -2806,7 +2818,7 @@
     const bar = parseFloat(document.getElementById('wuiSettingBar')?.value) || 20;
     const platesStr = document.getElementById('wuiSettingPlates')?.value || '';
     const plates = platesStr.split(/[\s,]+/).map(p => parseFloat(p)).filter(p => !isNaN(p) && p > 0);
-    const rest = parseInt(document.getElementById('wuiSettingRest')?.value, 10) || 120;
+    const rest = parseInt(document.getElementById('wuiSettingRest')?.value, 10) || 240;
 
     const s = getSettings();
     s.bodyweight = bw;
