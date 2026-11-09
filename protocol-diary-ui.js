@@ -293,17 +293,20 @@
           <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('test_eq_daily')">
             💉 Test+EQ
           </button>
-          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('finasteride_1mg')">
-            💈 Finasterid 1mg
+          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('dutasteride_05')">
+            💈 Dutasterid
           </button>
-          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('minoxidil_topical')">
-            💈 Minoksidil 5%
+          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('minoxidil_oral_sl')">
+            💈 Minoksidil SL
           </button>
-          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('omega3_dha_epa')">
-            🐟 Omega-3
+          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('tadalafil_5_sl')">
+            💊 Tadalafil
           </button>
-          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('vitamin_d3_k2')">
-            ☀️ Vit D3+K2
+          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('cdp_choline')">
+            🧠 CDP-holin
+          </button>
+          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('vitamin_d3_4000')">
+            ☀️ D3
           </button>
         </div>
 
