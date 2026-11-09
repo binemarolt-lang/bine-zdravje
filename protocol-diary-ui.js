@@ -1,7 +1,8 @@
 /**
  * Protocol & Supplement Diary UI (Binetov Dnevnik Vnosov & Protokolov)
  * Celovit UI modul za beleženje vseh vnosov anabolikov, suplementov, nootropikov in las.
- * Vključuje 1-klik hitre vnose, filtre, zgodovino, modal za vnos po meri in globalno levo/desno drsanje.
+ * Vključuje 1-klik hitre vnose, jutro/večer sezname s kljukicami, urejanje protokola,
+ * podporo za intervale (npr. dutasterid vsak 2. dan) ter ohranjanje položaja drsenja.
  */
 (function(root, factory) {
   if (typeof define === 'function' && define.amd) {
@@ -21,24 +22,138 @@
   let currentCategoryFilter = 'all';
   let currentPeriodFilter = 'all'; // '7' | '30' | 'all'
 
-  function showToast(text, isHappy = true) {
+  // =========================================================================
+  // OHRANJANJE POLOŽAJA DRSENJA (Scroll preservation - brez skakanja na vrh)
+  // =========================================================================
+  function withPreservedScroll(fn) {
+    if (typeof window === 'undefined') {
+      fn();
+      return;
+    }
+
+    const scrollY = window.pageYOffset || (document.documentElement ? document.documentElement.scrollTop : 0) || (document.body ? document.body.scrollTop : 0);
+    const scrollX = window.pageXOffset || (document.documentElement ? document.documentElement.scrollLeft : 0) || (document.body ? document.body.scrollLeft : 0);
+
+    const containerSnapshots = [];
+    try {
+      const candidates = document.querySelectorAll('.container, .view, #view-danes, #view-estetika, #sh-content-area, .sh-split-container, body, html');
+      candidates.forEach(el => {
+        if (el && (el.scrollTop > 0 || el.scrollLeft > 0)) {
+          containerSnapshots.push({ el, top: el.scrollTop, left: el.scrollLeft });
+        }
+      });
+    } catch(e) {}
+
+    fn();
+
+    const restore = () => {
+      try {
+        if (typeof window.scrollTo === 'function') {
+          window.scrollTo({ top: scrollY, left: scrollX, behavior: 'instant' });
+        }
+        containerSnapshots.forEach(item => {
+          if (item.el) {
+            item.el.scrollTop = item.top;
+            item.el.scrollLeft = item.left;
+          }
+        });
+      } catch(e) {}
+    };
+
+    restore();
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(restore);
+    }
+  }
+
+  // =========================================================================
+  // TOAST OBVESTILA IN 5-SEKUNDNI UNDO
+  // =========================================================================
+  function showToast(text, isHappy = true, duration = 3500) {
     const toast = document.getElementById('mascotToast');
     const toastText = document.getElementById('mascotToastText');
     const toastImg = document.getElementById('mascotToastImg');
     if (toast && toastText && toastImg) {
       toastText.textContent = text;
-      toastImg.src = isHappy ? './assets/anime/wink.gif' : './assets/anime/laugh.gif';
+      toastImg.src = isHappy ? './assets/anime/wink-opt.gif' : './assets/anime/laugh-opt.gif';
       toast.style.display = 'flex';
       clearTimeout(window._toastTimeout);
       window._toastTimeout = setTimeout(() => {
         toast.style.display = 'none';
-      }, 3500);
+      }, duration);
     }
   }
 
   /**
-   * Generiranje HTML kode polnega pogleda dnevnika
+   * Prikaz toast obvestila z gumbom za razveljavitev, ki traja 5 sekund
    */
+  function showUndoToast(text, undoCallback, duration = 5000) {
+    const toast = document.getElementById('mascotToast');
+    const toastText = document.getElementById('mascotToastText');
+    const toastImg = document.getElementById('mascotToastImg');
+
+    if (toast && toastText && toastImg) {
+      toastImg.src = './assets/anime/wink-opt.gif';
+      toastText.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;">
+          <span style="font-size: 0.76rem; line-height: 1.25;">${escapeHtml(text)}</span>
+          <button type="button" id="pdiaryUndoActionBtn" style="background: var(--strain-blue, #38bdf8); color: #040914; border: none; border-radius: 6px; padding: 4px 10px; font-weight: 800; font-size: 0.72rem; cursor: pointer; flex-shrink: 0; min-height: 36px; touch-action: manipulation;">
+            Razveljavi
+          </button>
+        </div>
+      `;
+      toast.style.display = 'flex';
+
+      const btn = document.getElementById('pdiaryUndoActionBtn');
+      if (btn) {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          clearTimeout(window._toastTimeout);
+          toast.style.display = 'none';
+          if (typeof undoCallback === 'function') {
+            undoCallback();
+          }
+        };
+      }
+
+      clearTimeout(window._toastTimeout);
+      window._toastTimeout = setTimeout(() => {
+        toast.style.display = 'none';
+      }, duration);
+      return;
+    }
+
+    // Fallback samostojni floating toast
+    let fallback = document.getElementById('pdiaryFloatingToast');
+    if (!fallback) {
+      fallback = document.createElement('div');
+      fallback.id = 'pdiaryFloatingToast';
+      fallback.style.cssText = 'position:fixed; bottom:calc(75px + env(safe-area-inset-bottom, 0px)); left:50%; transform:translateX(-50%); z-index:9999; background:rgba(14,16,18,0.96); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); border:1px solid var(--edge-2); box-shadow:0 8px 30px rgba(0,0,0,0.6); border-radius:12px; padding:10px 16px; font-size:0.8rem; color:var(--text-1); display:flex; align-items:center; gap:12px; max-width:90vw;';
+      document.body.appendChild(fallback);
+    }
+    fallback.innerHTML = `
+      <span>${escapeHtml(text)}</span>
+      <button type="button" id="pdiaryFallbackUndoBtn" style="background:var(--strain-blue, #38bdf8); color:#040914; border:none; border-radius:6px; padding:6px 12px; font-weight:800; font-size:0.75rem; cursor:pointer; min-height:36px;">
+        Razveljavi
+      </button>
+    `;
+    fallback.style.display = 'flex';
+    const fUndoBtn = document.getElementById('pdiaryFallbackUndoBtn');
+    if (fUndoBtn) {
+      fUndoBtn.onclick = () => {
+        fallback.style.display = 'none';
+        if (typeof undoCallback === 'function') undoCallback();
+      };
+    }
+    clearTimeout(window._fallbackToastTimeout);
+    window._fallbackToastTimeout = setTimeout(() => {
+      fallback.style.display = 'none';
+    }, duration);
+  }
+
+  // =========================================================================
+  // IZRIS POLNEGA POGLEDA DNEVNIKA (Estetika / Dnevnik)
+  // =========================================================================
   function getDiaryViewHtml() {
     if (!Diary) return '<div style="padding: 20px; text-align: center; color: var(--text-3);">Dnevnik ni naložen.</div>';
 
@@ -70,6 +185,11 @@
       return dayEntries.some(e => e.category === currentCategoryFilter);
     });
 
+    // Prikazujemo samo AKTIVNE presete
+    const activePresets = typeof Diary.getActivePresets === 'function'
+      ? Diary.getActivePresets()
+      : Diary.PRESET_INTAKES.filter(p => p.aktiven !== false);
+
     return `
       <!-- KARTICA 1: NADZORNA PLOŠČA & STATISTIKA -->
       <div class="card" style="margin-bottom: 12px; position: relative;">
@@ -97,6 +217,9 @@
           <button type="button" class="btn" style="flex: 2; min-width: 130px; padding: 10px; min-height: 44px; font-weight: 700; font-size: 0.8rem;" onclick="ProtocolDiaryUI.openNewEntryModal()">
             + ✍️ Vnos po meri
           </button>
+          <button type="button" class="btn secondary" style="flex: 1; min-width: 110px; padding: 10px; min-height: 44px; font-weight: 600; font-size: 0.76rem;" onclick="ProtocolDiaryUI.openRoutineModal()">
+            ⚙️ Uredi protokol
+          </button>
           <button type="button" class="btn secondary" style="flex: 1; min-width: 85px; padding: 10px; min-height: 44px; font-weight: 600; font-size: 0.76rem;" onclick="ProtocolDiaryUI.exportToObsidian()" title="Kopiraj Markdown tabelo za Obsidian">
             📋 Markdown
           </button>
@@ -106,29 +229,49 @@
         </div>
       </div>
 
-      <!-- KARTICA 2: HITRI 1-KLIK VNOSI (PRESET CHIPS) -->
+      <!-- KARTICA 2: HITRI 1-KLIK VNOSI (SAMO AKTIVNI PRESET CHIPS) -->
       <div class="card" style="margin-bottom: 12px;">
-        <div class="card-header">
-          <div class="card-title">⚡ Hitri 1-Klik Vnos (Binetov Sklad)</div>
-          <span style="font-size: 0.72rem; color: var(--text-3);">Tapni za takojšen vpis</span>
+        <div class="card-header" style="justify-content: space-between; align-items: center;">
+          <div>
+            <div class="card-title">⚡ Hitri 1-Klik Vnos (Binetov Sklad)</div>
+            <span style="font-size: 0.72rem; color: var(--text-3);">Tapni za takojšen vpis</span>
+          </div>
+          <button type="button" class="btn secondary" style="padding: 4px 10px; font-size: 0.72rem; min-height: 44px;" onclick="ProtocolDiaryUI.openRoutineModal()">
+            ⚙️ Prilagodi
+          </button>
         </div>
 
         <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;">
-          ${Diary.PRESET_INTAKES.map(p => {
+          ${activePresets.map(p => {
             const lastEntry = (typeof Diary.getLastEntryForSubstance === 'function')
               ? (Diary.getLastEntryForSubstance(p.name) || Diary.getLastEntryForSubstance(p.shortName))
               : null;
             const lastAgo = (lastEntry && typeof Diary.formatDaysAgoEntry === 'function')
               ? Diary.formatDaysAgoEntry(lastEntry)
               : null;
+            
+            // Interval badge
+            let intervalBadge = '';
+            if (p.pogostost && p.pogostost.vsakNdni && typeof Diary.getIntervalStatus === 'function') {
+              const iv = Diary.getIntervalStatus(p.id);
+              if (iv) {
+                if (iv.isDue) {
+                  intervalBadge = `<span style="font-size: 0.62rem; color: #22d3ee; font-weight: 700;">• danes na vrsti</span>`;
+                } else {
+                  intervalBadge = `<span style="font-size: 0.62rem; color: #fbbf24; font-weight: 700;">• jutri</span>`;
+                }
+              }
+            }
+
             return `
             <button type="button" class="btn secondary" 
-                    style="padding: 6px 12px; min-height: 44px; font-size: 0.76rem; border-radius: 10px; display: inline-flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; border-color: rgba(255,255,255,0.12);"
+                    style="padding: 6px 12px; min-height: 44px; font-size: 0.76rem; border-radius: 10px; display: inline-flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; border-color: rgba(255,255,255,0.12); touch-action: manipulation;"
                     onclick="ProtocolDiaryUI.quickLog('${p.id}')">
-              <div style="display: flex; align-items: center; gap: 5px;">
+              <div style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
                 <span>${p.icon}</span>
-                <strong>${p.shortName}</strong>
-                <span style="color: var(--text-3); font-size: 0.7rem;">(${p.dose} ${p.unit})</span>
+                <strong>${escapeHtml(p.shortName || p.name)}</strong>
+                <span style="color: var(--text-3); font-size: 0.7rem;">(${escapeHtml(p.dose)} ${escapeHtml(p.unit)})</span>
+                ${intervalBadge}
               </div>
               <div style="font-size: 0.64rem; color: ${lastAgo ? 'var(--strain-blue, #38bdf8)' : 'var(--text-3)'};">
                 ${lastAgo ? `zadnji vnos: ${lastAgo}` : 'zadnji vnos: še ni zabeležen'}
@@ -169,6 +312,8 @@
                     style="font-size: 0.72rem; padding: 0 12px; min-height: 44px; flex-shrink: 0; white-space: nowrap; color: #c084fc;" onclick="ProtocolDiaryUI.setFilter('lasje')">💈 Lasje</button>
             <button type="button" class="sh-tab-btn ${currentCategoryFilter === 'suplement' ? 'active' : ''}" 
                     style="font-size: 0.72rem; padding: 0 12px; min-height: 44px; flex-shrink: 0; white-space: nowrap; color: #34d399;" onclick="ProtocolDiaryUI.setFilter('suplement')">💊 Suplementi</button>
+            <button type="button" class="sh-tab-btn ${currentCategoryFilter === 'nootropik' ? 'active' : ''}" 
+                    style="font-size: 0.72rem; padding: 0 12px; min-height: 44px; flex-shrink: 0; white-space: nowrap; color: #60a5fa;" onclick="ProtocolDiaryUI.setFilter('nootropik')">🧠 Nootropiki</button>
           </div>
         </div>
 
@@ -184,18 +329,12 @@
     `;
   }
 
-  /**
-   * Izris polnega pogleda dnevnika v poljuben vsebnik
-   */
   function renderDiaryView(containerId = 'sh-content-area') {
     const container = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
     if (!container || !Diary) return;
     container.innerHTML = getDiaryViewHtml();
   }
 
-  /**
-   * Izris kartice za posamezen dan
-   */
   function renderDayCard(dateStr) {
     let dayEntries = Diary.getEntriesForDate(dateStr);
     if (currentCategoryFilter !== 'all') {
@@ -249,8 +388,7 @@
                 </button>
               </div>
             `;
-          }).join('')}
-        </div>
+          }).join('')}\n        </div>
       </div>
     `;
   }
@@ -260,9 +398,9 @@
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
-  /**
-   * Izris kompaktnega povzetka za zavihek Danes
-   */
+  // =========================================================================
+  // DANES WIDGET (Jutro / Pred treningom / Zvečer kartični seznami s kljukicami)
+  // =========================================================================
   function renderTodayWidget(targetElementId = 'danesDiaryWidget') {
     const el = document.getElementById(targetElementId);
     if (!el || !Diary) return;
@@ -270,70 +408,78 @@
     const todayEntries = Diary.getTodayEntries();
     const stats = Diary.getStats();
 
+    // Sklopi
+    const morningPresets = typeof Diary.getActivePresets === 'function' ? Diary.getActivePresets('morning') : [];
+    const preworkoutPresets = typeof Diary.getActivePresets === 'function' ? Diary.getActivePresets('preworkout') : [];
+    const eveningPresets = typeof Diary.getActivePresets === 'function' ? Diary.getActivePresets('evening') : [];
+
+    // Preštej skupno število opravljenih aktivnih nalog danes
+    const allActive = typeof Diary.getActivePresets === 'function' ? Diary.getActivePresets() : [];
+    let completedActiveCount = 0;
+    allActive.forEach(p => {
+      if (typeof Diary.getTodayEntryForPreset === 'function' && Diary.getTodayEntryForPreset(p.id)) {
+        completedActiveCount++;
+      }
+    });
+
     el.innerHTML = `
       <div class="card" style="margin-bottom: 12px;">
-        <div class="card-header">
-          <div class="card-title">💊 Dnevni Protokoli & Suplementi</div>
-          <span class="status-pill" style="color: var(--rec-green);">
-            ${todayEntries.length} vnosov danes
+        <div class="card-header" style="justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="card-title">💊 Dnevni Protokoli & Suplementi</div>
+          </div>
+          <span class="status-pill" style="color: var(--rec-green); border-color: rgba(0,230,118,0.3); font-size: 0.72rem;">
+            ✓ ${completedActiveCount} / ${allActive.length} danes
           </span>
         </div>
 
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; margin-bottom: 10px;">
-          <span style="font-size: 0.75rem; color: var(--text-2);">
-            Zabeleži vnos ali preveri zgodovino
-          </span>
-          <button type="button" class="btn secondary" style="font-size: 0.7rem; padding: 0 10px; min-height: 44px;" onclick="switchNav('estetika'); if(window.SkinHairUI) SkinHairUI.switchSubTab('dnevnik');">
-            📖 Celoten dnevnik →
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; margin-bottom: 12px; gap: 8px; flex-wrap: wrap;">
+          <button type="button" class="btn secondary" style="font-size: 0.74rem; padding: 6px 12px; min-height: 44px; display: inline-flex; align-items: center; gap: 6px;" onclick="ProtocolDiaryUI.openRoutineModal()">
+            <span>⚙️</span>
+            <span>Uredi moj protokol</span>
+          </button>
+          <button type="button" class="btn secondary" style="font-size: 0.74rem; padding: 6px 12px; min-height: 44px; display: inline-flex; align-items: center; gap: 6px;" onclick="switchNav('estetika'); if(window.SkinHairUI) SkinHairUI.switchSubTab('dnevnik');">
+            <span>📖</span>
+            <span>Celoten dnevnik →</span>
           </button>
         </div>
 
-        <!-- Hitri gumbi za danes -->
-        <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 8px;">
-          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('test_eq_daily')">
-            💉 Test+EQ
-          </button>
-          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('ghk_cu_morning')">
-            💉 GHK-Cu
-          </button>
-          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('caffeine_preworkout')">
-            ☕ Kofein
-          </button>
-          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('dutasteride_05')">
-            💈 Dutasterid
-          </button>
-          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('minoxidil_oral_sl')">
-            💈 Minoksidil SL
-          </button>
-          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('tadalafil_5_sl')">
-            💊 Tadalafil
-          </button>
-          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('cdp_choline')">
-            🧠 CDP-holin
-          </button>
-          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('vitamin_d3_4000')">
-            ☀️ D3
-          </button>
-          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('ezetimibe')">
-            💊 Ezetimib
-          </button>
-          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('evening_powder_mix')">
-            🥄 Mešanica
-          </button>
-          <button type="button" class="btn secondary" style="padding: 0 10px; min-height: 44px; flex-shrink: 0; font-size: 0.72rem; white-space: nowrap;" onclick="ProtocolDiaryUI.quickLog('klow_evening')">
-            💉 KLOW
-          </button>
-        </div>
+        <!-- 1. SKLOP: ZJUTRAJ -->
+        ${renderSklopCard('morning', '🌅 Zjutraj', morningPresets, '✓ Vse zjutraj')}
 
+        <!-- 2. SKLOP: PRED TRENINGOM -->
+        ${renderSklopCard('preworkout', '⚡ Pred treningom', preworkoutPresets, '✓ Vse pred treningom')}
+
+        <!-- 3. SKLOP: ZVEČER -->
+        ${renderSklopCard('evening', '🌙 Zvečer', eveningPresets, '✓ Vse zvečer')}
+
+        <!-- POVZETEK DANES ZABELEŽENIH VNOSOV -->
         ${todayEntries.length > 0 ? `
-          <div style="font-size: 0.72rem; color: var(--text-3); display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--edge-1); padding-top: 6px;">
-            ${todayEntries.slice(0, 4).map(e => `
-              <div style="display: flex; justify-content: space-between;">
-                <span>${escapeHtml(e.substance)} (${escapeHtml(e.dose)} ${escapeHtml(e.unit)})</span>
-                <span style="color: var(--text-3); font-variant-numeric: tabular-nums;">${escapeHtml(e.time)}</span>
-              </div>
-            `).join('')}
-            ${todayEntries.length > 4 ? `<span style="color: var(--rec-green); font-size: 0.68rem;">+ še ${todayEntries.length - 4} vnosov</span>` : ''}
+          <div style="margin-top: 10px; border-top: 1px solid var(--edge-1); padding-top: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">
+                🕒 Časovnica danes (${todayEntries.length} vnosov):
+              </span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              ${todayEntries.slice(0, 5).map(e => `
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; background: rgba(0,0,0,0.18); padding: 5px 8px; border-radius: 6px;">
+                  <span style="color: var(--text-1);">
+                    <strong>${escapeHtml(e.substance)}</strong>
+                    <span style="color: var(--text-3);">(${escapeHtml(e.dose)} ${escapeHtml(e.unit)})</span>
+                  </span>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="color: var(--rec-green); font-variant-numeric: tabular-nums; font-weight: 600;">${escapeHtml(e.time)}</span>
+                    <button type="button" style="background: none; border: none; color: var(--text-3); cursor: pointer; padding: 0 4px; min-width: 32px; min-height: 32px; font-size: 0.8rem;" title="Izbriši vnos" onclick="ProtocolDiaryUI.deleteEntry('${e.id}')">✕</button>
+                  </div>
+                </div>
+              `).join('')}
+              ${todayEntries.length > 5 ? `
+                <span style="color: var(--rec-green); font-size: 0.68rem; text-align: right; margin-top: 2px;">
+                  + še ${todayEntries.length - 5} vnosov
+                </span>
+              ` : ''}
+            </div>
           </div>
         ` : ''}
       </div>
@@ -341,11 +487,183 @@
   }
 
   /**
+   * Izris kartice za posamezen sklop (Zjutraj / Pred treningom / Zvečer)
+   */
+  function renderSklopCard(sklopId, title, presets, batchButtonLabel) {
+    if (!presets || presets.length === 0) {
+      return '';
+    }
+
+    // Preveri, koliko jih je odkljukanih danes
+    let loggedCount = 0;
+    let dueCount = 0;
+
+    const itemsHtml = presets.map(p => {
+      const todayEntry = typeof Diary.getTodayEntryForPreset === 'function' ? Diary.getTodayEntryForPreset(p.id) : null;
+      const isLogged = !!todayEntry;
+      if (isLogged) loggedCount++;
+
+      // Preveri interval
+      let intervalBadge = '';
+      let isDue = true;
+      if (p.pogostost && p.pogostost.vsakNdni && typeof Diary.getIntervalStatus === 'function') {
+        const iv = Diary.getIntervalStatus(p.id);
+        if (iv) {
+          isDue = iv.isDue;
+          if (isLogged) {
+            intervalBadge = `<span style="font-size: 0.65rem; background: rgba(0,230,118,0.16); color: var(--rec-green); border: 1px solid rgba(0,230,118,0.3); padding: 1px 6px; border-radius: 6px; font-weight: 700;">✓ danes vzeto</span>`;
+          } else if (iv.isDue) {
+            intervalBadge = `<span style="font-size: 0.65rem; background: rgba(34,211,238,0.18); color: #22d3ee; border: 1px solid rgba(34,211,238,0.35); padding: 1px 6px; border-radius: 6px; font-weight: 700;">⚡ danes na vrsti</span>`;
+          } else {
+            intervalBadge = `<span style="font-size: 0.65rem; background: rgba(251,191,36,0.14); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); padding: 1px 6px; border-radius: 6px; font-weight: 700;">⏳ jutri</span>`;
+          }
+        }
+      }
+
+      if (isDue || isLogged) dueCount++;
+
+      return `
+        <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.22); border: 1px solid ${isLogged ? 'rgba(0,230,118,0.28)' : 'var(--edge-1)'}; border-radius: 10px; padding: 6px 8px; min-height: 44px; transition: border-color 0.2s; touch-action: manipulation;">
+          <!-- Kljukica gumb (min 44x44px za iOS) -->
+          <button type="button" 
+                  style="width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; background: none; border: none; padding: 0; cursor: pointer; flex-shrink: 0;"
+                  aria-label="${isLogged ? 'Razveljavi vnos ' + p.name : 'Zabeleži ' + p.name}"
+                  onclick="ProtocolDiaryUI.togglePreset('${p.id}')">
+            ${isLogged ? `
+              <div style="width: 26px; height: 26px; border-radius: 50%; background: var(--rec-green, #00e676); color: #040914; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 0.85rem; box-shadow: 0 0 10px rgba(0,230,118,0.45);">
+                ✓
+              </div>
+            ` : `
+              <div style="width: 26px; height: 26px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); display: flex; align-items: center; justify-content: center;">
+              </div>
+            `}
+          </button>
+
+          <!-- Vsebina snovi (klik prav tako preklopi) -->
+          <div style="flex: 1; min-width: 0; padding: 0 6px; cursor: pointer;" onclick="ProtocolDiaryUI.togglePreset('${p.id}')">
+            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+              <span style="font-weight: 700; font-size: 0.82rem; color: ${isLogged ? 'var(--rec-green, #00e676)' : 'var(--text-1)'};">
+                ${p.icon} ${escapeHtml(p.shortName || p.name)}
+              </span>
+              <span style="font-size: 0.74rem; font-weight: 600; color: ${isLogged ? 'var(--rec-green, #00e676)' : 'var(--text-2)'};">
+                ${escapeHtml(p.dose)} ${escapeHtml(p.unit)}
+              </span>
+              ${intervalBadge}
+            </div>
+            <div style="font-size: 0.68rem; color: var(--text-3); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              ${escapeHtml(p.defaultNotes || '')}
+            </div>
+          </div>
+
+          <!-- Desni indikator časa ali statusa -->
+          <div style="flex-shrink: 0; text-align: right; padding-right: 4px;">
+            ${isLogged && todayEntry ? `
+              <span style="font-size: 0.72rem; color: var(--rec-green, #00e676); font-variant-numeric: tabular-nums; font-weight: 700;">
+                ${escapeHtml(todayEntry.time)}
+              </span>
+            ` : `
+              <span style="font-size: 0.68rem; color: var(--text-3); opacity: 0.7;">
+                tapni
+              </span>
+            `}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const allCompleted = presets.length > 0 && loggedCount >= presets.length;
+
+    return `
+      <div style="background: rgba(255,255,255,0.025); border: 1px solid var(--edge-1); border-radius: 12px; padding: 10px; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="font-weight: 800; font-size: 0.86rem; color: var(--text-1);">${title}</span>
+            <span style="font-size: 0.72rem; color: ${allCompleted ? 'var(--rec-green)' : 'var(--text-3)'}; background: rgba(255,255,255,0.05); padding: 1px 7px; border-radius: 6px; font-weight: 700;">
+              ${loggedCount}/${presets.length}
+            </span>
+          </div>
+
+          <!-- Gumb Vse naenkrat -->
+          <button type="button" class="btn ${allCompleted ? 'secondary' : ''}" 
+                  style="font-size: 0.72rem; padding: 4px 12px; min-height: 44px; font-weight: 700; ${allCompleted ? 'opacity: 0.7;' : 'background: var(--rec-green, #00e676); color: #040914;'}"
+                  onclick="ProtocolDiaryUI.logAll('${sklopId}')">
+            ${allCompleted ? '✓ Vse zabeleženo' : batchButtonLabel}
+          </button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          ${itemsHtml}
+        </div>
+      </div>
+    `;
+  }
+
+  // =========================================================================
+  // DEJANJA: TOGGLE, BATCH LOG, QUICK LOG, DELETE
+  // =========================================================================
+
+  /**
+   * Preklopi kljukico posamezne substance danes:
+   * 1. klik = vnos
+   * 2. klik = razveljavi samo današnji vnos (z 5s undo toastom)
+   */
+  function togglePreset(presetId) {
+    if (!Diary) return;
+    const res = typeof Diary.togglePresetForToday === 'function'
+      ? Diary.togglePresetForToday(presetId)
+      : null;
+
+    if (!res) return;
+
+    if (res.action === 'added') {
+      showToast(`✓ Zabeleženo: ${res.entry.substance} (${res.entry.dose} ${res.entry.unit})`, true, 3500);
+    } else if (res.action === 'removed') {
+      const sub = res.preset.shortName || res.preset.name;
+      const dose = `${res.removedEntry.dose} ${res.removedEntry.unit}`;
+      showUndoToast(
+        `↩️ Razveljavljen današnji vnos: ${sub} (${dose})`,
+        () => {
+          // Razveljavi razveljavitev: ponovno vpiši
+          Diary.logPreset(presetId);
+          showToast(`✓ Ponovno zabeleženo: ${sub}`, true, 3500);
+          refreshActiveViews();
+        },
+        5000
+      );
+    }
+
+    refreshActiveViews();
+  }
+
+  /**
+   * Gumb »✓ Vse zjutraj« (ali drug sklop) vpiše vse neodkljukane naenkrat
+   */
+  function logAll(sklop = 'morning') {
+    if (!Diary) return;
+    const added = typeof Diary.logAllForSklop === 'function'
+      ? Diary.logAllForSklop(sklop)
+      : [];
+
+    const sklopTitle = sklop === 'morning' ? 'jutranjih' : sklop === 'preworkout' ? 'pred-trening' : 'večernih';
+
+    if (added.length > 0) {
+      showToast(`✓ Zabeleženo ${added.length} ${sklopTitle} vnosov naenkrat!`, true, 3500);
+    } else {
+      showToast(`Vse ${sklopTitle} substance so za danes že zabeležene.`, true, 3000);
+    }
+
+    refreshActiveViews();
+  }
+
+  /**
    * Hitri vnos iz predloge z obvestilom in prikazom zadnjega vnosa
    */
   function quickLog(presetId) {
     if (!Diary) return;
-    const preset = Diary.PRESET_INTAKES.find(p => p.id === presetId);
+    const preset = (typeof Diary.getPresetById === 'function')
+      ? Diary.getPresetById(presetId)
+      : Diary.PRESET_INTAKES.find(p => p.id === presetId);
+
     const prevEntry = preset && typeof Diary.getLastEntryForSubstance === 'function'
       ? (Diary.getLastEntryForSubstance(preset.name) || Diary.getLastEntryForSubstance(preset.shortName))
       : null;
@@ -362,7 +680,7 @@
   }
 
   /**
-   * Brisanje vnosa z osvežitvijo
+   * Brisanje posameznega vnosa
    */
   function deleteEntry(entryId) {
     if (!Diary) return;
@@ -409,16 +727,147 @@
   }
 
   function refreshActiveViews() {
-    renderDiaryView();
-    renderTodayWidget();
-    if (typeof window !== 'undefined' && window.SkinHairUI && typeof window.SkinHairUI.render === 'function') {
-      // če smo na podzavihku dnevnik, renderDiaryView že osveži
+    withPreservedScroll(() => {
+      renderDiaryView();
+      renderTodayWidget();
+    });
+  }
+
+  // =========================================================================
+  // NASTAVITEV »UREDI MOJ PROTOKOL« (bine_protocol_routine_v1)
+  // =========================================================================
+  function openRoutineModal() {
+    let overlay = document.getElementById('pdiaryRoutineModalOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'pdiaryRoutineModalOverlay';
+      overlay.className = 'modal-overlay';
+      overlay.onclick = (e) => {
+        if (e.target.id === 'pdiaryRoutineModalOverlay') closeRoutineModal();
+      };
+      document.body.appendChild(overlay);
+    }
+
+    const allPresets = typeof Diary.getPresets === 'function'
+      ? Diary.getPresets()
+      : Diary.PRESET_INTAKES;
+
+    overlay.innerHTML = `
+      <div class="modal" style="max-width: 480px; max-height: 85vh; display: flex; flex-direction: column;">
+        <div class="modal-header">
+          <div class="modal-sheet-handle"></div>
+          <div class="modal-header-row">
+            <h3 style="margin: 0; font-size: 0.95rem;">⚙️ Uredi moj protokol</h3>
+            <button type="button" class="modal-close" style="width: 44px; height: 44px;" aria-label="Zapri" onclick="ProtocolDiaryUI.closeRoutineModal()">✕</button>
+          </div>
+          <p style="margin: 4px 0 0 0; font-size: 0.72rem; color: var(--text-3);">
+            Vklopi ali izklopi posamezne snovi ter jih razvrsti v sklop Zjutraj, Pred treningom ali Zvečer.
+          </p>
+        </div>
+
+        <div class="modal-body" style="padding: 12px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 8px;">
+          ${allPresets.map(p => `
+            <div class="pdiary-routine-row" data-id="${p.id}" style="background: rgba(0,0,0,0.25); border: 1px solid var(--edge-1); border-radius: 8px; padding: 8px 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+              <label style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; cursor: pointer; min-height: 44px;">
+                <input type="checkbox" class="pdiary-routine-active" ${p.aktiven ? 'checked' : ''} style="width: 22px; height: 22px; accent-color: var(--rec-green); flex-shrink: 0;">
+                <div style="min-width: 0; flex: 1;">
+                  <div style="font-weight: 700; font-size: 0.82rem; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    ${p.icon} ${escapeHtml(p.shortName || p.name)}
+                  </div>
+                  <div style="font-size: 0.68rem; color: var(--text-3);">
+                    ${escapeHtml(p.dose)} ${escapeHtml(p.unit)}${p.pogostost && p.pogostost.vsakNdni ? ` • vsak ${p.pogostost.vsakNdni}. dan` : ''}
+                  </div>
+                </div>
+              </label>
+
+              <div style="flex-shrink: 0;">
+                <select class="pdiary-routine-sklop" style="padding: 6px 8px; font-size: 16px; background: var(--surface-2); color: var(--text-1); border: 1px solid var(--edge-2); border-radius: 6px; min-height: 44px;">
+                  <option value="morning" ${p.sklop === 'morning' ? 'selected' : ''}>🌅 Zjutraj</option>
+                  <option value="preworkout" ${p.sklop === 'preworkout' ? 'selected' : ''}>⚡ Pred treningom</option>
+                  <option value="evening" ${p.sklop === 'evening' ? 'selected' : ''}>🌙 Zvečer</option>
+                </select>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="modal-footer" style="padding: 10px 14px; border-top: 1px solid var(--edge-1); display: flex; gap: 8px;">
+          <button type="button" class="btn secondary" style="flex: 1; min-height: 44px; font-size: 0.76rem;" onclick="ProtocolDiaryUI.resetRoutineDefaults()">
+            🔄 Ponastavi
+          </button>
+          <button type="button" class="btn" style="flex: 2; min-height: 44px; font-size: 0.82rem; font-weight: 700;" onclick="ProtocolDiaryUI.saveRoutineFromModal()">
+            💾 Shrani protokol
+          </button>
+        </div>
+      </div>
+    `;
+
+    overlay.style.display = '';
+    overlay.classList.add('open');
+    if (typeof lockBodyScroll === 'function') lockBodyScroll();
+    else {
+      document.documentElement.classList.add('modal-open');
+      document.body.classList.add('modal-open');
     }
   }
 
-  /**
-   * Modal za vnos po meri
-   */
+  function closeRoutineModal() {
+    const overlay = document.getElementById('pdiaryRoutineModalOverlay');
+    if (overlay) {
+      overlay.classList.remove('open');
+      overlay.style.display = 'none';
+    }
+    if (typeof unlockBodyScroll === 'function') unlockBodyScroll();
+    else {
+      document.documentElement.classList.remove('modal-open');
+      document.body.classList.remove('modal-open');
+    }
+  }
+
+  function saveRoutineFromModal() {
+    const rows = document.querySelectorAll('.pdiary-routine-row');
+    const presetsConfig = {};
+
+    rows.forEach((row, idx) => {
+      const id = row.getAttribute('data-id');
+      const activeInp = row.querySelector('.pdiary-routine-active');
+      const sklopSelect = row.querySelector('.pdiary-routine-sklop');
+
+      if (id && activeInp && sklopSelect) {
+        presetsConfig[id] = {
+          aktiven: !!activeInp.checked,
+          sklop: sklopSelect.value || 'morning',
+          order: idx
+        };
+      }
+    });
+
+    if (typeof Diary.saveRoutine === 'function') {
+      Diary.saveRoutine({
+        version: 1,
+        presets: presetsConfig
+      });
+    }
+
+    closeRoutineModal();
+    showToast('✓ Nastavitve protokola shranjene!', true, 3500);
+    refreshActiveViews();
+  }
+
+  function resetRoutineDefaults() {
+    if (confirm('Ali želiš ponastaviti protokol na Binetove privzete nastavitve?')) {
+      if (typeof Diary.resetRoutine === 'function') {
+        Diary.resetRoutine();
+      }
+      closeRoutineModal();
+      showToast('Ponastavljeno na privzeti protokol', true, 3500);
+      refreshActiveViews();
+    }
+  }
+
+  // =========================================================================
+  // MODAL ZA VNOS PO MERI
+  // =========================================================================
   function openNewEntryModal() {
     let overlay = document.getElementById('pdiaryModalOverlay');
     if (!overlay) {
@@ -485,6 +934,7 @@
                 <option value="kapsula">kapsula</option>
                 <option value="nanos">nanos</option>
                 <option value="pranje">pranje</option>
+                <option value="žlička">žlička</option>
               </select>
             </div>
           </div>
@@ -522,7 +972,7 @@
 
           <div>
             <label style="font-size: 0.72rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Opomba (neobvezno)</label>
-            <input type="text" id="pdiaryInpNotes" placeholder="npr. vbod v ramo, z obrokom..." style="width: 100%; padding: 8px; min-height: 44px; font-size: 16px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff;">
+            <input type="text" id="pdiaryInpNotes" placeholder="npr. vbod v deltoid, z obrokom..." style="width: 100%; padding: 8px; min-height: 44px; font-size: 16px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff;">
           </div>
 
           <button type="button" class="btn" style="width: 100%; padding: 11px; min-height: 48px; font-weight: 700; margin-top: 6px;" onclick="ProtocolDiaryUI.saveNewEntryFromModal()">
@@ -543,7 +993,7 @@
 
   function closeNewEntryModal() {
     const overlay = document.getElementById('pdiaryModalOverlay');
-    if (overlay) { overlay.classList.remove('open'); overlay.style.display = ''; }
+    if (overlay) { overlay.classList.remove('open'); overlay.style.display = 'none'; }
     if (typeof unlockBodyScroll === 'function') unlockBodyScroll();
     else {
       document.documentElement.classList.remove('modal-open');
@@ -572,9 +1022,9 @@
     refreshActiveViews();
   }
 
-  /**
-   * Izvoz v Obsidian
-   */
+  // =========================================================================
+  // IZVOZ V OBSIDIAN & CSV
+  // =========================================================================
   function copyTextFallback(text) {
     try {
       const ta = document.createElement('textarea');
@@ -625,7 +1075,6 @@
     let startTime = 0;
     let isTracking = false;
 
-    // Elementi, kjer drsanje levo/desno ne sme preklapljati glavnih zavihkov
     function shouldIgnoreSwipe(target) {
       if (!target) return false;
       return !!target.closest(
@@ -660,7 +1109,6 @@
       const deltaY = touch.clientY - startY;
       const duration = Date.now() - startTime;
 
-      // Zahtevaj naraven vodoravni poteg (vsaj 45px, bolj vodoraven kot navpičen, < 650ms)
       if (Math.abs(deltaX) > 45 && Math.abs(deltaX) > 1.35 * Math.abs(deltaY) && duration < 650) {
         handleGlobalSwipe(deltaX < 0 ? 'next' : 'prev');
       }
@@ -682,7 +1130,6 @@
     const targetTab = TAB_ORDER[targetIndex];
     if (typeof window.switchNav === 'function') {
       window.switchNav(targetTab);
-      // Nežen vizualni indikator
       showToast(`Prikaz: ${targetTab.toUpperCase()}`, true);
     }
   }
@@ -702,6 +1149,8 @@
     getDiaryViewHtml,
     renderDiaryView,
     renderTodayWidget,
+    togglePreset,
+    logAll,
     quickLog,
     deleteEntry,
     setFilter,
@@ -711,10 +1160,15 @@
     openNewEntryModal,
     closeNewEntryModal,
     saveNewEntryFromModal,
+    openRoutineModal,
+    closeRoutineModal,
+    saveRoutineFromModal,
+    resetRoutineDefaults,
     exportToObsidian,
     exportToCSV,
     initSwipeNavigation,
     handleGlobalSwipe,
-    refreshActiveViews
+    refreshActiveViews,
+    withPreservedScroll
   };
 }));

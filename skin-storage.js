@@ -228,14 +228,33 @@
    */
   function canvasToBlob(canvas, mimeType, quality) {
     return new Promise((resolve, reject) => {
-      canvas.toBlob(
-        blob => {
-          if (blob) resolve(blob);
-          else reject(new Error('Canvas toBlob pretvorba ni uspela'));
-        },
-        mimeType,
-        quality
-      );
+      try {
+        canvas.toBlob(
+          blob => {
+            if (blob) return resolve(blob);
+            if (mimeType !== 'image/jpeg') {
+              try {
+                canvas.toBlob(
+                  b2 => {
+                    if (b2) resolve(b2);
+                    else reject(new Error('Canvas toBlob pretvorba ni uspela'));
+                  },
+                  'image/jpeg',
+                  quality
+                );
+              } catch (e2) {
+                reject(e2);
+              }
+            } else {
+              reject(new Error('Canvas toBlob pretvorba ni uspela'));
+            }
+          },
+          mimeType,
+          quality
+        );
+      } catch (err) {
+        reject(err);
+      }
     });
   }
 
@@ -776,8 +795,8 @@
       id,
       timestamp,
       date: dateStr,
-      category: metadata.category || 'general',
-      angle: metadata.angle || 'front',
+      category: metadata.category || 'splosno',
+      angle: metadata.angle || 'spredaj',
       notes: metadata.notes || '',
       tags: metadata.tags || [],
       metadata: {
@@ -815,6 +834,7 @@
       timestamp: record.timestamp,
       date: record.date,
       category: record.category,
+      angle: record.angle,
       metadata: record.metadata
     };
   }
@@ -886,9 +906,12 @@
         const results = [];
         let cursorRequest;
 
-        if (filter.category) {
+        if (filter.category && filter.category !== 'vse') {
           const index = store.index('category');
           cursorRequest = index.openCursor(IDBKeyRange.only(filter.category), 'prev');
+        } else if (filter.angle && filter.angle !== 'vse') {
+          const index = store.index('angle');
+          cursorRequest = index.openCursor(IDBKeyRange.only(filter.angle), 'prev');
         } else if (filter.date) {
           const index = store.index('date');
           cursorRequest = index.openCursor(IDBKeyRange.only(filter.date), 'prev');
@@ -902,13 +925,23 @@
           if (cursor) {
             const item = cursor.value;
 
+            // Preveri dodatne filtre, če niso bili zajeti v indeksnem iskanju
+            if (filter.category && filter.category !== 'vse' && item.category !== filter.category) {
+              cursor.continue();
+              return;
+            }
+            if (filter.angle && filter.angle !== 'vse' && item.angle !== filter.angle) {
+              cursor.continue();
+              return;
+            }
+
             // Pripravi lahko glavo za galerijo
             const summary = {
               id: item.id,
               timestamp: item.timestamp,
               date: item.date,
               category: item.category,
-              angle: item.angle,
+              angle: item.angle || 'spredaj',
               notes: item.notes,
               tags: item.tags,
               metadata: item.metadata,
@@ -1188,8 +1221,9 @@
 
     const showShield = () => {
       shieldEl.style.display = 'flex';
-      // Ob preklopu v ozadje preventivno sprostimo vse začasne URL-je v RAM-u
-      revokeAllTrackedUrls();
+      // Zaslon zameglimo pred predogledom v App Switcherju;
+      // Object URL-jev v RAM-u NE razveljavljamo ob navadnem preklopu, da ne uničimo prikazanih slik v galeriji.
+      // Do popolne revokacije URL-jev pride izključno ob zaklepu trezorja (lockVault).
     };
 
     const hideShield = () => {

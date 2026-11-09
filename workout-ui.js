@@ -183,6 +183,104 @@
   const serijSklon = n => { const m = n % 100; return m === 1 ? 'serija' : m === 2 ? 'seriji' : (m === 3 || m === 4) ? 'serije' : 'serij'; };
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+  /**
+   * Ohrani položaj drsenja in fokus vnosnega polja (ter položaj kazalca/izbire)
+   * ob ponovnem izrisu (innerHTML) vsebine.
+   */
+  function preserveFocusAndScroll(container, renderCallback) {
+    if (!container || typeof document === 'undefined') {
+      if (typeof renderCallback === 'function') renderCallback();
+      return;
+    }
+
+    const activeEl = document.activeElement;
+    let focusInfo = null;
+
+    if (activeEl && container.contains(activeEl)) {
+      focusInfo = {
+        id: activeEl.id || null,
+        focusKey: activeEl.getAttribute('data-focus-key') || null,
+        exIdx: activeEl.getAttribute('data-ex-idx') || null,
+        sIdx: activeEl.getAttribute('data-s-idx') || null,
+        field: activeEl.getAttribute('data-field') || null,
+        tagName: activeEl.tagName.toLowerCase(),
+        className: activeEl.className,
+        start: null,
+        end: null
+      };
+      try {
+        if ('selectionStart' in activeEl && activeEl.selectionStart !== null) {
+          focusInfo.start = activeEl.selectionStart;
+          focusInfo.end = activeEl.selectionEnd;
+        }
+      } catch (e) {}
+    }
+
+    // Shrani položaje drsenja kontejnerja in vseh podrejenih elementov z ID-jem
+    const scrollMap = new Map();
+    if (container.scrollTop > 0 || container.scrollLeft > 0) {
+      scrollMap.set('__container__', { top: container.scrollTop, left: container.scrollLeft });
+    }
+    const scrollables = container.querySelectorAll('*');
+    for (let i = 0; i < scrollables.length; i++) {
+      const el = scrollables[i];
+      if (el.id && (el.scrollTop > 0 || el.scrollLeft > 0)) {
+        scrollMap.set(el.id, { top: el.scrollTop, left: el.scrollLeft });
+      }
+    }
+
+    // Izvedi posodobitev DOM-a
+    if (typeof renderCallback === 'function') {
+      renderCallback();
+    }
+
+    // Obnovi drsenje
+    const contScroll = scrollMap.get('__container__');
+    if (contScroll) {
+      container.scrollTop = contScroll.top;
+      container.scrollLeft = contScroll.left;
+    }
+    scrollMap.forEach((pos, id) => {
+      if (id !== '__container__') {
+        const el = document.getElementById(id);
+        if (el) {
+          el.scrollTop = pos.top;
+          el.scrollLeft = pos.left;
+        }
+      }
+    });
+
+    // Obnovi fokus in kazalec brez premika zaslona
+    if (focusInfo) {
+      let target = null;
+      if (focusInfo.focusKey) {
+        try {
+          const safeKey = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(focusInfo.focusKey) : focusInfo.focusKey.replace(/["\\]/g, '\\$&');
+          target = container.querySelector(`[data-focus-key="${safeKey}"]`);
+        } catch (e) {}
+      }
+      if (!target && focusInfo.id) {
+        target = document.getElementById(focusInfo.id);
+      }
+      if (!target && focusInfo.field && focusInfo.exIdx !== null) {
+        if (focusInfo.sIdx !== null) {
+          target = container.querySelector(`[data-ex-idx="${focusInfo.exIdx}"][data-s-idx="${focusInfo.sIdx}"][data-field="${focusInfo.field}"]`);
+        } else {
+          target = container.querySelector(`[data-ex-idx="${focusInfo.exIdx}"][data-field="${focusInfo.field}"]`);
+        }
+      }
+
+      if (target && typeof target.focus === 'function') {
+        try {
+          target.focus({ preventScroll: true });
+          if (focusInfo.start !== null && focusInfo.end !== null && typeof target.setSelectionRange === 'function') {
+            target.setSelectionRange(focusInfo.start, focusInfo.end);
+          }
+        } catch (e) {}
+      }
+    }
+  }
+
   // ========== ČISTE DOMENSKE FUNKCIJE (PURE HELPERS) ==========
 
   function getEngine() {
@@ -553,11 +651,15 @@
   // ========== STANJE UI IN UPRAVLJANJE ==========
   let activeWorkout = null;
   let activeTimerInterval = null;
+  let saveDraftTimeout = null;
+  let pendingScrollAction = null;
   let restTimerState = {
     targetEnd: 0,
     totalSec: 0,
     interval: null,
-    exerciseName: ''
+    exerciseName: '',
+    warned10s: false,
+    hideTimeout: null
   };
   let speechRec = null;
   let isListening = null;
@@ -600,16 +702,29 @@
     return getStorage(LS_ACTIVE, null);
   }
 
-  function saveActiveDraft(w) {
-    if (!w) {
-      removeStorage(LS_ACTIVE);
-    } else {
-      setStorage(LS_ACTIVE, w);
+  function saveActiveDraft(w, immediate = false) {
+    if (immediate || !w) {
+      if (saveDraftTimeout) {
+        clearTimeout(saveDraftTimeout);
+        saveDraftTimeout = null;
+      }
+      if (!w) {
+        removeStorage(LS_ACTIVE);
+      } else {
+        setStorage(LS_ACTIVE, w);
+      }
+      return;
     }
+    if (saveDraftTimeout) clearTimeout(saveDraftTimeout);
+    saveDraftTimeout = setTimeout(() => {
+      saveDraftTimeout = null;
+      if (activeWorkout) setStorage(LS_ACTIVE, activeWorkout);
+    }, 250);
   }
 
   // ========== ZVOČNI IN VIBRACIJSKI SIGNALI ==========
-  function playBeepSound() {
+  function playBeepSound(type = 'done') {
+    if (typeof window === 'undefined') return;
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtx) return;
@@ -617,23 +732,36 @@
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(1046, ctx.currentTime + 0.15);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.3);
+
+      if (type === 'warn') {
+        // Kratek nežen pisk za 10s opozorilo
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+        gain.gain.setValueAtTime(0.18, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.15);
+      } else {
+        // Končni pisk za zaključek počitka (880 Hz -> 1046 Hz)
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1046, ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.3);
+      }
     } catch (e) {
       console.warn('[WorkoutUI] Audio error:', e);
     }
   }
 
-  function triggerVibration() {
+  function triggerVibration(pattern = [200, 100, 200, 100, 300]) {
     try {
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate([200, 100, 200, 100, 300]);
+        navigator.vibrate(pattern);
       }
     } catch (e) {}
   }
@@ -643,7 +771,7 @@
       if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
         new Notification(title, {
           body,
-          icon: './assets/anime/thumbsup.gif'
+          icon: './assets/anime/thumbsup-opt.gif'
         });
       }
     } catch (e) {}
@@ -655,7 +783,12 @@
     restTimerState.totalSec = s;
     restTimerState.targetEnd = Date.now() + s * 1000;
     restTimerState.exerciseName = exerciseName;
+    restTimerState.warned10s = false;
 
+    if (restTimerState.hideTimeout) {
+      clearTimeout(restTimerState.hideTimeout);
+      restTimerState.hideTimeout = null;
+    }
     if (restTimerState.interval) clearInterval(restTimerState.interval);
     restTimerState.interval = setInterval(tickRestTimer, 500);
     renderRestPill();
@@ -669,13 +802,23 @@
   function adjustRestTimer(deltaSec) {
     if (!restTimerState.targetEnd) return;
     restTimerState.targetEnd += deltaSec * 1000;
+    const now = Date.now();
+    const remaining = Math.max(0, Math.ceil((restTimerState.targetEnd - now) / 1000));
+    if (remaining > 10) {
+      restTimerState.warned10s = false;
+    }
     tickRestTimer();
   }
 
   function skipRestTimer() {
     if (restTimerState.interval) clearInterval(restTimerState.interval);
+    if (restTimerState.hideTimeout) {
+      clearTimeout(restTimerState.hideTimeout);
+      restTimerState.hideTimeout = null;
+    }
     restTimerState.targetEnd = 0;
     restTimerState.interval = null;
+    restTimerState.warned10s = false;
     hideRestPill();
   }
 
@@ -684,14 +827,24 @@
     const remaining = Math.max(0, Math.ceil((restTimerState.targetEnd - now) / 1000));
     updateRestPillText(remaining);
 
+    // Opozorilo ob 10 sekundah do konca: kratka vibracija in nežen zvok
+    if (remaining <= 10 && remaining > 0 && !restTimerState.warned10s) {
+      restTimerState.warned10s = true;
+      triggerVibration(120);
+      playBeepSound('warn');
+    }
+
     if (remaining <= 0) {
-      clearInterval(restTimerState.interval);
-      restTimerState.interval = null;
-      playBeepSound();
-      triggerVibration();
+      if (restTimerState.interval) {
+        clearInterval(restTimerState.interval);
+        restTimerState.interval = null;
+      }
+      playBeepSound('done');
+      triggerVibration([200, 100, 200, 100, 300]);
       triggerNotification('⏱️ Počitek je končan!', 'Čas za naslednjo serijo! 💪');
       toast('⏱️ Počitek je končan! Čas za naslednjo serijo! 💪');
-      setTimeout(hideRestPill, 4000);
+      if (restTimerState.hideTimeout) clearTimeout(restTimerState.hideTimeout);
+      restTimerState.hideTimeout = setTimeout(hideRestPill, 4000);
     }
   }
 
@@ -708,9 +861,9 @@
           <span id="wuiRestTimerText">00:00</span>
         </div>
         <div class="wui-rest-controls">
-          <button type="button" class="wui-rest-btn" onclick="WorkoutUI.adjustRest(-15)">-15</button>
-          <button type="button" class="wui-rest-btn" onclick="WorkoutUI.adjustRest(+15)">+15</button>
-          <button type="button" class="wui-rest-btn wui-rest-skip" onclick="WorkoutUI.skipRest()">✕</button>
+          <button type="button" class="wui-rest-btn" onclick="event.stopPropagation(); WorkoutUI.adjustRest(-15)">-15</button>
+          <button type="button" class="wui-rest-btn" onclick="event.stopPropagation(); WorkoutUI.adjustRest(+15)">+15</button>
+          <button type="button" class="wui-rest-btn wui-rest-skip" onclick="event.stopPropagation(); WorkoutUI.skipRest()">✕</button>
         </div>
       `;
       document.body.appendChild(pill);
@@ -835,7 +988,7 @@
       .wui-set-row.done .wui-check-btn { background: var(--rec-green); border-color: var(--rec-green); color: #08090A; }
 
       /* Gumbi za serijo (N / W / D / F) */
-      .wui-type-btn { width: 36px; height: 44px; border-radius: 8px; border: 1px solid var(--edge-2); background: var(--surface-3); color: #fff; font-size: 0.82rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
+      .wui-type-btn { width: 40px; min-width: 40px; height: 44px; min-height: 44px; border-radius: 8px; border: 1px solid var(--edge-2); background: var(--surface-3); color: #fff; font-size: 0.82rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; margin: 0 auto; box-sizing: border-box; }
       .wui-type-btn.type-warmup { background: rgba(255, 159, 10, 0.2); border-color: var(--rec-yellow); color: var(--rec-yellow); }
       .wui-type-btn.type-drop { background: rgba(0, 176, 255, 0.2); border-color: var(--strain-blue); color: var(--strain-blue); }
       .wui-type-btn.type-failure { background: rgba(255, 61, 0, 0.2); border-color: var(--rec-red); color: var(--rec-red); }
@@ -849,7 +1002,7 @@
       .wui-check-btn { width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--edge-2); background: var(--surface-3); color: var(--text-2); font-size: 1.15rem; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
 
       /* Izbris serije */
-      .wui-del-btn { background: none; border: none; color: var(--text-3); font-size: 1.1rem; padding: 8px 0; cursor: pointer; min-height: 44px; width: 100%; min-width: 36px; display: flex; align-items: center; justify-content: center; }
+      .wui-del-btn { background: none; border: none; color: var(--text-3); font-size: 1.1rem; padding: 8px 0; cursor: pointer; min-height: 44px; width: 100%; min-width: 44px; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
 
       /* Lebdeči počitek (Rest Pill) */
       .wui-rest-pill { position: fixed; bottom: calc(84px + env(safe-area-inset-bottom,0px)); right: 16px; z-index: 10000; background: rgba(18, 22, 26, 0.95); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--rec-green); box-shadow: 0 8px 24px rgba(0,0,0,0.6); border-radius: 30px; padding: 8px 14px; display: none; align-items: center; gap: 12px; }
@@ -859,6 +1012,31 @@
       .wui-rest-controls { display: flex; gap: 4px; }
       .wui-rest-btn { background: var(--surface-3); border: 1px solid var(--edge-2); border-radius: 16px; color: #fff; font-size: 0.72rem; font-weight: 700; padding: 6px 10px; cursor: pointer; min-height: 44px; min-width: 44px; }
       .wui-rest-skip { background: rgba(255, 61, 0, 0.2); border-color: var(--rec-red); color: var(--rec-red); }
+
+      /* Toast in obvestila: nad sheetom in odmik od navigacije/počitka */
+      .mascot-toast { z-index: 10005 !important; }
+      #errorGuardToast { bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important; z-index: 20000; }
+
+      /* Tap targeti >=44px za vse gumbe v WorkoutUI */
+      #workoutUiContainer button,
+      #wuiActiveSheet button,
+      #wuiModalsContainer button,
+      .wui-menu-btn,
+      .wui-check-btn,
+      .wui-del-btn,
+      .wui-type-btn,
+      .wui-rest-btn,
+      .modal-close {
+        min-height: 44px;
+        min-width: 44px;
+        box-sizing: border-box;
+      }
+      .wui-chip {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        box-sizing: border-box;
+      }
 
       /* Čipi mišic v izbirniku */
       .wui-chip-bar { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
@@ -934,7 +1112,7 @@
             </div>
             <div id="wuiPhotoPreviewBox" style="display: none; position: relative;">
               <img id="wuiPhotoPreviewImg" style="width: 100%; max-height: 140px; object-fit: cover; border-radius: 8px; border: 1px solid var(--edge-2);" />
-              <button type="button" onclick="WorkoutUI.clearPhoto()" style="position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.7); border: none; color: #fff; border-radius: 50%; width: 26px; height: 26px; cursor: pointer;">✕</button>
+              <button type="button" onclick="WorkoutUI.clearPhoto()" style="position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.7); border: none; color: #fff; border-radius: 50%; min-width: 44px; min-height: 44px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer;">✕</button>
             </div>
             <div id="wuiAiParsedResult" style="display: none; background: var(--surface-3); border: 1px solid var(--edge-2); border-radius: 10px; padding: 10px; font-size: 0.82rem;"></div>
             <div style="display: flex; gap: 8px;">
@@ -1002,11 +1180,11 @@
             <div style="display: flex; gap: 10px; align-items: center;">
               <div style="flex: 1;">
                 <label style="font-size: 0.72rem; color: var(--text-3); text-transform: uppercase;">Ciljna teža (kg):</label>
-                <input type="number" step="any" inputmode="decimal" id="wuiPlatesTargetInput" class="wui-input" style="max-width: none; font-size: 18px !important; font-weight: 800;" value="100" oninput="WorkoutUI.recalcPlates()">
+                <input type="number" step="any" inputmode="decimal" id="wuiPlatesTargetInput" class="wui-input" style="max-width: none; font-size: 18px !important; font-weight: 800;" value="100" oninput="WorkoutUI.recalcPlatesDebounced()">
               </div>
               <div style="width: 110px;">
                 <label style="font-size: 0.72rem; color: var(--text-3); text-transform: uppercase;">Drog (kg):</label>
-                <input type="number" step="any" inputmode="decimal" id="wuiPlatesBarInput" class="wui-input" style="max-width: none;" value="20" oninput="WorkoutUI.recalcPlates()">
+                <input type="number" step="any" inputmode="decimal" id="wuiPlatesBarInput" class="wui-input" style="max-width: none;" value="20" oninput="WorkoutUI.recalcPlatesDebounced()">
               </div>
             </div>
             <div id="wuiPlatesVisual" style="background: var(--surface-3); border-radius: 12px; padding: 16px; text-align: center; border: 1px solid var(--edge-2);"></div>
@@ -1029,7 +1207,7 @@
             <div style="display: flex; gap: 10px; align-items: center;">
               <div style="flex: 1;">
                 <label style="font-size: 0.72rem; color: var(--text-3); text-transform: uppercase;">Delovna teža (kg):</label>
-                <input type="number" step="any" inputmode="decimal" id="wuiWarmupTargetInput" class="wui-input" style="max-width: none; font-size: 18px !important; font-weight: 800;" value="100" oninput="WorkoutUI.recalcWarmups()">
+                <input type="number" step="any" inputmode="decimal" id="wuiWarmupTargetInput" class="wui-input" style="max-width: none; font-size: 18px !important; font-weight: 800;" value="100" oninput="WorkoutUI.recalcWarmupsDebounced()">
               </div>
             </div>
             <div id="wuiWarmupList" style="display: flex; flex-direction: column; gap: 6px;"></div>
@@ -1113,6 +1291,16 @@
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible' && wantWakeLock) requestWakeLock();
       });
+      if (typeof window !== 'undefined') {
+        window.addEventListener('pagehide', () => {
+          saveActiveDraft(activeWorkout, true);
+          releaseWakeLock();
+        });
+        window.addEventListener('beforeunload', () => {
+          saveActiveDraft(activeWorkout, true);
+          releaseWakeLock();
+        });
+      }
     }
 
     let cont = document.getElementById('workoutUiContainer');
@@ -1253,9 +1441,9 @@
         <div class="card-header">
           <div class="card-title">📅 Zgodovina treningov</div>
           <div style="display: flex; align-items: center; gap: 8px;">
-            <button type="button" class="btn secondary" style="padding: 4px 8px; font-size: 0.68rem; border-radius: 6px; cursor: pointer;" onclick="WorkoutUI.importCsvFile()" title="Uvozi Hevy ali Strong CSV">📥 CSV</button>
-            <button type="button" class="btn secondary" style="padding: 4px 8px; font-size: 0.68rem; border-radius: 6px; cursor: pointer;" onclick="WorkoutUI.exportCsvFile()" title="Izvozi zgodovino v Hevy CSV">📤 CSV</button>
-            <button type="button" class="btn secondary" style="padding: 4px 8px; font-size: 0.68rem; border-radius: 6px; cursor: pointer;" onclick="WorkoutUI.importGoogleHealthWorkouts(true)" title="Uvozi prejšnje vadbe iz Google Health">📥 Google Health</button>
+            <button type="button" class="btn secondary" style="padding: 6px 10px; font-size: 0.72rem; border-radius: 8px; cursor: pointer; min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center;" onclick="WorkoutUI.importCsvFile()" title="Uvozi Hevy ali Strong CSV">📥 CSV</button>
+            <button type="button" class="btn secondary" style="padding: 6px 10px; font-size: 0.72rem; border-radius: 8px; cursor: pointer; min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center;" onclick="WorkoutUI.exportCsvFile()" title="Izvozi zgodovino v Hevy CSV">📤 CSV</button>
+            <button type="button" class="btn secondary" style="padding: 6px 10px; font-size: 0.72rem; border-radius: 8px; cursor: pointer; min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center;" onclick="WorkoutUI.importGoogleHealthWorkouts(true)" title="Uvozi prejšnje vadbe iz Google Health">📥 Google Health</button>
             <span style="font-size: 0.75rem; color: var(--text-3); font-family: 'JetBrains Mono', monospace;">${history.length}</span>
           </div>
         </div>
@@ -1267,7 +1455,7 @@
         <div style="text-align: center; color: var(--text-3); font-size: 0.8rem; padding: 18px;">
           Še ni zabeleženih treningov. Začni prvega zgoraj!
           <div style="margin-top: 10px;">
-            <button type="button" class="btn secondary" style="font-size: 0.78rem; padding: 6px 14px; border-radius: 8px; cursor: pointer;" onclick="WorkoutUI.importGoogleHealthWorkouts(true)">📥 Uvozi 21 treningov iz Google Health (Fitbit)</button>
+            <button type="button" class="btn secondary" style="font-size: 0.78rem; padding: 8px 16px; border-radius: 8px; cursor: pointer; min-height: 44px; display: inline-flex; align-items: center; justify-content: center;" onclick="WorkoutUI.importGoogleHealthWorkouts(true)">📥 Uvozi 21 treningov iz Google Health (Fitbit)</button>
           </div>
         </div>
       `;
@@ -1296,7 +1484,7 @@
       }
       if (history.length > 5) {
         html += `
-          <button type="button" class="btn secondary" style="width: 100%; padding: 8px; font-size: 0.75rem; border-radius: 8px; margin-top: 4px; cursor: pointer;" onclick="WorkoutUI.toggleHistoryExpanded()">
+          <button type="button" class="btn secondary" style="width: 100%; padding: 10px; font-size: 0.78rem; border-radius: 8px; margin-top: 4px; cursor: pointer; min-height: 44px; display: flex; align-items: center; justify-content: center;" onclick="WorkoutUI.toggleHistoryExpanded()">
             ${historyExpanded ? '▲ Prikaži manj' : '▼ Prikaži vseh ' + history.length + ' treningov'}
           </button>
         `;
@@ -1308,7 +1496,9 @@
       </div>
     `;
 
-    cont.innerHTML = html;
+    preserveFocusAndScroll(cont, () => {
+      cont.innerHTML = html;
+    });
   }
 
   // ========== AKTIVNI TRENING (FULL-SCREEN SHEET) ==========
@@ -1355,7 +1545,7 @@
     if (bannerBadge) bannerBadge.textContent = durStr;
   }
 
-  function renderActiveWorkoutBody() {
+  function renderActiveWorkoutBody(opts = {}) {
     if (typeof document === 'undefined') return;
     const sheet = document.getElementById('wuiActiveSheet');
     if (!sheet || !activeWorkout) return;
@@ -1367,7 +1557,7 @@
     let html = `
       <div class="wui-sheet-header">
         <button class="wui-menu-btn" onclick="WorkoutUI.closeActiveModal()" title="Pomanjšaj">✕</button>
-        <input class="wui-sheet-title-input" value="${esc(activeWorkout.name || 'Trening')}" oninput="WorkoutUI.onActiveWorkoutNameChange(this.value)" placeholder="Ime treninga">
+        <input class="wui-sheet-title-input" id="wuiActiveWorkoutTitleInput" data-focus-key="workout-title" value="${esc(activeWorkout.name || 'Trening')}" oninput="WorkoutUI.onActiveWorkoutNameChange(this.value)" placeholder="Ime treninga">
         <div style="display: flex; align-items: center; gap: 8px;">
           <span class="wui-timer-badge" id="wuiActiveTimerBadge">${formatDuration(elapsed)}</span>
           <button class="btn" style="background: linear-gradient(135deg,#00E676 0%,#00B0FF 100%); color:#08090A; font-weight:800; padding:8px 14px; min-height:44px;" onclick="WorkoutUI.openSummaryModal()">✓ Zaključi</button>
@@ -1409,14 +1599,14 @@
               <button class="btn secondary" style="font-size: 0.76rem; padding: 6px; min-height: 44px;" onclick="WorkoutUI.moveExercise(${exIdx}, -1)" ${exIdx === 0 ? 'disabled' : ''}>⬆️ Premakni navzgor</button>
               <button class="btn secondary" style="font-size: 0.76rem; padding: 6px; min-height: 44px;" onclick="WorkoutUI.moveExercise(${exIdx}, 1)" ${exIdx === activeWorkout.exercises.length - 1 ? 'disabled' : ''}>⬇️ Premakni navzdol</button>
               <label style="font-size: 0.72rem; color: var(--text-3); display: flex; align-items: center; justify-content: space-between; gap: 8px;">Počitek po vaji (s)
-                <input type="number" step="5" min="0" inputmode="numeric" class="wui-input" style="max-width: 96px; font-size: 16px !important;" value="${ex.restSec || ''}" placeholder="${getSettings().restDefaultSec}" onchange="WorkoutUI.onExerciseRestChange(${exIdx}, this.value)">
+                <input type="number" step="5" min="0" inputmode="numeric" class="wui-input" data-focus-key="ex_rest_${exIdx}" data-ex-idx="${exIdx}" data-field="rest" style="max-width: 96px; font-size: 16px !important; min-height: 44px;" value="${ex.restSec || ''}" placeholder="${getSettings().restDefaultSec}" onchange="WorkoutUI.onExerciseRestChange(${exIdx}, this.value)">
               </label>
               <button class="btn secondary" style="font-size: 0.76rem; padding: 6px; min-height: 44px; color: var(--rec-red);" onclick="WorkoutUI.removeExercise(${exIdx})">🗑️ Odstrani vajo</button>
             </div>
 
             <!-- Opomba vaje -->
             <div>
-              <input type="text" class="wui-input" style="width: 100%; max-width: none; text-align: left; font-size: 0.78rem !important; padding: 6px 8px; min-height: 32px;" value="${esc(ex.note || '')}" placeholder="Opomba k vaji (npr. pavza 1s na dnu)..." oninput="WorkoutUI.onExerciseNoteChange(${exIdx}, this.value)">
+              <input type="text" class="wui-input" data-focus-key="ex_note_${exIdx}" data-ex-idx="${exIdx}" data-field="note" style="width: 100%; max-width: none; text-align: left; font-size: 16px !important; padding: 8px; min-height: 44px;" value="${esc(ex.note || '')}" placeholder="Opomba k vaji (npr. pavza 1s na dnu)..." oninput="WorkoutUI.onExerciseNoteChange(${exIdx}, this.value)">
             </div>
 
             <!-- Predlog naslednje serije (WorkoutEngine.suggestNext) -->
@@ -1460,13 +1650,13 @@
                 ${prevStr}
               </td>
               <td>
-                <input type="number" step="any" inputmode="decimal" class="wui-input" value="${s.w !== null && s.w !== undefined ? s.w : ''}" placeholder="${placeholderW}" oninput="WorkoutUI.onSetWeightChange(${exIdx}, ${sIdx}, this.value)">
+                <input type="number" step="any" inputmode="decimal" class="wui-input" data-focus-key="set_w_${exIdx}_${sIdx}" data-ex-idx="${exIdx}" data-s-idx="${sIdx}" data-field="w" value="${s.w !== null && s.w !== undefined ? s.w : ''}" placeholder="${placeholderW}" oninput="WorkoutUI.onSetWeightChange(${exIdx}, ${sIdx}, this.value)">
               </td>
               <td>
-                <input type="number" step="1" inputmode="numeric" class="wui-input" value="${s.reps !== null && s.reps !== undefined ? s.reps : ''}" placeholder="${placeholderReps}" oninput="WorkoutUI.onSetRepsChange(${exIdx}, ${sIdx}, this.value)">
+                <input type="number" step="1" inputmode="numeric" class="wui-input" data-focus-key="set_reps_${exIdx}_${sIdx}" data-ex-idx="${exIdx}" data-s-idx="${sIdx}" data-field="reps" value="${s.reps !== null && s.reps !== undefined ? s.reps : ''}" placeholder="${placeholderReps}" oninput="WorkoutUI.onSetRepsChange(${exIdx}, ${sIdx}, this.value)">
               </td>
               <td>
-                <input type="number" step="${isRpe ? '0.5' : '1'}" inputmode="${isRpe ? 'decimal' : 'numeric'}" class="wui-input" style="max-width: 38px; padding: 8px 0;" value="${isRpe ? (s.rpe != null ? s.rpe : '') : (s.rir != null ? s.rir : '')}" placeholder="${isRpe ? (prevSet && prevSet.rpe != null ? prevSet.rpe : '8') : placeholderRir}" oninput="WorkoutUI.${isRpe ? 'onSetRpeChange' : 'onSetRirChange'}(${exIdx}, ${sIdx}, this.value)">
+                <input type="number" step="${isRpe ? '0.5' : '1'}" inputmode="${isRpe ? 'decimal' : 'numeric'}" class="wui-input" data-focus-key="set_rir_${exIdx}_${sIdx}" data-ex-idx="${exIdx}" data-s-idx="${sIdx}" data-field="${isRpe ? 'rpe' : 'rir'}" style="max-width: 38px; padding: 8px 0; font-size: 16px !important;" value="${isRpe ? (s.rpe != null ? s.rpe : '') : (s.rir != null ? s.rir : '')}" placeholder="${isRpe ? (prevSet && prevSet.rpe != null ? prevSet.rpe : '8') : placeholderRir}" oninput="WorkoutUI.${isRpe ? 'onSetRpeChange' : 'onSetRirChange'}(${exIdx}, ${sIdx}, this.value)">
               </td>
               <td>
                 <button type="button" class="wui-check-btn" aria-label="Označi kot opravljeno" onclick="WorkoutUI.toggleSetDone(${exIdx}, ${sIdx})" title="Označi kot opravljeno">✓</button>
@@ -1481,7 +1671,7 @@
         html += `
               </tbody>
             </table>
-            <button class="btn secondary" style="width: 100%; min-height: 40px; padding: 6px;" onclick="WorkoutUI.addSet(${exIdx})">+ Dodaj serijo</button>
+            <button class="btn secondary" style="width: 100%; min-height: 44px; padding: 8px;" onclick="WorkoutUI.addSet(${exIdx})">+ Dodaj serijo</button>
           </div>
         `;
       });
@@ -1496,12 +1686,42 @@
       </div>
     `;
 
-    // Ohrani položaj drsenja: brez tega innerHTML ustvari nov seznam in vrže na vrh (glitch pri kljukici).
-    const prevList = document.getElementById('wuiSheetExercisesList');
-    const prevScroll = prevList ? prevList.scrollTop : 0;
-    sheet.innerHTML = html;
-    const newList = document.getElementById('wuiSheetExercisesList');
-    if (newList && prevScroll) newList.scrollTop = prevScroll;
+    preserveFocusAndScroll(sheet, () => {
+      sheet.innerHTML = html;
+    });
+
+    // Ravnanje z nežnim pomikom do nove serije/vaje ali naslednje vaje
+    const scrollTarget = opts.scrollTarget || pendingScrollAction;
+    pendingScrollAction = null;
+
+    if (scrollTarget && typeof setTimeout !== 'undefined') {
+      setTimeout(() => {
+        try {
+          if (scrollTarget.type === 'set' && scrollTarget.exIdx != null && scrollTarget.sIdx != null) {
+            const row = sheet.querySelector(`.wui-exercise-card[data-ex-idx="${scrollTarget.exIdx}"] tr[data-s-idx="${scrollTarget.sIdx}"]`);
+            if (row && typeof row.scrollIntoView === 'function') {
+              row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+          } else if (scrollTarget.type === 'exercise' && scrollTarget.exIdx != null) {
+            const card = sheet.querySelector(`.wui-exercise-card[data-ex-idx="${scrollTarget.exIdx}"]`);
+            if (card && typeof card.scrollIntoView === 'function') {
+              card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+          } else if (scrollTarget.type === 'next-exercise-peek' && scrollTarget.exIdx != null) {
+            const nextCard = sheet.querySelector(`.wui-exercise-card[data-ex-idx="${scrollTarget.exIdx}"]`);
+            const listEl = document.getElementById('wuiSheetExercisesList');
+            if (nextCard && listEl) {
+              const listRect = listEl.getBoundingClientRect();
+              const cardRect = nextCard.getBoundingClientRect();
+              // Samo če je naslednja vaja pod spodnjim robom vidnega območja, jo rahlo pokaži
+              if (cardRect.bottom > listRect.bottom || cardRect.top > listRect.bottom - 40) {
+                nextCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              }
+            }
+          }
+        } catch (e) {}
+      }, 20);
+    }
   }
 
   // ========== POMOŽNE: ČIŠČENJE SERIJ, PREDLOG, ŽIVI PR, SUPERSET, WAKE LOCK, CSV ==========
@@ -1713,7 +1933,12 @@
   }
 
   // ========== DOGODKI V AKTIVNEM TRENINGU ==========
+  let lastStartWorkoutTime = 0;
   function startNewWorkout(type = 'empty', prefilled = null) {
+    const now = Date.now();
+    if (typeof window !== 'undefined' && now - lastStartWorkoutTime < 350) return;
+    lastStartWorkoutTime = now;
+
     if (activeWorkout) {
       if (!confirm('Že imate aktiven trening v teku. Ga želite nadaljevati (V redu) ali zavreči in začeti znova (Prekliči)?')) {
         discardActiveWorkout(true);
@@ -1854,13 +2079,23 @@
     saveActiveDraft(activeWorkout);
   }
 
+  const lastToggleMap = new Map();
   function toggleSetDone(exIdx, sIdx) {
     if (!activeWorkout || !activeWorkout.exercises[exIdx]) return;
+    const toggleKey = `${exIdx}_${sIdx}`;
+    const now = Date.now();
+    const lastTime = lastToggleMap.get(toggleKey) || 0;
+    if (typeof window !== 'undefined' && now - lastTime < 280) return; // prepreči nenameren dvojni klik
+    lastToggleMap.set(toggleKey, now);
+
     const ex = activeWorkout.exercises[exIdx];
     const s = ex.sets[sIdx];
     if (!s) return;
 
-    if (!s.done) {
+    const willBeDone = !s.done;
+    const isLastSetOfEx = (sIdx === ex.sets.length - 1);
+
+    if (willBeDone) {
       // Če so polja prazna, avtomatsko skopiraj iz prejšnjih vrednosti
       const history = getWorkouts();
       const prev = previousSets(ex.exId, history);
@@ -1882,16 +2117,30 @@
         const restSec = ex.restSec || getSettings().restDefaultSec;
         startRestTimer(restSec, ex.name);
       }
+
+      // Če je bila odkljukana zadnja serija vaje: ne premikaj zaslona (Binetov glitch),
+      // največ rahlo pokaži naslednjo vajo, če je pod robom.
+      if (isLastSetOfEx && exIdx + 1 < activeWorkout.exercises.length) {
+        pendingScrollAction = { type: 'next-exercise-peek', exIdx: exIdx + 1 };
+      } else {
+        pendingScrollAction = null;
+      }
     } else {
       s.done = false;
+      pendingScrollAction = null;
     }
 
     saveActiveDraft(activeWorkout);
     renderActiveWorkoutBody();
   }
 
+  let lastAddSetTime = 0;
   function addSet(exIdx) {
     if (!activeWorkout || !activeWorkout.exercises[exIdx]) return;
+    const now = Date.now();
+    if (typeof window !== 'undefined' && now - lastAddSetTime < 250) return;
+    lastAddSetTime = now;
+
     const ex = activeWorkout.exercises[exIdx];
     const lastSet = ex.sets.length > 0 ? ex.sets[ex.sets.length - 1] : null;
     ex.sets.push({
@@ -1903,6 +2152,7 @@
       done: false
     });
     saveActiveDraft(activeWorkout);
+    pendingScrollAction = { type: 'set', exIdx, sIdx: ex.sets.length - 1 };
     renderActiveWorkoutBody();
   }
 
@@ -1949,11 +2199,16 @@
     el.style.display = el.style.display === 'flex' ? 'none' : 'flex';
   }
 
+  let lastAddExTime = 0;
   function addExerciseToActive(ex) {
     if (!activeWorkout) startNewWorkout('empty');
+    const now = Date.now();
+    if (typeof window !== 'undefined' && now - lastAddExTime < 250) return;
+    lastAddExTime = now;
+
     activeWorkout.exercises.push({
-      exId: ex.id || ('custom:' + ex.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')),
-      name: ex.sl || ex.name,
+      exId: ex.id || ('custom:' + (ex.name || 'vaja').toLowerCase().replace(/[^a-z0-9]+/g, '-')),
+      name: ex.sl || ex.name || 'Vaja',
       sets: [
         { w: null, reps: null, rir: null, type: 'normal', done: false },
         { w: null, reps: null, rir: null, type: 'normal', done: false },
@@ -1964,6 +2219,7 @@
     });
     saveActiveDraft(activeWorkout);
     closePicker();
+    pendingScrollAction = { type: 'exercise', exIdx: activeWorkout.exercises.length - 1 };
     renderActiveWorkoutBody();
   }
 
@@ -2046,15 +2302,24 @@
     `).join('');
   }
 
+  let pickerDebounceTimer = null;
   function onPickerChip(muscleId) {
     selectedMuscleFilter = muscleId;
     renderPickerChips();
     const query = document.getElementById('wuiPickerSearch')?.value || '';
+    if (pickerDebounceTimer) {
+      clearTimeout(pickerDebounceTimer);
+      pickerDebounceTimer = null;
+    }
     renderPickerList(query);
   }
 
   function onPickerSearch(val) {
-    renderPickerList(val);
+    if (pickerDebounceTimer) clearTimeout(pickerDebounceTimer);
+    pickerDebounceTimer = setTimeout(() => {
+      pickerDebounceTimer = null;
+      renderPickerList(val);
+    }, 120);
   }
 
   function renderPickerList(query = '') {
@@ -2111,29 +2376,31 @@
     }
     results.sort((a, b) => ((freq[b.id] || 0) + (b.pop || 0)) - ((freq[a.id] || 0) + (a.pop || 0)));
 
-    if (!results.length) {
-      listEl.innerHTML = `<div style="text-align: center; color: var(--text-3); font-size: 0.8rem; padding: 20px;">Ni zadetkov za "${esc(q)}". Ustvari vajo po meri spodaj!</div>`;
-      return;
-    }
+    preserveFocusAndScroll(listEl, () => {
+      if (!results.length) {
+        listEl.innerHTML = `<div style="text-align: center; color: var(--text-3); font-size: 0.8rem; padding: 20px;">Ni zadetkov za "${esc(q)}". Ustvari vajo po meri spodaj!</div>`;
+        return;
+      }
 
-    listEl.innerHTML = results.slice(0, 40).map(ex => {
-      const displayName = ex.sl || ex.name;
-      const subName = ex.sl && ex.sl !== ex.name ? ex.name : '';
-      const muscleTag = (ex.pri && ex.pri[0] && MUSCLE_NAMES_SL[ex.pri[0]]) || ex.bp || 'Vaja';
+      listEl.innerHTML = results.slice(0, 40).map(ex => {
+        const displayName = ex.sl || ex.name;
+        const subName = ex.sl && ex.sl !== ex.name ? ex.name : '';
+        const muscleTag = (ex.pri && ex.pri[0] && MUSCLE_NAMES_SL[ex.pri[0]]) || ex.bp || 'Vaja';
 
-      return `
-        <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 8px; border-bottom: 1px solid var(--edge-1); gap: 10px;">
-          <div style="flex: 1; cursor: pointer;" onclick="WorkoutUI.onExercisePicked('${ex.id}')">
-            <div style="font-weight: 700; color: #fff; font-size: 0.92rem;">${esc(displayName)}</div>
-            <div style="font-size: 0.72rem; color: var(--text-3);">
-              ${subName ? `<span>${esc(subName)} · </span>` : ''}
-              <span style="color: var(--rec-green);">${esc(muscleTag)}</span>
+        return `
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 8px; border-bottom: 1px solid var(--edge-1); gap: 10px;">
+            <div style="flex: 1; cursor: pointer;" onclick="WorkoutUI.onExercisePicked('${ex.id}')">
+              <div style="font-weight: 700; color: #fff; font-size: 0.92rem;">${esc(displayName)}</div>
+              <div style="font-size: 0.72rem; color: var(--text-3);">
+                ${subName ? `<span>${esc(subName)} · </span>` : ''}
+                <span style="color: var(--rec-green);">${esc(muscleTag)}</span>
+              </div>
             </div>
+            <button class="btn secondary" style="min-height: 44px; min-width: 44px; padding: 8px 14px; font-weight: 700;" onclick="WorkoutUI.onExercisePicked('${ex.id}')">+ Dodaj</button>
           </div>
-          <button class="btn secondary" style="min-height: 38px; padding: 6px 12px; font-weight: 700;" onclick="WorkoutUI.onExercisePicked('${ex.id}')">+ Dodaj</button>
-        </div>
-      `;
-    }).join('');
+        `;
+      }).join('');
+    });
   }
 
   function onExercisePicked(exId) {
@@ -2441,31 +2708,38 @@
     if (typeof root.unlockBodyScroll === 'function') root.unlockBodyScroll();
   }
 
+  let isSavingWorkout = false;
   function saveAndFinishWorkout() {
-    if (!activeWorkout) return;
-    const notesEl = typeof document !== 'undefined' ? document.getElementById('wuiSummaryNotes') : null;
-    if (notesEl) activeWorkout.notes = notesEl.value.trim();
+    if (!activeWorkout || (typeof window !== 'undefined' && isSavingWorkout)) return;
+    isSavingWorkout = true;
 
-    const pruned = pruneIncompleteSets(activeWorkout);
-    const finished = Object.assign({}, pruned.workout, { end: Date.now() });
-    const history = getWorkouts();
-    history.unshift(finished);
-    livePrs = {};
-    releaseWakeLock();
-    saveWorkouts(history);
+    try {
+      const notesEl = typeof document !== 'undefined' ? document.getElementById('wuiSummaryNotes') : null;
+      if (notesEl) activeWorkout.notes = notesEl.value.trim();
 
-    // Počisti aktivni trening
-    activeWorkout = null;
-    saveActiveDraft(null);
-    skipRestTimer();
+      const pruned = pruneIncompleteSets(activeWorkout);
+      const finished = Object.assign({}, pruned.workout, { end: Date.now() });
+      const history = getWorkouts();
+      history.unshift(finished);
+      livePrs = {};
+      releaseWakeLock();
+      saveWorkouts(history);
 
-    closeSummaryModal();
-    closeActiveModal();
-    renderDashboard();
-    renderBodyMapColors();
+      // Počisti aktivni trening
+      activeWorkout = null;
+      saveActiveDraft(null, true);
+      skipRestTimer();
 
-    const doneMsg = '🎉 Trening uspešno zabeležen in shranjen v dnevnik! Odlično opravljeno! 🏆';
-    toast(pruned.removed ? doneMsg + ` Odstranjenih nedokončanih serij: ${pruned.removed}.` : doneMsg);
+      closeSummaryModal();
+      closeActiveModal();
+      renderDashboard();
+      renderBodyMapColors();
+
+      const doneMsg = '🎉 Trening uspešno zabeležen in shranjen v dnevnik! Odlično opravljeno! 🏆';
+      toast(pruned.removed ? doneMsg + ` Odstranjenih nedokončanih serij: ${pruned.removed}.` : doneMsg);
+    } finally {
+      setTimeout(() => { isSavingWorkout = false; }, 800);
+    }
   }
 
   // ========== PODROBNOSTI ZAKLJUČENEGA TRENINGA (DETAIL) ==========
@@ -2731,6 +3005,12 @@
     `;
   }
 
+  let platesDebounceTimer = null;
+  function recalcPlatesDebounced() {
+    if (platesDebounceTimer) clearTimeout(platesDebounceTimer);
+    platesDebounceTimer = setTimeout(recalcPlates, 80);
+  }
+
   // ========== OGREVALNE SERIJE (WARMUP GENERATOR) ==========
   let currentWarmupTargetExerciseIdx = null;
 
@@ -2775,6 +3055,12 @@
         <span class="status-pill" style="color: var(--rec-yellow);">Ogrevanje</span>
       </div>
     `).join('');
+  }
+
+  let warmupsDebounceTimer = null;
+  function recalcWarmupsDebounced() {
+    if (warmupsDebounceTimer) clearTimeout(warmupsDebounceTimer);
+    warmupsDebounceTimer = setTimeout(recalcWarmups, 80);
   }
 
   function insertWarmupsToActive() {
@@ -2879,14 +3165,16 @@
   function renderTemplatesList(templates) {
     const list = document.getElementById('wuiTemplateList');
     if (!list) return;
-    list.innerHTML = templates.map((t, idx) => `
-      <div class="wui-hist-card" role="button" tabindex="0" onclick="WorkoutUI.pickTemplate(${idx})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">
-        <div style="font-weight: 800; color: #fff; font-size: 0.95rem;">${esc(t.name)}</div>
-        <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 4px;">
-          ${(t.exercises || []).map(e => e.name).join(' · ')}
+    preserveFocusAndScroll(list, () => {
+      list.innerHTML = templates.map((t, idx) => `
+        <div class="wui-hist-card" role="button" tabindex="0" onclick="WorkoutUI.pickTemplate(${idx})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}">
+          <div style="font-weight: 800; color: #fff; font-size: 0.95rem;">${esc(t.name)}</div>
+          <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 4px;">
+            ${(t.exercises || []).map(e => e.name).join(' · ')}
+          </div>
         </div>
-      </div>
-    `).join('');
+      `).join('');
+    });
   }
 
   function pickTemplate(tplIdx) {
@@ -3046,9 +3334,11 @@
     openPlatesModalForExercise,
     closePlatesModal,
     recalcPlates,
+    recalcPlatesDebounced,
     openWarmupModalForExercise,
     closeWarmupModal,
     recalcWarmups,
+    recalcWarmupsDebounced,
     insertWarmupsToActive,
     openSettingsModal,
     closeSettingsModal,
@@ -3065,7 +3355,14 @@
     onExerciseRestChange,
     pruneIncompleteSets,
     requestWakeLock,
-    releaseWakeLock
+    releaseWakeLock,
+
+    // Pomožne funkcije za stabilnost UI
+    preserveFocusAndScroll,
+    getRestTimerState: () => Object.assign({}, restTimerState),
+    tickRestTimer,
+    playBeepSound,
+    triggerVibration
   };
 
   // UMD izvoz

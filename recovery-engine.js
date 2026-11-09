@@ -127,7 +127,156 @@
     return { code: 'above_mrv', label: 'Nad MRV – tveganje za preobremenitev' };
   }
 
-  const api = { GROUP, CAP, LANDMARKS, COLORS, muscleNamesSl, effort, muscleRecovery, bodyMapColors, volumeLandmarks, statusForWeeklySets };
+  function num(v) {
+    return (v === null || v === undefined || v === '' || isNaN(Number(v))) ? null : Number(v);
+  }
+
+  function avg(xs) {
+    const v = (xs || []).filter((x) => x != null);
+    return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+  }
+
+  function stdDev(xs) {
+    const v = (xs || []).filter((x) => x != null);
+    if (v.length < 2) return null;
+    const m = v.reduce((a, b) => a + b, 0) / v.length;
+    const variance = v.reduce((a, b) => a + Math.pow(b - m, 2), 0) / (v.length - 1);
+    return Math.sqrt(variance);
+  }
+
+  function clamp(x, a, b) {
+    return Math.max(a, Math.min(b, x));
+  }
+
+  /**
+   * Izračun dnevne regeneracije na podlagi 30-dnevne osnove HRV in RHR ter spanja.
+   * Če je podatkov osnovne linije manj kot 7 dni (<7 dni), vrne rec: null in premaloPodatkov: true,
+   * namesto fiktivne ali toge številke.
+   */
+  function calculateDailyRecovery(dnevi, options) {
+    if (!Array.isArray(dnevi) || dnevi.length === 0) return null;
+    const opts = options || {};
+    const todayStr = opts.today || new Date().toLocaleDateString('sv-SE');
+
+    const urejeni = [...dnevi].filter(d => d && d.datum).sort((a, b) => (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : 0));
+    if (!urejeni.length) return null;
+
+    // Zadnji dan z nočnimi meritvami (HRV ali spanje)
+    const polni = urejeni.filter((d) => d.datum !== todayStr || num(d.spanjeMin) != null);
+    const z = [...polni].reverse().find((d) => num(d.hrv) != null || num(d.spanjeMin) != null);
+    if (!z) return null;
+
+    // Osnovna linija zadnjih do 30 dni pred merjenim dnem
+    const pred = urejeni.filter((d) => d.datum < z.datum).slice(-30);
+    const hrvVals = pred.map((d) => num(d.hrv)).filter((x) => x != null);
+    const rhrVals = pred.map((d) => num(d.rhr)).filter((x) => x != null);
+    const dniOsnove = Math.min(hrvVals.length, rhrVals.length);
+
+    // Zahteva: vsaj 7 dni podatkov za zanesljivo osnovo (<7 dni = premalo podatkov)
+    const premaloPodatkov = dniOsnove < 7;
+
+    const hrvOsn = hrvVals.length ? avg(hrvVals) : null;
+    const rhrOsn = rhrVals.length ? avg(rhrVals) : null;
+    const spOsn = avg(pred.map((d) => num(d.spanjeMin)));
+
+    const hrv = num(z.hrv);
+    const rhr = num(z.rhr);
+    const sp = num(z.spanjeMin);
+
+    const hrvSd = stdDev(hrvVals);
+    const rhrSd = stdDev(rhrVals);
+    const hrvLo = (hrvOsn != null && hrvSd != null) ? Math.round(hrvOsn - hrvSd) : null;
+    const hrvHi = (hrvOsn != null && hrvSd != null) ? Math.round(hrvOsn + hrvSd) : null;
+    const rhrLo = (rhrOsn != null && rhrSd != null) ? Math.round(rhrOsn - rhrSd) : null;
+    const rhrHi = (rhrOsn != null && rhrSd != null) ? Math.round(rhrOsn + rhrSd) : null;
+
+    const opozorila = [];
+    if (!premaloPodatkov) {
+      if (hrv != null && hrvOsn != null && hrvSd != null) {
+        if (hrv < hrvLo) {
+          opozorila.push({
+            tip: 'hrv-pod',
+            naslov: 'HRV je danes pod tvojim 30-dnevnim območjem',
+            tekst: `HRV je danes pod tvojim 30-dnevnim območjem (${Math.round(hrv)} ms proti običajnemu pasu ${hrvLo}–${hrvHi} ms).`
+          });
+        } else if (hrv > hrvHi) {
+          opozorila.push({
+            tip: 'hrv-nad',
+            naslov: 'HRV je danes nad tvojim 30-dnevnim območjem',
+            tekst: `HRV je danes nad tvojim 30-dnevnim območjem (${Math.round(hrv)} ms proti običajnemu pasu ${hrvLo}–${hrvHi} ms).`
+          });
+        }
+      }
+      if (rhr != null && rhrOsn != null && rhrSd != null) {
+        if (rhr > rhrHi) {
+          opozorila.push({
+            tip: 'rhr-nad',
+            naslov: 'RHR je danes nad tvojim 30-dnevnim območjem',
+            tekst: `Utrip v mirovanju (RHR) je danes nad tvojim 30-dnevnim območjem (${Math.round(rhr)} bpm proti običajnemu pasu ${rhrLo}–${rhrHi} bpm).`
+          });
+        } else if (rhr < rhrLo) {
+          opozorila.push({
+            tip: 'rhr-pod',
+            naslov: 'RHR je danes pod tvojim 30-dnevnim območjem',
+            tekst: `Utrip v mirovanju (RHR) je danes pod tvojim 30-dnevnim območjem (${Math.round(rhr)} bpm proti običajnemu pasu ${rhrLo}–${rhrHi} bpm).`
+          });
+        }
+      }
+    }
+
+    // Personaliziran spalni cilj: povprečje zadnjih 14 noči s spodnjo mejo 7 h (420 min). Fallback 8 h (480 min).
+    const nocne = urejeni.filter((d) => d.datum <= z.datum && num(d.spanjeMin) != null);
+    const zadnjih14 = nocne.slice(-14);
+    const avg14Min = avg(zadnjih14.map((d) => num(d.spanjeMin)));
+    const spalniCiljMin = avg14Min != null ? Math.max(7 * 60, Math.round(avg14Min)) : 480;
+
+    // Spalni dolg zadnjih 7 dni
+    const zadnjih7 = nocne.slice(-7);
+    let spalniDolgMin = null;
+    if (zadnjih7.length > 0) {
+      spalniDolgMin = zadnjih7.reduce((sum, d) => sum + (spalniCiljMin - num(d.spanjeMin)), 0);
+    }
+
+    // Ocena regeneracije 0–100:
+    // Če je premalo podatkov (<7 dni), rec je null (prikaže se "premalo podatkov")
+    let rec = null;
+    if (!premaloPodatkov) {
+      const deli = [];
+      if (hrv != null && hrvOsn) deli.push([0.5, clamp(50 + (hrv / hrvOsn - 1) * 150, 0, 100)]);
+      if (rhr != null && rhrOsn) deli.push([0.25, clamp(50 - (rhr / rhrOsn - 1) * 300, 0, 100)]);
+      if (sp != null) deli.push([0.25, clamp((sp / spalniCiljMin) * 100, 0, 100)]);
+      if (deli.length) {
+        const w = deli.reduce((a, [x]) => a + x, 0);
+        rec = Math.round(deli.reduce((a, [x, v]) => a + x * v, 0) / w);
+      }
+    }
+
+    const bud = num(z.budnoMin), lah = num(z.spanjeLahkoMin), glo = num(z.spanjeGlobokoMin), rem = num(z.spanjeRemMin);
+    const vsota = [bud, lah, glo, rem].reduce((a, b) => a + (b || 0), 0);
+
+    return {
+      datum: z.datum,
+      hrv, rhr, sp,
+      hrvOsn, rhrOsn, spOsn,
+      rec,
+      premaloPodatkov,
+      dniOsnove,
+      recStatus: premaloPodatkov ? 'premalo_podatkov' : 'ok',
+      recText: premaloPodatkov ? 'premalo podatkov' : (rec != null ? `${rec}%` : '–'),
+      hrvSd, rhrSd, hrvLo, hrvHi, rhrLo, rhrHi,
+      opozorila,
+      spalniCiljMin, spalniDolgMin,
+      hrvRel: !premaloPodatkov && hrv != null && hrvOsn ? Math.round((hrv / hrvOsn - 1) * 100) : null,
+      faze: vsota > 0 ? { bud, lah, glo, rem, vsota } : null,
+      spanjeOd: z.spanjeOd, spanjeDo: z.spanjeDo,
+      koraki: num((urejeni.find((d) => d.datum === todayStr) || {}).koraki),
+      azm: num((urejeni.find((d) => d.datum === todayStr) || {}).azm),
+      korakiVceraj: num(z.koraki), azmVceraj: num(z.azm),
+      vsiDnevi: urejeni,
+    };
+  }
+
+  const api = { GROUP, CAP, LANDMARKS, COLORS, muscleNamesSl, effort, muscleRecovery, bodyMapColors, volumeLandmarks, statusForWeeklySets, calculateDailyRecovery, dailyRecovery: calculateDailyRecovery };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   if (typeof window !== 'undefined') window.RecoveryEngine = api;
 })(typeof window !== 'undefined' ? window : globalThis);

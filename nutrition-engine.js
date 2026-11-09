@@ -8,6 +8,17 @@
  */
 
 // ==========================================
+// 0. POMOŽNA FUNKCIJA ZA VARNO PARSANJE ŠTEVIL (vejice, prazni vnosi, NaN)
+// ==========================================
+function _parseNum(v, def = 0) {
+  if (typeof v === 'number') return isNaN(v) ? def : v;
+  if (v == null || v === '') return def;
+  const s = String(v).replace(',', '.').trim();
+  const n = parseFloat(s);
+  return isNaN(n) ? def : n;
+}
+
+// ==========================================
 // 1. DRI TABELA (Športnik / Odrasel moški 80 kg)
 // ==========================================
 const ATHLETE_MALE_DRI = {
@@ -141,24 +152,25 @@ const NutritionEngine = {
    * - Nad UL: kvadratna kazen glede na koeficient toksičnosti
    */
   calculateSingleNutrientScore(intake, target) {
-    if (!intake || intake <= 0) return 0;
+    const cleanIntake = _parseNum(intake, 0);
+    if (cleanIntake <= 0) return 0;
     if (!target) return 50;
 
     // Faza 1: Pod OPL
-    if (intake <= target.opl) {
-      if (intake < target.rda) {
-        return Math.min(100, (intake / target.rda) * 100);
+    if (cleanIntake <= target.opl) {
+      if (cleanIntake < target.rda) {
+        return Math.min(100, (cleanIntake / target.rda) * 100);
       }
       return 100;
     }
 
     // Faza 2: Med OPL in UL
-    if (intake <= target.ul) {
+    if (cleanIntake <= target.ul) {
       return 100;
     }
 
     // Faza 3: Nad UL s kvadratno kaznijo
-    const overage = (intake - target.ul) / target.ul;
+    const overage = (cleanIntake - target.ul) / target.ul;
     const penalty = target.penaltyFactor * Math.pow(overage, 2) * 100;
     return Math.max(0, 100 - penalty);
   },
@@ -168,12 +180,13 @@ const NutritionEngine = {
    */
   calculateFunctionalHealthScores(profile, driTable = ATHLETE_MALE_DRI) {
     const scores = {};
+    const p = profile && typeof profile === 'object' ? profile : {};
     for (const [catKey, catData] of Object.entries(KIWI_WEIGHTS)) {
       let weightedSum = 0;
       let totalWeight = 0;
 
       for (const [nutrient, weight] of Object.entries(catData.weights)) {
-        const intake = profile[nutrient] || 0;
+        const intake = _parseNum(p[nutrient], 0);
         const dri = driTable[nutrient];
         if (dri && weight) {
           const score = this.calculateSingleNutrientScore(intake, dri);
@@ -191,21 +204,22 @@ const NutritionEngine = {
    * Izračun 6 ključnih biokemijskih razmerij (Cronometer model)
    */
   calculateBiochemicalRatios(p) {
-    const na = p.sodium || 0;
-    const k = p.potassium || 0;
-    const ca = p.calcium || 0;
-    const mg = p.magnesium || 0;
-    const zn = p.zinc || 0;
-    const cu = p.copper || 0;
-    const fe = p.iron || 0;
-    const phos = p.phosphorus || 0;
-    const o6 = p.omega6LA || 0;
-    const o3 = (p.omega3DHA || 0) + (p.omega3EPA || 0);
+    const pSafe = p && typeof p === 'object' ? p : {};
+    const na = _parseNum(pSafe.sodium, 0);
+    const k = _parseNum(pSafe.potassium, 0);
+    const ca = _parseNum(pSafe.calcium, 0);
+    const mg = _parseNum(pSafe.magnesium, 0);
+    const zn = _parseNum(pSafe.zinc, 0);
+    const cu = _parseNum(pSafe.copper, 0);
+    const fe = _parseNum(pSafe.iron, 0);
+    const phos = _parseNum(pSafe.phosphorus, 0);
+    const o6 = _parseNum(pSafe.omega6LA, 0);
+    const o3 = _parseNum(pSafe.omega3DHA, 0) + _parseNum(pSafe.omega3EPA, 0);
 
     // 1. Natrij : Kalij (Optimalno 1:1.8 do 1:3; torej na/k < 0.45)
     const naKRatio = k > 0 ? (na / k) : 0;
     let naKStatus = 'optimal';
-    let naKDesc = 'Optimalno (1 : ' + (k > 0 ? (k / na).toFixed(1) : '0') + ')';
+    let naKDesc = 'Optimalno (1 : ' + (k > 0 && na > 0 ? (k / na).toFixed(1) : (k > 0 ? '>10' : '0')) + ')';
     if (naKRatio > 0.6) {
       naKStatus = 'critical';
       naKDesc = 'Presežek natrija (krvni tlak)';
@@ -268,6 +282,15 @@ const NutritionEngine = {
       caPDesc = caPRatio.toFixed(1) + ' : 1 (Presežek fosfata)';
     }
 
+    // 9.11.2026: brez podatka o hranilu ne prikaži izmišljenega 0.0 : 1
+    const ND = 'Ni podatka v bazi živil';
+    if (!(k > 0) || !(na > 0)) { naKStatus = 'unknown'; naKDesc = ND; }
+    if (!(cu > 0) || !(zn > 0)) { znCuStatus = 'unknown'; znCuDesc = ND; }
+    if (!(mg > 0) || !(ca > 0)) { caMgStatus = 'unknown'; caMgDesc = ND; }
+    if (!(o3 > 0) || !(o6 > 0)) { o6o3Status = 'unknown'; o6o3Desc = ND; }
+    if (!(zn > 0) || !(fe > 0)) { feZnStatus = 'unknown'; feZnDesc = ND; }
+    if (!(phos > 0) || !(ca > 0)) { caPStatus = 'unknown'; caPDesc = ND; }
+
     return {
       sodiumPotassium: { value: naKRatio, status: naKStatus, label: naKDesc },
       zincCopper: { value: znCuRatio, status: znCuStatus, label: znCuDesc },
@@ -289,13 +312,15 @@ const MetabolicEngine = {
    * EMA glajenje teže (Exponential Moving Average) čez N dni
    */
   calculateWeightTrend(logs, windowDays = 14) {
+    if (!Array.isArray(logs)) return [];
     const alpha = 2 / (windowDays + 1);
     const results = [];
     let prevSmoothed = null;
 
     for (let i = 0; i < logs.length; i++) {
       const log = logs[i];
-      if (log.weightKg === null || isNaN(log.weightKg) || log.weightKg <= 0) {
+      const rawW = _parseNum(log?.weightKg, 0);
+      if (rawW <= 0) {
         if (prevSmoothed !== null) {
           results.push({ date: log.date, smoothedWeightKg: Number(prevSmoothed.toFixed(2)) });
         }
@@ -303,14 +328,14 @@ const MetabolicEngine = {
       }
 
       if (prevSmoothed === null) {
-        prevSmoothed = log.weightKg;
+        prevSmoothed = rawW;
       } else {
-        prevSmoothed = alpha * log.weightKg + (1 - alpha) * prevSmoothed;
+        prevSmoothed = alpha * rawW + (1 - alpha) * prevSmoothed;
       }
 
       results.push({
         date: log.date,
-        rawWeightKg: log.weightKg,
+        rawWeightKg: rawW,
         smoothedWeightKg: Number(prevSmoothed.toFixed(2))
       });
     }
@@ -331,16 +356,19 @@ const MetabolicEngine = {
     const recentLogs = logs.slice(-lookbackDays);
     const recentWeights = smoothedWeights.slice(-lookbackDays);
 
-    const validCalorieLogs = recentLogs.filter(l => l.caloriesIn && l.caloriesIn > 500);
+    const validCalorieLogs = recentLogs.filter(l => _parseNum(l.caloriesIn, 0) > 500);
     if (validCalorieLogs.length < 2) {
       return 2800;
     }
 
-    const totalCalories = validCalorieLogs.reduce((sum, l) => sum + l.caloriesIn, 0);
+    const totalCalories = validCalorieLogs.reduce((sum, l) => sum + _parseNum(l.caloriesIn, 0), 0);
     const avgCaloriesIn = totalCalories / validCalorieLogs.length;
 
-    const startWeight = recentWeights[0].smoothedWeightKg;
-    const endWeight = recentWeights[recentWeights.length - 1].smoothedWeightKg;
+    const startWeight = _parseNum(recentWeights[0]?.smoothedWeightKg, 0);
+    const endWeight = _parseNum(recentWeights[recentWeights.length - 1]?.smoothedWeightKg, 0);
+    if (startWeight <= 0 || endWeight <= 0) {
+      return 2800;
+    }
     const totalDays = recentWeights.length - 1 || 1;
     const dailyWeightChangeKg = (endWeight - startWeight) / totalDays;
 
@@ -358,19 +386,24 @@ const MetabolicEngine = {
    * Tedenski adaptivni načrt makrohranil glede na cilj
    */
   generateMacroCoachPlan(tdee, weightKg = 80, goalType = 'FAT_LOSS', proteinPerKg = 2.2, fatPerKg = 0.8) {
-    let targetCalories = tdee;
+    const cleanTdee = Math.round(_parseNum(tdee, 2800));
+    const cleanWeight = _parseNum(weightKg, 80);
+    const cleanPPerKg = _parseNum(proteinPerKg, 2.2);
+    const cleanFPerKg = _parseNum(fatPerKg, 0.8);
+
+    let targetCalories = cleanTdee;
     let goalDescription = "Vzdrževanje teže";
 
     if (goalType === 'FAT_LOSS') {
-      targetCalories = tdee - 450; // ~0.4 kg na teden
+      targetCalories = cleanTdee - 450; // ~0.4 kg na teden
       goalDescription = "Hujšanje / Deficit (-450 kcal)";
     } else if (goalType === 'MUSCLE_GAIN') {
-      targetCalories = tdee + 250; // ~0.25 kg na teden
+      targetCalories = cleanTdee + 250; // ~0.25 kg na teden
       goalDescription = "Pusta mišična masa (+250 kcal)";
     }
 
-    const proteinGrams = Math.round(weightKg * proteinPerKg);
-    const fatGrams = Math.round(weightKg * fatPerKg);
+    const proteinGrams = Math.round(cleanWeight * cleanPPerKg);
+    const fatGrams = Math.round(cleanWeight * cleanFPerKg);
 
     const proteinKcal = proteinGrams * 4;
     const fatKcal = fatGrams * 9;
@@ -378,14 +411,14 @@ const MetabolicEngine = {
     const carbGrams = Math.round(remainingKcal / 4);
 
     return {
-      tdee,
+      tdee: cleanTdee,
       targetCalories: Math.round(targetCalories),
       goalType,
       goalDescription,
       proteinGrams,
       fatGrams,
       carbGrams,
-      waterLiters: Number((weightKg * 0.045).toFixed(1)) // 45 ml / kg za športnika
+      waterLiters: Number((cleanWeight * 0.045).toFixed(1)) // 45 ml / kg za športnika
     };
   }
 };
@@ -509,47 +542,64 @@ const OpenFoodFactsClient = {
   baseUrl: 'https://world.openfoodfacts.org',
 
   async getProductByBarcode(barcode) {
-    const clean = String(barcode).trim();
+    const clean = String(barcode || '').replace(/\D/g, '').trim();
     if (!clean) return null;
 
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const to = ctrl ? setTimeout(() => ctrl.abort(), 7000) : null;
     try {
       const url = `${this.baseUrl}/api/v2/product/${clean}.json?fields=code,product_name,brands,nutriments,serving_size,serving_quantity,image_url`;
-      const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+      const res = await fetch(url, {
+        headers: { 'Accept': 'application/json' },
+        signal: ctrl?.signal
+      });
+      if (to) clearTimeout(to);
       if (!res.ok) return null;
       const data = await res.json();
       if (data.status !== 1 || !data.product) return null;
       return this.normalizeProduct(data.product);
     } catch (e) {
-      console.error("Open Food Facts Barcode error:", e);
+      if (to) clearTimeout(to);
+      console.warn("Open Food Facts Barcode error:", e?.message || e);
       return null;
     }
   },
 
   async searchProducts(query, limit = 8) {
-    const clean = encodeURIComponent(query.trim());
+    const clean = encodeURIComponent(String(query || '').trim());
     if (!clean) return [];
 
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const to = ctrl ? setTimeout(() => ctrl.abort(), 7000) : null;
     try {
       const url = `${this.baseUrl}/cgi/search.pl?search_terms=${clean}&search_simple=1&action=process&json=1&page_size=${limit}`;
-      const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+      const res = await fetch(url, {
+        headers: { 'Accept': 'application/json' },
+        signal: ctrl?.signal
+      });
+      if (to) clearTimeout(to);
       if (!res.ok) return [];
       const data = await res.json();
       if (!data.products) return [];
       return data.products.map(p => this.normalizeProduct(p)).filter(Boolean);
     } catch (e) {
-      console.error("Open Food Facts Search error:", e);
+      if (to) clearTimeout(to);
+      console.warn("Open Food Facts Search error:", e?.message || e);
       return [];
     }
   },
 
   normalizeProduct(p) {
+    if (!p || typeof p !== 'object') return null;
     const n = p.nutriments || {};
-    const calories = Math.round(n['energy-kcal_100g'] || (n['energy_100g'] ? n['energy_100g'] / 4.184 : 0));
-    const protein = Number((n['proteins_100g'] || 0).toFixed(1));
-    const carbs = Number((n['carbohydrates_100g'] || 0).toFixed(1));
-    const fat = Number((n['fat_100g'] || 0).toFixed(1));
+    const rawKcal = n['energy-kcal_100g'] != null ? n['energy-kcal_100g'] : (n['energy_100g'] ? _parseNum(n['energy_100g']) / 4.184 : 0);
+    const calories = Math.round(_parseNum(rawKcal, 0));
+    const protein = Number(_parseNum(n['proteins_100g'], 0).toFixed(1));
+    const carbs = Number(_parseNum(n['carbohydrates_100g'], 0).toFixed(1));
+    const fat = Number(_parseNum(n['fat_100g'], 0).toFixed(1));
 
-    if (calories === 0 && protein === 0 && carbs === 0 && fat === 0) {
+    const hasAnyNutriments = n['energy-kcal_100g'] != null || n['proteins_100g'] != null || n['carbohydrates_100g'] != null || n['fat_100g'] != null;
+    if (calories === 0 && protein === 0 && carbs === 0 && fat === 0 && !hasAnyNutriments && !p.product_name) {
       return null;
     }
 
@@ -564,11 +614,11 @@ const OpenFoodFactsClient = {
         protein,
         carbs,
         fat,
-        fiber: n['fiber_100g'] || 0,
-        sodium: (n['sodium_100g'] || 0) * 1000, // v mg
-        calcium: (n['calcium_100g'] || 0) * 1000,
-        iron: (n['iron_100g'] || 0) * 1000,
-        potassium: (n['potassium_100g'] || 0) * 1000
+        fiber: _parseNum(n['fiber_100g'], 0),
+        sodium: _parseNum(n['sodium_100g'], 0) * 1000, // v mg
+        calcium: _parseNum(n['calcium_100g'], 0) * 1000,
+        iron: _parseNum(n['iron_100g'], 0) * 1000,
+        potassium: _parseNum(n['potassium_100g'], 0) * 1000
       }
     };
   }
@@ -637,10 +687,11 @@ const PrehranaDays = (function () {
 
   function sumDay(list) {
     return (list || []).reduce((t, m) => {
-      t.kcal += Number(m.calories) || 0;
-      t.protein += Number(m.protein) || 0;
-      t.carbs += Number(m.carbs) || 0;
-      t.fat += Number(m.fat) || 0;
+      if (!m) return t;
+      t.kcal += _parseNum(m.calories, 0);
+      t.protein += _parseNum(m.protein, 0);
+      t.carbs += _parseNum(m.carbs, 0);
+      t.fat += _parseNum(m.fat, 0);
       return t;
     }, { kcal: 0, protein: 0, carbs: 0, fat: 0 });
   }
@@ -678,25 +729,28 @@ const PrehranaDays = (function () {
 
   // Voda v mililitrih po dnevih: { "2026-11-07": 1250 }
   function waterGet(store, iso) {
-    return Number(store && store[iso]) || 0;
+    return _parseNum(store && store[iso], 0);
   }
 
   function waterAdd(store, iso, ml) {
     const s = store && typeof store === 'object' ? store : {};
-    const next = Math.max(0, (Number(s[iso]) || 0) + (Number(ml) || 0));
+    const next = Math.max(0, _parseNum(s[iso], 0) + _parseNum(ml, 0));
     return Object.assign({}, s, { [iso]: next });
   }
 
   // En zapis na dan v weightHistory (današnji se prepiše, ne podvaja).
   function upsertWeight(history, iso, kg, caloriesIn) {
     const h = (Array.isArray(history) ? history : []).slice();
+    const cleanKg = _parseNum(kg, 0);
+    if (cleanKg <= 0) return h;
+    const cleanCal = typeof caloriesIn === 'number' && !isNaN(caloriesIn) ? caloriesIn : _parseNum(caloriesIn, 0);
     const idx = h.findIndex((x) => x && x.date === iso);
     if (idx >= 0) {
-      const patch = { weightKg: kg };
-      if (typeof caloriesIn === 'number') patch.caloriesIn = caloriesIn;
+      const patch = { weightKg: cleanKg };
+      if (caloriesIn !== undefined) patch.caloriesIn = cleanCal;
       h[idx] = Object.assign({}, h[idx], patch);
     } else {
-      h.push({ date: iso, weightKg: kg, caloriesIn: typeof caloriesIn === 'number' ? caloriesIn : 0 });
+      h.push({ date: iso, weightKg: cleanKg, caloriesIn: cleanCal });
     }
     h.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
     return h;
@@ -720,8 +774,8 @@ const PrehranaDays = (function () {
       const m = x.m;
       return [
         m.date || '', m.time || '', m.name || '', m.serving || '',
-        Math.round(Number(m.calories) || 0), Number(m.protein) || 0,
-        Number(m.carbs) || 0, Number(m.fat) || 0
+        Math.round(_parseNum(m.calories, 0)), _parseNum(m.protein, 0),
+        _parseNum(m.carbs, 0), _parseNum(m.fat, 0)
       ].map(csvCell).join(',');
     });
     return [head.join(',')].concat(rows).join('\r\n') + '\r\n';

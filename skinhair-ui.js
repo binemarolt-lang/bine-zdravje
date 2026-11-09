@@ -60,8 +60,32 @@
       lastUpdated: null
     },
 
-    // Protokol za lase
+    // Protokol za lase (Binetov režim: dutasterid EOD, oralni minoksidil SL dnevno, GHK-Cu jutro, KLOW večer)
+    // Finasterid, topikalni minoksidil, ketokonazol in mikroneedling so izbirni (zgodovina se ohrani)
     hairProtocol: {
+      dutasterideTaken: false,
+      oralMinoxidilTaken: false,
+      ghkCuMorningTaken: false,
+      klowEveningTaken: false,
+
+      // Nastavljivi datumi začetka za časovnico
+      startDates: {
+        dutasteride: '2026-09-27',
+        oralMinoxidil: '2026-07-20',
+        ghkCu: '2026-07-01',
+        klow: '2026-07-01'
+      },
+
+      // Izbirne snovi
+      optionalActive: {
+        topicalMinoxidil: false,
+        finasteride: false,
+        ketoconazole: false,
+        microneedling: false
+      },
+      showOptional: false,
+
+      // Zgodovina / obstoječa polja (ne brišemo!)
       minoxidilApplied: false,
       finasterideTaken: false,
       ketoconazoleWash: false,
@@ -72,6 +96,7 @@
     // Primerjalnik fotografij
     comparison: {
       activeCategory: 'vse',
+      activeAngle: 'vse',
       photoA: null, // bazna fotografija
       photoB: null, // primerjalna fotografija
       splitPositionPct: 50,
@@ -86,12 +111,22 @@
 
   let state = loadState();
   let selectedNewPhotoCat = 'obraz';
+  let selectedNewPhotoAngle = 'spredaj';
 
   function loadState() {
     try {
       const saved = localStorage.getItem(LS_STATE_KEY);
       if (saved) {
-        return Object.assign({}, DEFAULT_STATE, JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        const merged = Object.assign({}, DEFAULT_STATE, parsed);
+        merged.acneZones = Object.assign({}, DEFAULT_STATE.acneZones, parsed.acneZones || {});
+        merged.hair = Object.assign({}, DEFAULT_STATE.hair, parsed.hair || {});
+        merged.skincare = Object.assign({}, DEFAULT_STATE.skincare, parsed.skincare || {});
+        merged.hairProtocol = Object.assign({}, DEFAULT_STATE.hairProtocol, parsed.hairProtocol || {});
+        merged.hairProtocol.startDates = Object.assign({}, DEFAULT_STATE.hairProtocol.startDates, (parsed.hairProtocol && parsed.hairProtocol.startDates) || {});
+        merged.hairProtocol.optionalActive = Object.assign({}, DEFAULT_STATE.hairProtocol.optionalActive, (parsed.hairProtocol && parsed.hairProtocol.optionalActive) || {});
+        merged.comparison = Object.assign({}, DEFAULT_STATE.comparison, parsed.comparison || {});
+        return merged;
       }
     } catch (e) {
       console.warn('[SkinHairUI] Napaka pri branju localStorage:', e);
@@ -110,11 +145,15 @@
               date: p.date,
               timestamp: p.timestamp,
               category: p.category,
+              angle: p.angle || 'spredaj',
               storage: 'indexedDB'
             };
           }
           if (p.url && !p.url.startsWith('data:')) {
-            return p;
+            return {
+              ...p,
+              angle: p.angle || 'spredaj'
+            };
           }
           if (p.url && p.url.startsWith('data:') && p.url.length > 50000) {
             return {
@@ -122,10 +161,14 @@
               date: p.date,
               timestamp: p.timestamp,
               category: p.category,
+              angle: p.angle || 'spredaj',
               storage: 'data_omitted'
             };
           }
-          return p;
+          return {
+            ...p,
+            angle: p.angle || 'spredaj'
+          };
         });
       }
       localStorage.setItem(LS_STATE_KEY, JSON.stringify(stateToSave));
@@ -197,6 +240,7 @@
           date: dbp.date,
           timestamp: dbp.timestamp,
           category: dbp.category || 'obraz',
+          angle: dbp.angle || 'spredaj',
           url: rec.photoUrl,
           thumbnail: rec.thumbnailUrl || rec.photoUrl,
           storage: 'indexedDB'
@@ -368,6 +412,14 @@
     const container = document.getElementById('view-estetika');
     if (!container) return;
 
+    // Shrani položaj drsenja in fokus pred ponovnim izrisom
+    const prevScrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
+    const activeEl = document.activeElement;
+    const focusedId = activeEl && activeEl.id ? activeEl.id : null;
+    const focusedSelection = (activeEl && typeof activeEl.selectionStart === 'number') ? { start: activeEl.selectionStart, end: activeEl.selectionEnd } : null;
+    const subtabsEl = container.querySelector('.sh-subtabs');
+    const subtabsScrollLeft = subtabsEl ? subtabsEl.scrollLeft : 0;
+
     // Pridobi izračune iz SkinHairEngine
     const engine = window.SkinHairEngine;
     const gagsResult = engine ? engine.calculateGAGS(state.acneZones) : { score: 0, skinHealthScore: 100, severityLabel: 'Čisto', color: '#34d399' };
@@ -378,13 +430,9 @@
     let triggers = [];
     if (engine) {
       const appState = window.appState || {};
-      const estradiol = appState.bloodwork ? appState.bloodwork.e2 : 22;
+      const estradiol = (appState.bloodwork && typeof appState.bloodwork.e2 === 'number') ? appState.bloodwork.e2 : null;
       triggers = engine.analyzeTriggersAndRisks({
-        wheyGramsToday: 40,
-        postWorkoutShowerDelayMin: 20,
-        estradiolPgMl: estradiol,
-        testDoseMg: 20,
-        eqDoseMg: 10
+        estradiolPgMl: estradiol
       });
     }
 
@@ -399,19 +447,19 @@
               <div style="font-size: 0.72rem; color: var(--text-3);">Klinični GAGS, Norwood analiza in Before/After primerjalnik</div>
             </div>
           </div>
-          <button class="btn secondary" style="font-size: 0.72rem; padding: 4px 8px;" onclick="SkinHairUI.triggerPhotoUploadModal()">
+          <button class="btn secondary" style="font-size: 0.75rem; padding: 6px 12px; min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center;" onclick="SkinHairUI.triggerPhotoUploadModal()">
             📷 Slikaj
           </button>
         </div>
 
         <!-- Segmentirani nadzornik (Sub-tabs) -->
         <div class="sh-subtabs">
-          <button class="sh-tab-btn ${state.activeSubTab === 'pregled' ? 'active' : ''}" onclick="SkinHairUI.switchSubTab('pregled')">📊 Pregled</button>
-          <button class="sh-tab-btn ${state.activeSubTab === 'lasje' ? 'active' : ''}" onclick="SkinHairUI.switchSubTab('lasje')">💈 Lasje</button>
-          <button class="sh-tab-btn ${state.activeSubTab === 'dnevnik' ? 'active' : ''}" onclick="SkinHairUI.switchSubTab('dnevnik')">📖 Dnevnik Vnosov</button>
-          <button class="sh-tab-btn ${state.activeSubTab === 'rutina' ? 'active' : ''}" onclick="SkinHairUI.switchSubTab('rutina')">🧪 Rutina</button>
-          <button class="sh-tab-btn ${state.activeSubTab === 'akne' ? 'active' : ''}" onclick="SkinHairUI.switchSubTab('akne')">🔴 Akne (GAGS)</button>
-          <button class="sh-tab-btn ${state.activeSubTab === 'primerjalnik' ? 'active' : ''}" onclick="SkinHairUI.switchSubTab('primerjalnik')">🔍 Primerjalnik</button>
+          <button class="sh-tab-btn ${state.activeSubTab === 'pregled' ? 'active' : ''}" style="min-height: 44px;" onclick="SkinHairUI.switchSubTab('pregled')">📊 Pregled</button>
+          <button class="sh-tab-btn ${state.activeSubTab === 'lasje' ? 'active' : ''}" style="min-height: 44px;" onclick="SkinHairUI.switchSubTab('lasje')">💈 Lasje</button>
+          <button class="sh-tab-btn ${state.activeSubTab === 'dnevnik' ? 'active' : ''}" style="min-height: 44px;" onclick="SkinHairUI.switchSubTab('dnevnik')">📖 Dnevnik Vnosov</button>
+          <button class="sh-tab-btn ${state.activeSubTab === 'rutina' ? 'active' : ''}" style="min-height: 44px;" onclick="SkinHairUI.switchSubTab('rutina')">🧪 Rutina</button>
+          <button class="sh-tab-btn ${state.activeSubTab === 'akne' ? 'active' : ''}" style="min-height: 44px;" onclick="SkinHairUI.switchSubTab('akne')">🔴 Akne (GAGS)</button>
+          <button class="sh-tab-btn ${state.activeSubTab === 'primerjalnik' ? 'active' : ''}" style="min-height: 44px;" onclick="SkinHairUI.switchSubTab('primerjalnik')">🔍 Primerjalnik</button>
         </div>
       </div>
 
@@ -421,6 +469,31 @@
       </div>
 
     `;
+
+    // Takojšnja in natančna obnova položaja drsenja in fokusa
+    window.scrollTo(0, prevScrollY);
+    const newSubtabsEl = container.querySelector('.sh-subtabs');
+    if (newSubtabsEl && subtabsScrollLeft) {
+      newSubtabsEl.scrollLeft = subtabsScrollLeft;
+    }
+    if (focusedId) {
+      const focusTarget = document.getElementById(focusedId);
+      if (focusTarget && typeof focusTarget.focus === 'function') {
+        focusTarget.focus({ preventScroll: true });
+        if (focusedSelection && typeof focusTarget.setSelectionRange === 'function') {
+          try {
+            focusTarget.setSelectionRange(focusedSelection.start, focusedSelection.end);
+          } catch (_) {}
+        }
+      }
+    }
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => {
+        if (Math.abs((window.pageYOffset || document.documentElement.scrollTop || 0) - prevScrollY) > 2) {
+          window.scrollTo(0, prevScrollY);
+        }
+      });
+    }
 
     ensureCameraModal();
 
@@ -627,8 +700,13 @@
   // ========== 2. PODZAVIHEK: PRIMERJALNIK FOTOGRAFIJ ==========
   function renderPrimerjalnikView() {
     const activeCat = state.comparison.activeCategory || 'vse';
+    const activeAngle = state.comparison.activeAngle || 'vse';
     const allPhotos = state.photos || [];
-    const filteredPhotos = allPhotos.filter(p => activeCat === 'vse' || p.category === activeCat);
+    const filteredPhotos = allPhotos.filter(p => {
+      const catMatch = activeCat === 'vse' || p.category === activeCat;
+      const angleMatch = activeAngle === 'vse' || (p.angle || 'spredaj') === activeAngle;
+      return catMatch && angleMatch;
+    });
 
     return `
       <!-- OPOMNIK ZA FOTOGRAFIRANJE -->
@@ -636,23 +714,34 @@
         <div style="font-size: 0.78rem; color: var(--text-1); line-height: 1.4;">
           📸 <span>${formatPhotoReminderText()}</span>
         </div>
-        <button type="button" class="btn secondary" style="font-size: 0.72rem; padding: 0 10px; min-height: 44px; flex-shrink: 0;" onclick="SkinHairUI.triggerPhotoUploadModal()">+ Foto</button>
+        <button type="button" class="btn secondary" style="font-size: 0.75rem; padding: 6px 12px; min-height: 44px; min-width: 44px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;" onclick="SkinHairUI.triggerPhotoUploadModal()">+ Foto</button>
       </div>
 
       <div class="card" style="margin-bottom: 12px;">
         <div class="card-header">
           <div class="card-title">🔍 Before / After Primerjalnik</div>
           <div style="display: flex; gap: 6px;">
-            <button class="btn ${state.comparison.mode === 'split' ? 'primary' : 'secondary'}" style="font-size: 0.7rem; padding: 3px 8px; min-height: 44px;" onclick="SkinHairUI.setCompareMode('split')">Zavesa</button>
-            <button class="btn ${state.comparison.mode === 'blend' ? 'primary' : 'secondary'}" style="font-size: 0.7rem; padding: 3px 8px; min-height: 44px;" onclick="SkinHairUI.setCompareMode('blend')">Bledenje</button>
+            <button class="btn ${state.comparison.mode === 'split' ? 'primary' : 'secondary'}" style="font-size: 0.75rem; padding: 4px 10px; min-height: 44px;" onclick="SkinHairUI.setCompareMode('split')">Zavesa</button>
+            <button class="btn ${state.comparison.mode === 'blend' ? 'primary' : 'secondary'}" style="font-size: 0.75rem; padding: 4px 10px; min-height: 44px;" onclick="SkinHairUI.setCompareMode('blend')">Bledenje</button>
           </div>
         </div>
 
-        <!-- Filtrirni čipi -->
-        <div style="display: flex; gap: 6px; overflow-x: auto; padding: 6px 0 10px 0;">
+        <!-- Filtrirni čipi za kategorije -->
+        <div style="font-size: 0.7rem; color: var(--text-3); margin-top: 6px; font-weight: 600;">Regija:</div>
+        <div style="display: flex; gap: 6px; overflow-x: auto; padding: 4px 0 8px 0;">
           ${['vse', 'obraz', 'lasna_linija', 'temen', 'hrbet', 'prsa'].map(cat => `
             <button class="sh-cat-chip ${activeCat === cat ? 'active' : ''}" style="min-height: 44px;" onclick="SkinHairUI.filterCategory('${cat}')">
-              ${cat === 'vse' ? 'Vse' : cat === 'obraz' ? 'Obraz' : cat === 'lasna_linija' ? 'Linija' : cat === 'temen' ? 'Temen' : cat === 'hrbet' ? 'Hrbet' : 'Prsa'}
+              ${cat === 'vse' ? 'Vse regije' : cat === 'obraz' ? 'Obraz' : cat === 'lasna_linija' ? 'Linija' : cat === 'temen' ? 'Temen' : cat === 'hrbet' ? 'Hrbet' : 'Prsa'}
+            </button>
+          `).join('')}
+        </div>
+
+        <!-- Filtrirni čipi za kote -->
+        <div style="font-size: 0.7rem; color: var(--text-3); font-weight: 600;">Kot fotografiranja:</div>
+        <div style="display: flex; gap: 6px; overflow-x: auto; padding: 4px 0 10px 0;">
+          ${['vse', 'spredaj', 'temen', 'levo', 'desno', 'zadaj'].map(ang => `
+            <button class="sh-cat-chip ${activeAngle === ang ? 'active' : ''}" style="min-height: 44px;" onclick="SkinHairUI.filterAngle('${ang}')">
+              ${ang === 'vse' ? 'Vsi koti' : ang === 'spredaj' ? 'Spredaj' : ang === 'temen' ? 'Temen (zgoraj)' : ang === 'levo' ? 'Levo' : ang === 'desno' ? 'Desno' : 'Zadaj'}
             </button>
           `).join('')}
         </div>
@@ -693,7 +782,7 @@
             ${state.comparison.mode === 'split' ? 'Prej (0%)' : 'Baza'}
           </span>
           <input type="range" min="0" max="100" value="${state.comparison.mode === 'split' ? state.comparison.splitPositionPct : state.comparison.opacityBlendPct}" 
-                 id="shSliderControl" style="flex: 1;" oninput="SkinHairUI.handleSliderInput(this.value)">
+                 id="shSliderControl" style="flex: 1; min-height: 44px;" oninput="SkinHairUI.handleSliderInput(this.value)">
           <span style="font-size: 0.72rem; color: var(--text-3); min-width: 50px; text-align: right;">
             ${state.comparison.mode === 'split' ? 'Potem (100%)' : 'Novejše'}
           </span>
@@ -704,12 +793,12 @@
       <div class="card">
         <div class="card-header">
           <div class="card-title">📸 Časovnica Fotografij (${filteredPhotos.length})</div>
-          <button class="btn secondary" style="font-size: 0.72rem; padding: 4px 8px;" onclick="SkinHairUI.triggerPhotoUploadModal()">+ Dodaj</button>
+          <button class="btn secondary" style="font-size: 0.75rem; padding: 6px 12px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center;" onclick="SkinHairUI.triggerPhotoUploadModal()">+ Dodaj</button>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; margin-top: 10px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)); gap: 8px; margin-top: 10px;">
           ${filteredPhotos.length === 0 ? `
             <div style="grid-column: 1 / -1; text-align: center; padding: 24px; color: var(--text-3); font-size: 0.8rem;">
-              ${allPhotos.length === 0 ? 'Še ni naloženih fotografij napredka. Tapni »+ Dodaj« za prvo sliko obraza ali lasišča.' : 'Ni fotografij v izbrani kategoriji.'}
+              ${allPhotos.length === 0 ? 'Še ni naloženih fotografij napredka. Tapni »+ Dodaj« za prvo sliko obraza ali lasišča.' : 'Ni fotografij za izbrane filtre regije/kota.'}
             </div>
           ` : filteredPhotos.map((p, idx) => `
             <div class="sh-photo-thumb-card ${p.id === state.comparison.photoA ? 'selected-a' : ''} ${p.id === state.comparison.photoB ? 'selected-b' : ''}" 
@@ -721,7 +810,10 @@
               <div style="font-size: 0.65rem; color: var(--text-2); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                 ${p.date || 'Danes'}
               </div>
-              <div style="font-size: 0.6rem; color: var(--rec-green); font-weight: 600;">${p.category || 'obraz'}</div>
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.6rem; margin-top: 2px;">
+                <span style="color: var(--rec-green); font-weight: 600;">${p.category || 'obraz'}</span>
+                <span style="color: var(--text-3);">${p.angle || 'spredaj'}</span>
+              </div>
             </div>
           `).join('')}
         </div>
@@ -731,15 +823,25 @@
 
   function renderCompareCanvas() {
     const activeCat = state.comparison.activeCategory || 'vse';
-    const candidatePhotos = (state.photos || []).filter(p => activeCat === 'vse' || p.category === activeCat);
+    const activeAngle = state.comparison.activeAngle || 'vse';
+    let candidatePhotos = (state.photos || []).filter(p => {
+      const catMatch = activeCat === 'vse' || p.category === activeCat;
+      const angleMatch = activeAngle === 'vse' || (p.angle || 'spredaj') === activeAngle;
+      return catMatch && angleMatch;
+    });
+
+    if (candidatePhotos.length === 0) {
+      candidatePhotos = state.photos || [];
+    }
+
     const photoA = candidatePhotos.find(p => p.id === state.comparison.photoA) || candidatePhotos[0] || (state.photos && state.photos[0]) || null;
-    const photoB = candidatePhotos.find(p => p.id === state.comparison.photoB) || candidatePhotos[1] || photoA;
+    const photoB = candidatePhotos.find(p => p.id === state.comparison.photoB) || (candidatePhotos[1] || photoA);
 
     if (!photoA) {
       return `
-        <div style="width: 100%; height: 260px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--surface-2); border-radius: 12px; color: var(--text-3); font-size: 0.8rem;">
-          <span>📷 Naloži vsaj 2 fotografiji za zvezno primerjavo</span>
-          <button class="btn secondary" style="margin-top: 8px; font-size: 0.75rem;" onclick="SkinHairUI.triggerPhotoUploadModal()">Naloži fotografijo</button>
+        <div style="width: 100%; height: 260px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--surface-2); border-radius: 12px; color: var(--text-3); font-size: 0.8rem; padding: 16px; text-align: center;">
+          <span>📷 Naloži vsaj 2 fotografiji za zanesljivo primerjavo pred in po</span>
+          <button class="btn secondary" style="margin-top: 10px; font-size: 0.75rem; min-height: 44px; padding: 6px 14px;" onclick="SkinHairUI.triggerPhotoUploadModal()">Naloži fotografijo</button>
         </div>
       `;
     }
@@ -747,17 +849,40 @@
     const splitPos = state.comparison.splitPositionPct;
     const blendPos = state.comparison.opacityBlendPct;
 
+    const angleA = photoA.angle || 'spredaj';
+    const angleB = photoB ? (photoB.angle || 'spredaj') : angleA;
+    const sameAngle = angleA === angleB;
+
+    let timeDiffHtml = '';
+    const tsA = photoA.timestamp || (photoA.date ? Date.parse(photoA.date) : null);
+    const tsB = photoB ? (photoB.timestamp || (photoB.date ? Date.parse(photoB.date) : null)) : null;
+    if (tsA && tsB) {
+      const dayDiff = Math.abs(Math.round((tsB - tsA) / (1000 * 60 * 60 * 24)));
+      const wDiff = Math.floor(dayDiff / 7);
+      timeDiffHtml = `<span style="background: rgba(0,0,0,0.75); padding: 3px 8px; border-radius: 4px; font-size: 0.65rem; color: #fff;">Razmik: ${dayDiff} dni (${wDiff} tednov)</span>`;
+    }
+
+    const statusBanner = `
+      <div style="position: absolute; top: 8px; left: 8px; right: 8px; z-index: 15; display: flex; justify-content: space-between; align-items: center; pointer-events: none; flex-wrap: wrap; gap: 4px;">
+        <span style="background: ${sameAngle ? 'rgba(0,0,0,0.8)' : 'rgba(239, 68, 68, 0.85)'}; border: 1px solid ${sameAngle ? 'var(--rec-green)' : '#ef4444'}; border-radius: 4px; padding: 3px 8px; font-size: 0.65rem; color: #fff; font-weight: 600;">
+          ${sameAngle ? `✓ Usklajen kot: ${angleA}` : `⚠️ Različna kota: ${angleA} vs ${angleB}`}
+        </span>
+        ${timeDiffHtml}
+      </div>
+    `;
+
     if (state.comparison.mode === 'split') {
       return `
         <div class="sh-split-container" id="shSplitContainer">
+          ${statusBanner}
           <!-- Spodnja slika (B - Novejša / Potem) -->
           <img src="${photoB ? (photoB.url || photoB.thumbnail) : (photoA.url || photoA.thumbnail)}" class="sh-split-img" alt="Potem">
-          <span class="sh-split-label right">POTEM</span>
+          <span class="sh-split-label right">POTEM: ${photoB ? (photoB.date || 'Danes') : (photoA.date || 'Danes')} (${angleB})</span>
 
           <!-- Zgornja slika (A - Prej) s clip-path masko -->
           <div class="sh-split-top" id="shSplitTop" style="clip-path: inset(0 ${100 - splitPos}% 0 0);">
             <img src="${photoA.url || photoA.thumbnail}" class="sh-split-img" alt="Prej">
-            <span class="sh-split-label left">PREJ</span>
+            <span class="sh-split-label left">PREJ: ${photoA.date || 'Dan 0'} (${angleA})</span>
           </div>
 
           <!-- Ročaj delilnika -->
@@ -770,10 +895,11 @@
       // Cross-Dissolve Blend način
       return `
         <div class="sh-blend-container">
+          ${statusBanner}
           <img src="${photoA.url || photoA.thumbnail}" class="sh-blend-img" style="opacity: 1;" alt="Prej">
           <img src="${photoB ? (photoB.url || photoB.thumbnail) : (photoA.url || photoA.thumbnail)}" class="sh-blend-img" style="opacity: ${blendPos / 100};" alt="Potem">
-          <div style="position: absolute; bottom: 8px; left: 8px; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; color: #fff;">
-            Bledenje: ${blendPos}%
+          <div style="position: absolute; bottom: 8px; left: 8px; background: rgba(0,0,0,0.7); padding: 3px 8px; border-radius: 4px; font-size: 0.65rem; color: #fff;">
+            Bledenje: ${blendPos}% (Prej: ${photoA.date || '0'} | Potem: ${photoB ? photoB.date : 'danes'})
           </div>
         </div>
       `;
@@ -840,8 +966,74 @@
   // ========== 4. PODZAVIHEK: LASJE & NORWOOD ==========
   function renderLasjeView(hair, needleLock) {
     const norwoodOptions = ['1', '2', '2A', '3', '3A', '3V', '4', '5', '6', '7'];
+    const engine = window.SkinHairEngine;
+
+    // Pripravi snovi za časovnico
+    const hairSubstances = {
+      dutasteride: {
+        id: 'dutasteride',
+        name: 'Dutasterid',
+        startDate: (state.hairProtocol.startDates && state.hairProtocol.startDates.dutasteride) || '2026-09-27',
+        active: true,
+        frequency: 'vsak drugi dan'
+      },
+      oral_minoxidil: {
+        id: 'oral_minoxidil',
+        name: 'Oralni minoksidil SL',
+        startDate: (state.hairProtocol.startDates && state.hairProtocol.startDates.oralMinoxidil) || '2026-07-20',
+        active: true,
+        frequency: 'dnevno'
+      },
+      ghk_cu: {
+        id: 'ghk_cu',
+        name: 'GHK-Cu s.c.',
+        startDate: (state.hairProtocol.startDates && state.hairProtocol.startDates.ghkCu) || '2026-07-01',
+        active: true,
+        frequency: 'zjutraj'
+      },
+      klow: {
+        id: 'klow',
+        name: 'KLOW s.c.',
+        startDate: (state.hairProtocol.startDates && state.hairProtocol.startDates.klow) || '2026-07-01',
+        active: true,
+        frequency: 'zvečer'
+      },
+      finasteride: {
+        id: 'finasteride',
+        name: 'Finasterid',
+        startDate: (state.hairProtocol.startDates && state.hairProtocol.startDates.finasteride) || null,
+        active: Boolean(state.hairProtocol.optionalActive && state.hairProtocol.optionalActive.finasteride),
+        frequency: 'izbirno'
+      },
+      topical_minoxidil: {
+        id: 'topical_minoxidil',
+        name: 'Topikalni minoksidil',
+        startDate: (state.hairProtocol.startDates && state.hairProtocol.startDates.topicalMinoxidil) || null,
+        active: Boolean(state.hairProtocol.optionalActive && state.hairProtocol.optionalActive.topicalMinoxidil),
+        frequency: 'izbirno'
+      },
+      ketoconazole: {
+        id: 'ketoconazole',
+        name: 'Ketokonazol šampon',
+        startDate: (state.hairProtocol.startDates && state.hairProtocol.startDates.ketoconazole) || null,
+        active: Boolean(state.hairProtocol.optionalActive && state.hairProtocol.optionalActive.ketoconazole),
+        frequency: 'izbirno'
+      },
+      microneedling: {
+        id: 'microneedling',
+        name: 'Mikroneedling',
+        startDate: (state.hairProtocol.startDates && state.hairProtocol.startDates.microneedling) || null,
+        active: Boolean(state.hairProtocol.optionalActive && state.hairProtocol.optionalActive.microneedling),
+        frequency: 'izbirno'
+      }
+    };
+
+    const timelineList = engine ? engine.calculateHairTimeline(hairSubstances) : [];
+    const activeTimeline = timelineList.filter(t => t.active);
+    const optionalTimeline = timelineList.filter(t => !t.active);
 
     return `
+      <!-- 1. NORWOOD LESTVICA IN MERITVE -->
       <div class="card" style="margin-bottom: 12px;">
         <div class="card-header">
           <div class="card-title">💈 Norwood Lestvica & Lasišče</div>
@@ -850,12 +1042,12 @@
 
         <!-- Norwood stopnja -->
         <div style="margin-top: 10px;">
-          <label style="font-size: 0.75rem; color: var(--text-2); font-weight: 600; display: block; margin-bottom: 6px;">
+          <label style="font-size: 0.75rem; color: var(--text-2); font-weight: 600; display: block; margin-bottom: 6px; min-height: auto;">
             Stopnja Norwood-Hamilton lestvice:
           </label>
           <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;">
             ${norwoodOptions.map(opt => `
-              <button class="sh-nw-btn ${state.hair.norwoodStage === opt ? 'active' : ''}" onclick="SkinHairUI.setNorwoodStage('${opt}')">
+              <button class="sh-nw-btn ${state.hair.norwoodStage === opt ? 'active' : ''}" style="min-height: 44px; min-width: 44px;" onclick="SkinHairUI.setNorwoodStage('${opt}')">
                 NW ${opt}
               </button>
             `).join('')}
@@ -871,7 +1063,7 @@
             <span>Odmik zalizkov v sencih (mm):</span>
             <span style="font-weight: 700; color: var(--text-1);">${state.hair.hairlineRecessionMm} mm</span>
           </div>
-          <input type="range" min="0" max="25" value="${state.hair.hairlineRecessionMm}" style="width: 100%;" 
+          <input type="range" min="0" max="25" value="${state.hair.hairlineRecessionMm}" style="width: 100%; min-height: 44px;" 
                  oninput="SkinHairUI.updateHairParam('hairlineRecessionMm', parseInt(this.value, 10), true)" onchange="SkinHairUI.updateHairParam('hairlineRecessionMm', parseInt(this.value, 10))">
         </div>
 
@@ -881,7 +1073,7 @@
             <span>Gostota / Pokritost temena (Vertex %):</span>
             <span style="font-weight: 700; color: var(--text-1);">${state.hair.vertexCoveragePct} %</span>
           </div>
-          <input type="range" min="30" max="100" value="${state.hair.vertexCoveragePct}" style="width: 100%;" 
+          <input type="range" min="30" max="100" value="${state.hair.vertexCoveragePct}" style="width: 100%; min-height: 44px;" 
                  oninput="SkinHairUI.updateHairParam('vertexCoveragePct', parseInt(this.value, 10), true)" onchange="SkinHairUI.updateHairParam('vertexCoveragePct', parseInt(this.value, 10))">
         </div>
 
@@ -893,52 +1085,199 @@
               ${state.hair.sheddingScore} / 10 (${hair.sheddingStatus})
             </span>
           </div>
-          <input type="range" min="0" max="10" value="${state.hair.sheddingScore}" style="width: 100%;" 
+          <input type="range" min="0" max="10" value="${state.hair.sheddingScore}" style="width: 100%; min-height: 44px;" 
                  oninput="SkinHairUI.updateHairParam('sheddingScore', parseInt(this.value, 10), true)" onchange="SkinHairUI.updateHairParam('sheddingScore', parseInt(this.value, 10))">
         </div>
       </div>
 
-      <!-- MIKRONEEDLING SEJA -->
-      <div class="card">
+      <!-- 2. ČASOVNICA TERAPIJE ZA LASE -->
+      <div class="card" style="margin-bottom: 12px;">
         <div class="card-header">
-          <div class="card-title">🪡 Mikroneedling & Protokol rasti</div>
-          <span style="font-size: 0.75rem; color: var(--text-3);">Globina 1.0–1.25 mm</span>
+          <div class="card-title">💈 Časovnica Terapije za Lase</div>
+          <span style="font-size: 0.72rem; color: var(--rec-green); font-weight: 600;">Pretečeni tedni</span>
         </div>
-        <div style="font-size: 0.75rem; color: var(--text-2); margin-top: 6px;">
-          Mikroneedling aktivira Wnt/β-catenin signalizacijo mešičkov. Obvezen 24h premor pred nanosom minoksidila!
+        <div style="font-size: 0.73rem; color: var(--text-3); margin: 4px 0 10px;">
+          Spremljanje trajanja posamezne snovi (brez trditev o učinkovitosti in brez odmerkov). Datumi začetka so prilagodljivi:
         </div>
-        <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 0.75rem; color: var(--text-3);">
-            Zadnja seja: ${state.hairProtocol.lastMicroneedleDate ? new Date(state.hairProtocol.lastMicroneedleDate).toLocaleDateString('sl-SI') : 'Ni vpisano'}
-            ${needleLock.isLocked ? ` <strong style="color: #ef4444;">(Zapora: ${needleLock.hoursRemaining}h)</strong>` : ''}
-          </span>
-          ${needleLock.isLocked ? `
-            <button class="btn secondary" style="font-size: 0.75rem; border-color: #ef4444; color: #fca5a5;" onclick="SkinHairUI.resetMicroneedlingLockout()">
-              🔓 Ponastavi zaporo
-            </button>
-          ` : `
-            <button class="btn secondary" style="font-size: 0.75rem;" onclick="SkinHairUI.logMicroneedlingFromButton()">
-              Zabeleži sejo danes
-            </button>
-          `}
+
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          ${activeTimeline.map(sub => `
+            <div style="background: var(--surface-2); padding: 10px 12px; border-radius: 8px; display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px;">
+                <div>
+                  <span style="font-weight: 700; font-size: 0.85rem; color: var(--text-1);">${sub.name}</span>
+                  <span style="font-size: 0.7rem; color: var(--text-3); margin-left: 6px;">(${sub.frequency})</span>
+                </div>
+                <span style="font-size: 0.8rem; font-weight: 700; color: var(--rec-green); background: rgba(0,230,118,0.12); padding: 3px 8px; border-radius: 12px; border: 1px solid rgba(0,230,118,0.25);">
+                  ${sub.formatted}
+                </span>
+              </div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px;">
+                <label style="font-size: 0.72rem; color: var(--text-3); min-height: 44px; display: flex; align-items: center;">Začetek jemanja:</label>
+                <input type="date" value="${sub.startDate || ''}" 
+                       style="font-size: 16px; min-height: 44px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border, #3a3a3c); background: var(--surface-1); color: var(--text-1);"
+                       onchange="SkinHairUI.updateSubstanceStartDate('${sub.id}', this.value)">
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <!-- Razdelek za izbirne / neaktivne snovi -->
+        <div style="margin-top: 12px; border-top: 1px solid var(--edge-1, rgba(255,255,255,0.08)); padding-top: 10px;">
+          <button type="button" class="btn secondary" style="width: 100%; min-height: 44px; font-size: 0.78rem;" onclick="SkinHairUI.toggleShowOptionalHair()">
+            ${state.hairProtocol.showOptional ? '▴ Skrij izbirne snovi' : '▾ Prikaži izbirne snovi (Finasterid, topikalni minoksidil…)'}
+          </button>
+
+          ${state.hairProtocol.showOptional ? `
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+              ${optionalTimeline.map(sub => `
+                <div style="background: var(--surface-2); padding: 10px 12px; border-radius: 8px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                      <span style="font-weight: 600; font-size: 0.82rem; color: var(--text-2);">${sub.name}</span>
+                      <span style="font-size: 0.68rem; color: var(--text-3); margin-left: 4px;">(izbirno)</span>
+                    </div>
+                    <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 6px; cursor: pointer; min-height: 44px;">
+                      <input type="checkbox" ${state.hairProtocol.optionalActive[sub.id] ? 'checked' : ''} 
+                             onchange="SkinHairUI.toggleOptionalSubstanceActive('${sub.id}', this.checked)">
+                      <span>Vključi v protokol</span>
+                    </label>
+                  </div>
+                  ${state.hairProtocol.optionalActive[sub.id] ? `
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px;">
+                      <span style="font-size: 0.75rem; color: var(--rec-green);">${sub.formatted}</span>
+                      <input type="date" value="${sub.startDate || ''}" 
+                             style="font-size: 16px; min-height: 44px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border, #3a3a3c); background: var(--surface-1); color: var(--text-1);"
+                             onchange="SkinHairUI.updateSubstanceStartDate('${sub.id}', this.value)">
+                    </div>
+                  ` : ''}
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
         </div>
       </div>
+
+      <!-- 3. DNEVNI VNOS ZA LASE -->
+      <div class="card" style="margin-bottom: 12px;">
+        <div class="card-header">
+          <div class="card-title">✅ Današnji Vnos za Lase</div>
+          <span style="font-size: 0.72rem; color: var(--rec-green); font-weight: 600;">🔥 Streak: ${state.hairProtocol.streakDays} dni</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+          <!-- Dutasterid -->
+          <label style="background: var(--surface-2); padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; min-height: 44px;">
+            <div>
+              <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-1);">Dutasterid</div>
+              <div style="font-size: 0.68rem; color: var(--text-3);">Vsak drugi dan (jutranji vnos)</div>
+            </div>
+            <input type="checkbox" ${state.hairProtocol.dutasterideTaken ? 'checked' : ''} onchange="SkinHairUI.toggleHairStep('dutasterideTaken', this.checked)">
+          </label>
+
+          <!-- Oralni minoksidil SL -->
+          <label style="background: var(--surface-2); padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; min-height: 44px;">
+            <div>
+              <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-1);">Oralni minoksidil SL</div>
+              <div style="font-size: 0.68rem; color: var(--text-3);">Dnevno (pod jezik)</div>
+            </div>
+            <input type="checkbox" ${state.hairProtocol.oralMinoxidilTaken ? 'checked' : ''} onchange="SkinHairUI.toggleHairStep('oralMinoxidilTaken', this.checked)">
+          </label>
+
+          <!-- GHK-Cu jutro -->
+          <label style="background: var(--surface-2); padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; min-height: 44px;">
+            <div>
+              <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-1);">GHK-Cu s.c.</div>
+              <div style="font-size: 0.68rem; color: var(--text-3);">Jutranji protokol (podkožno)</div>
+            </div>
+            <input type="checkbox" ${state.hairProtocol.ghkCuMorningTaken ? 'checked' : ''} onchange="SkinHairUI.toggleHairStep('ghkCuMorningTaken', this.checked)">
+          </label>
+
+          <!-- KLOW večer -->
+          <label style="background: var(--surface-2); padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; min-height: 44px;">
+            <div>
+              <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-1);">KLOW s.c.</div>
+              <div style="font-size: 0.68rem; color: var(--text-3);">Večerni protokol (podkožno)</div>
+            </div>
+            <input type="checkbox" ${state.hairProtocol.klowEveningTaken ? 'checked' : ''} onchange="SkinHairUI.toggleHairStep('klowEveningTaken', this.checked)">
+          </label>
+
+          <!-- Izbirne snovi (če so vklopljene v optionalActive ali če uporabnik želi) -->
+          ${(state.hairProtocol.optionalActive && state.hairProtocol.optionalActive.topicalMinoxidil) ? `
+            <label style="background: var(--surface-2); padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; min-height: 44px;">
+              <div>
+                <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-2);">Topikalni minoksidil (izbirno)</div>
+                <div style="font-size: 0.68rem; color: var(--text-3);">${needleLock.isLocked ? '⚠️ Zaklenjeno zaradi mikroneedlinga' : 'Lokalni nanos'}</div>
+              </div>
+              <input type="checkbox" ${state.hairProtocol.minoxidilApplied ? 'checked' : ''} ${needleLock.isLocked ? 'disabled' : ''} onchange="SkinHairUI.toggleHairStep('minoxidilApplied', this.checked)">
+            </label>
+          ` : ''}
+
+          ${(state.hairProtocol.optionalActive && state.hairProtocol.optionalActive.finasteride) ? `
+            <label style="background: var(--surface-2); padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; min-height: 44px;">
+              <div>
+                <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-2);">Finasterid (izbirno)</div>
+                <div style="font-size: 0.68rem; color: var(--text-3);">Spremljanje vnosa</div>
+              </div>
+              <input type="checkbox" ${state.hairProtocol.finasterideTaken ? 'checked' : ''} onchange="SkinHairUI.toggleHairStep('finasterideTaken', this.checked)">
+            </label>
+          ` : ''}
+
+          ${(state.hairProtocol.optionalActive && state.hairProtocol.optionalActive.ketoconazole) ? `
+            <label style="background: var(--surface-2); padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; min-height: 44px;">
+              <div>
+                <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-2);">Ketokonazol šampon (izbirno)</div>
+                <div style="font-size: 0.68rem; color: var(--text-3);">Nega lasišča</div>
+              </div>
+              <input type="checkbox" ${state.hairProtocol.ketoconazoleWash ? 'checked' : ''} onchange="SkinHairUI.toggleHairStep('ketoconazoleWash', this.checked)">
+            </label>
+          ` : ''}
+        </div>
+      </div>
+
+      <!-- 4. MIKRONEEDLING (izbirno / ohranjena zgodovina) -->
+      ${((state.hairProtocol.optionalActive && state.hairProtocol.optionalActive.microneedling) || needleLock.isLocked || state.hairProtocol.lastMicroneedleDate) ? `
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🪡 Mikroneedling (izbirno)</div>
+            <span style="font-size: 0.72rem; color: var(--text-3);">Varnostni premor 24h</span>
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-2); margin-top: 6px;">
+            Ob seji iglanja je priporočen 24-urni premor pred morebitnim topikalnim nanosom.
+          </div>
+          <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <span style="font-size: 0.75rem; color: var(--text-3);">
+              Zadnja seja: ${state.hairProtocol.lastMicroneedleDate ? new Date(state.hairProtocol.lastMicroneedleDate).toLocaleDateString('sl-SI') : 'Ni vpisano'}
+              ${needleLock.isLocked ? ` <strong style="color: #ef4444;">(Zapora: ${needleLock.hoursRemaining}h)</strong>` : ''}
+            </span>
+            ${needleLock.isLocked ? `
+              <button class="btn secondary" style="font-size: 0.75rem; border-color: #ef4444; color: #fca5a5; min-height: 44px; padding: 6px 12px;" onclick="SkinHairUI.resetMicroneedlingLockout()">
+                🔓 Ponastavi zaporo
+              </button>
+            ` : `
+              <button class="btn secondary" style="font-size: 0.75rem; min-height: 44px; padding: 6px 12px;" onclick="SkinHairUI.logMicroneedlingFromButton()">
+                Zabeleži sejo
+              </button>
+            `}
+          </div>
+        </div>
+      ` : ''}
     `;
   }
 
   // ========== 5. PODZAVIHEK: RUTINA & PROTOKOLI ==========
   const AM_AVAILABLE_ACTIVES = [
-    { id: 'azelaic_acid', label: 'Azelainska (15–20%)' },
-    { id: 'vitamin_c_laa', label: 'Vitamin C (LAA)' },
+    { id: 'azelaic_acid', label: 'Azelainska' },
+    { id: 'vitamin_c_laa', label: 'Vitamin C' },
     { id: 'niacinamide', label: 'Niacinamid' },
     { id: 'ceramides', label: 'Ceramidi' },
-    { id: 'spf_50', label: 'SPF 50+' },
+    { id: 'spf_50', label: 'SPF zaščita' },
     { id: 'salicylic_acid', label: 'Salicilna (BHA)' },
     { id: 'benzoyl_peroxide', label: 'BPO' }
   ];
 
   const PM_AVAILABLE_ACTIVES = [
-    { id: 'tretinoin', label: 'Tretinoin 0.05%' },
+    { id: 'tretinoin', label: 'Tretinoin' },
     { id: 'adapalene', label: 'Adapalen' },
     { id: 'benzoyl_peroxide', label: 'BPO' },
     { id: 'salicylic_acid', label: 'Salicilna (BHA)' },
@@ -960,25 +1299,25 @@
       <div class="card" style="margin-bottom: 12px;">
         <div class="card-header">
           <div class="card-title">🧪 Cirkadiana Nega & Kemični Konflikti</div>
-          <span style="font-size: 0.72rem; color: var(--text-3);">Matrika interakcij</span>
+          <span style="font-size: 0.72rem; color: var(--text-3); font-weight: 600;">Interakcije sestavin</span>
         </div>
 
         <!-- AM Rutina -->
-        <div style="background: var(--surface-2); padding: 10px; border-radius: 8px; margin-top: 8px;">
+        <div style="background: var(--surface-2); padding: 12px; border-radius: 8px; margin-top: 8px;">
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <span style="font-weight: 600; font-size: 0.85rem; color: var(--text-1);">☀️ Jutranja Zaščita (AM)</span>
-            <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+            <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 6px; cursor: pointer; min-height: 44px;">
               <input type="checkbox" ${state.skincare.amCompleted ? 'checked' : ''} onchange="SkinHairUI.toggleRoutineCompleted('am', this.checked)">
               <span>Opravljeno</span>
             </label>
           </div>
-          <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 4px; margin-bottom: 6px;">
+          <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 4px; margin-bottom: 8px;">
             Aktivne sestavine AM (klikni za vklop/izklop):
           </div>
-          <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px;">
+          <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;">
             ${AM_AVAILABLE_ACTIVES.map(act => {
               const active = amActives.includes(act.id);
-              return `<button type="button" class="sh-cat-chip ${active ? 'active' : ''}" style="font-size: 0.68rem; padding: 2px 7px;" onclick="SkinHairUI.toggleActiveIngredient('am', '${act.id}')">${act.label}</button>`;
+              return `<button type="button" class="sh-cat-chip ${active ? 'active' : ''}" style="min-height: 44px; padding: 6px 12px; font-size: 0.75rem;" onclick="SkinHairUI.toggleActiveIngredient('am', '${act.id}')">${act.label}</button>`;
             }).join('')}
           </div>
           ${(amEval.warnings || []).map(w => `
@@ -994,21 +1333,21 @@
         </div>
 
         <!-- PM Rutina -->
-        <div style="background: var(--surface-2); padding: 10px; border-radius: 8px; margin-top: 8px;">
+        <div style="background: var(--surface-2); padding: 12px; border-radius: 8px; margin-top: 8px;">
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <span style="font-weight: 600; font-size: 0.85rem; color: var(--text-1);">🌙 Večerna Obnova (PM)</span>
-            <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+            <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 6px; cursor: pointer; min-height: 44px;">
               <input type="checkbox" ${state.skincare.pmCompleted ? 'checked' : ''} onchange="SkinHairUI.toggleRoutineCompleted('pm', this.checked)">
               <span>Opravljeno</span>
             </label>
           </div>
-          <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 4px; margin-bottom: 6px;">
+          <div style="font-size: 0.72rem; color: var(--text-3); margin-top: 4px; margin-bottom: 8px;">
             Aktivne sestavine PM (klikni za vklop/izklop):
           </div>
-          <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px;">
+          <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;">
             ${PM_AVAILABLE_ACTIVES.map(act => {
               const active = pmActives.includes(act.id);
-              return `<button type="button" class="sh-cat-chip ${active ? 'active' : ''}" style="font-size: 0.68rem; padding: 2px 7px;" onclick="SkinHairUI.toggleActiveIngredient('pm', '${act.id}')">${act.label}</button>`;
+              return `<button type="button" class="sh-cat-chip ${active ? 'active' : ''}" style="min-height: 44px; padding: 6px 12px; font-size: 0.75rem;" onclick="SkinHairUI.toggleActiveIngredient('pm', '${act.id}')">${act.label}</button>`;
             }).join('')}
           </div>
           ${(pmEval.warnings || []).map(w => `
@@ -1024,60 +1363,44 @@
         </div>
       </div>
 
-      <!-- TRIHOLOŠKI PROTOKOL ZA LASE -->
+      <!-- PROTOKOL ZA LASE -->
       <div class="card" style="margin-bottom: 12px;">
         <div class="card-header">
-          <div class="card-title">💈 Dnevni Protokol za Lase</div>
+          <div class="card-title">💈 Protokol za Lase (Binetov režim)</div>
           <span style="font-size: 0.72rem; color: var(--rec-green); font-weight: 600;">🔥 Streak: ${state.hairProtocol.streakDays} dni</span>
         </div>
 
-        ${needleLock.isLocked ? `
-          <div style="background: rgba(239, 68, 68, 0.12); border-left: 4px solid #ef4444; padding: 8px 10px; border-radius: 6px; margin-top: 8px; display: flex; justify-content: space-between; align-items: center;">
-            <div>
-              <div style="font-weight: 700; font-size: 0.78rem; color: #ef4444;">🛑 24-urna varnostna zapora aktivna (${needleLock.hoursRemaining} h do izteka)</div>
-              <div style="font-size: 0.7rem; color: var(--text-2); margin-top: 2px;">Minoksidil zaklenjen proti hipotenziji in tahikardiji po iglanju.</div>
-            </div>
-            <button class="btn secondary" style="font-size: 0.68rem; padding: 3px 8px; border-color: #ef4444; color: #fca5a5;" onclick="SkinHairUI.resetMicroneedlingLockout()">
-              🔓 Ponastavi
-            </button>
-          </div>
-        ` : `
-          <div style="margin-top: 8px; display: flex; justify-content: space-between; align-items: center; background: var(--surface-2); padding: 6px 10px; border-radius: 6px;">
-            <span style="font-size: 0.72rem; color: var(--text-2);">Seja mikroneedlinga (1x na teden):</span>
-            <button class="btn secondary" style="font-size: 0.68rem; padding: 3px 8px;" onclick="SkinHairUI.logMicroneedlingFromButton()">
-              🪡 Zabeleži danes
-            </button>
-          </div>
-        `}
-
         <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
-          <label style="background: var(--surface-2); padding: 8px 10px; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+          <label style="background: var(--surface-2); padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; min-height: 44px;">
             <div>
-              <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-1);">
-                Minoksidil 5% (1x ali 2x na dan)
-                ${needleLock.isLocked ? `<span style="font-size: 0.68rem; color: #ef4444; font-weight: 700; margin-left: 4px;">(🛑 ZAKLENJENO ${needleLock.hoursRemaining}h)</span>` : ''}
-              </div>
-              <div style="font-size: 0.68rem; color: var(--text-3);">${needleLock.isLocked ? 'Zaklenjeno zaradi mikroneedlinga!' : 'Podaljšanje anagene faze'}</div>
+              <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-1);">Dutasterid</div>
+              <div style="font-size: 0.68rem; color: var(--text-3);">Vsak drugi dan (od 27.9.2026)</div>
             </div>
-            <input type="checkbox" ${state.hairProtocol.minoxidilApplied ? 'checked' : ''} 
-                   ${needleLock.isLocked ? 'disabled' : ''} 
-                   onchange="SkinHairUI.toggleHairStep('minoxidilApplied', this.checked)">
+            <input type="checkbox" ${state.hairProtocol.dutasterideTaken ? 'checked' : ''} onchange="SkinHairUI.toggleHairStep('dutasterideTaken', this.checked)">
           </label>
 
-          <label style="background: var(--surface-2); padding: 8px 10px; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+          <label style="background: var(--surface-2); padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; min-height: 44px;">
             <div>
-              <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-1);">Finasterid 1mg / Antiandrogen</div>
-              <div style="font-size: 0.68rem; color: var(--text-3);">Zaviranje 5α-reduktaze tipa 2</div>
+              <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-1);">Oralni minoksidil SL</div>
+              <div style="font-size: 0.68rem; color: var(--text-3);">Dnevno pod jezik (od ~20.7.2026)</div>
             </div>
-            <input type="checkbox" ${state.hairProtocol.finasterideTaken ? 'checked' : ''} onchange="SkinHairUI.toggleHairStep('finasterideTaken', this.checked)">
+            <input type="checkbox" ${state.hairProtocol.oralMinoxidilTaken ? 'checked' : ''} onchange="SkinHairUI.toggleHairStep('oralMinoxidilTaken', this.checked)">
           </label>
 
-          <label style="background: var(--surface-2); padding: 8px 10px; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+          <label style="background: var(--surface-2); padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; min-height: 44px;">
             <div>
-              <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-1);">Ketokonazol 2% šampon (2–3x tedensko)</div>
-              <div style="font-size: 0.68rem; color: var(--text-3);">5–10 min kontaktni čas proti Malassezii in TGF-β1</div>
+              <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-1);">GHK-Cu s.c. (zjutraj)</div>
+              <div style="font-size: 0.68rem; color: var(--text-3);">Podkožna injekcija (od ~julija 2026)</div>
             </div>
-            <input type="checkbox" ${state.hairProtocol.ketoconazoleWash ? 'checked' : ''} onchange="SkinHairUI.toggleHairStep('ketoconazoleWash', this.checked)">
+            <input type="checkbox" ${state.hairProtocol.ghkCuMorningTaken ? 'checked' : ''} onchange="SkinHairUI.toggleHairStep('ghkCuMorningTaken', this.checked)">
+          </label>
+
+          <label style="background: var(--surface-2); padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; min-height: 44px;">
+            <div>
+              <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-1);">KLOW s.c. (zvečer)</div>
+              <div style="font-size: 0.68rem; color: var(--text-3);">Podkožna injekcija (od ~julija 2026)</div>
+            </div>
+            <input type="checkbox" ${state.hairProtocol.klowEveningTaken ? 'checked' : ''} onchange="SkinHairUI.toggleHairStep('klowEveningTaken', this.checked)">
           </label>
         </div>
       </div>
@@ -1091,10 +1414,10 @@
           Izvozi dnevni zapis nege in stanja v mapo <code>Zdravje/koza/</code> ali <code>Zdravje/lasje/</code>:
         </div>
         <div style="display: flex; gap: 8px; margin-top: 10px;">
-          <button class="btn secondary" style="flex: 1; font-size: 0.75rem;" onclick="SkinHairUI.exportToObsidian('koza')">
+          <button class="btn secondary" style="flex: 1; font-size: 0.75rem; min-height: 44px;" onclick="SkinHairUI.exportToObsidian('koza')">
             📋 Kopiraj Koža Markdown
           </button>
-          <button class="btn secondary" style="flex: 1; font-size: 0.75rem;" onclick="SkinHairUI.exportToObsidian('lasje')">
+          <button class="btn secondary" style="flex: 1; font-size: 0.75rem; min-height: 44px;" onclick="SkinHairUI.exportToObsidian('lasje')">
             📋 Kopiraj Lasje Markdown
           </button>
         </div>
@@ -1135,15 +1458,26 @@
         <!-- Prosojnost Ghost prekrivanja -->
         <div style="margin-top: 10px; display: flex; align-items: center; gap: 8px;">
           <span style="font-size: 0.72rem; color: var(--text-3);">Ghost:</span>
-          <input type="range" min="0" max="100" value="45" id="shGhostSlider" style="flex: 1;" oninput="SkinHairUI.updateGhostOpacity(this.value)">
+          <input type="range" min="0" max="100" value="45" id="shGhostSlider" style="flex: 1; min-height: 44px;" oninput="SkinHairUI.updateGhostOpacity(this.value)">
           <span style="font-size: 0.72rem; color: var(--text-3);" id="shGhostVal">45%</span>
         </div>
 
         <!-- Kategorija slike -->
-        <div style="margin-top: 10px; display: flex; gap: 6px; justify-content: center;">
+        <div style="font-size: 0.72rem; color: var(--text-3); font-weight: 600; margin-top: 10px;">Regija telesa:</div>
+        <div style="margin-top: 4px; display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
           ${['obraz', 'lasna_linija', 'temen', 'hrbet', 'prsa'].map(c => `
-            <button type="button" class="sh-cat-chip sh-newcat ${c === selectedNewPhotoCat ? 'active' : ''}" style="font-size: 0.68rem;" onclick="SkinHairUI.setNewPhotoCategory('${c}', this)">
+            <button type="button" class="sh-cat-chip sh-newcat ${c === selectedNewPhotoCat ? 'active' : ''}" style="min-height: 44px; padding: 6px 12px; font-size: 0.75rem;" onclick="SkinHairUI.setNewPhotoCategory('${c}', this)">
               ${c === 'obraz' ? 'Obraz' : c === 'lasna_linija' ? 'Linija' : c === 'temen' ? 'Temen' : c === 'hrbet' ? 'Hrbet' : 'Prsa'}
+            </button>
+          `).join('')}
+        </div>
+
+        <!-- Kot fotografiranja -->
+        <div style="font-size: 0.72rem; color: var(--text-3); font-weight: 600; margin-top: 10px;">Kot fotografiranja:</div>
+        <div style="margin-top: 4px; display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
+          ${['spredaj', 'temen', 'levo', 'desno', 'zadaj'].map(a => `
+            <button type="button" class="sh-cat-chip sh-newangle ${a === selectedNewPhotoAngle ? 'active' : ''}" style="min-height: 44px; padding: 6px 12px; font-size: 0.75rem;" onclick="SkinHairUI.setNewPhotoAngle('${a}', this)">
+              ${a === 'spredaj' ? 'Spredaj' : a === 'temen' ? 'Temen (zgoraj)' : a === 'levo' ? 'Levo' : a === 'desno' ? 'Desno' : 'Zadaj'}
             </button>
           `).join('')}
         </div>
@@ -1180,7 +1514,6 @@
   function updateHairParam(param, val, live) {
     state.hair[param] = val;
     saveState();
-    // med vlečenjem drsnika (live) ne rišemo znova, sicer se dotik prekine; render ob spustu (onchange)
     if (!live) render();
   }
 
@@ -1195,11 +1528,43 @@
     state.hairProtocol[step] = completed;
     saveState();
     render();
-    if (completed && window.ProtocolDiary) {
-      if (step === 'minoxidilApplied') window.ProtocolDiary.logPreset('minoxidil_topical');
-      else if (step === 'finasterideTaken') window.ProtocolDiary.logPreset('finasteride_1mg');
-      else if (step === 'ketoconazoleWash') window.ProtocolDiary.logPreset('ketoconazole_shampoo');
+    if (completed && window.ProtocolDiary && typeof window.ProtocolDiary.logPreset === 'function') {
+      try {
+        if (step === 'dutasterideTaken') window.ProtocolDiary.logPreset('dutasteride_05');
+        else if (step === 'oralMinoxidilTaken') window.ProtocolDiary.logPreset('minoxidil_oral_sl');
+        else if (step === 'ghkCuMorningTaken') window.ProtocolDiary.logPreset('ghk_cu_morning');
+        else if (step === 'klowEveningTaken') window.ProtocolDiary.logPreset('klow_evening');
+        else if (step === 'minoxidilApplied') window.ProtocolDiary.logPreset('minoxidil_topical');
+        else if (step === 'finasterideTaken') window.ProtocolDiary.logPreset('finasteride_1mg');
+        else if (step === 'ketoconazoleWash') window.ProtocolDiary.logPreset('ketoconazole_shampoo');
+      } catch (e) {
+        console.warn('[SkinHairUI] Napaka pri beleženju v ProtocolDiary:', e);
+      }
     }
+  }
+
+  function updateSubstanceStartDate(key, newDate) {
+    if (!state.hairProtocol.startDates) {
+      state.hairProtocol.startDates = {};
+    }
+    state.hairProtocol.startDates[key] = newDate;
+    saveState();
+    render();
+  }
+
+  function toggleShowOptionalHair(show) {
+    state.hairProtocol.showOptional = typeof show === 'boolean' ? show : !state.hairProtocol.showOptional;
+    saveState();
+    render();
+  }
+
+  function toggleOptionalSubstanceActive(key, active) {
+    if (!state.hairProtocol.optionalActive) {
+      state.hairProtocol.optionalActive = {};
+    }
+    state.hairProtocol.optionalActive[key] = active;
+    saveState();
+    render();
   }
 
   function toggleActiveIngredient(slot, ingredientId) {
@@ -1243,19 +1608,16 @@
     render();
   }
 
-  // Zabeleži sejo mikroneedlinga: samo stanje + opozorilo. NE kliče ProtocolDiary.logPreset,
-  // ker ta kliče to funkcijo nazaj (prej neskončna rekurzija -> "Maximum call stack size exceeded").
   function logMicroneedlingSession() {
     state.hairProtocol.lastMicroneedleDate = new Date().toISOString();
-    state.hairProtocol.minoxidilApplied = false; // Varnostni reset minoksidila
+    state.hairProtocol.minoxidilApplied = false;
     saveState();
     render();
     if (typeof alert === 'function') {
-      alert('✓ Mikroneedling seja zabeležena! Vklopljena 24-urna varnostna zapora minoksidila.');
+      alert('✓ Mikroneedling seja zabeležena! Vklopljena 24-urna varnostna zapora.');
     }
   }
 
-  // Vstop iz gumbov v UI: dnevnik ustvari vnos in nazaj pokliče logMicroneedlingSession (stanje).
   function logMicroneedlingFromButton() {
     if (window.ProtocolDiary && typeof window.ProtocolDiary.logPreset === 'function') {
       const entry = window.ProtocolDiary.logPreset('microneedling_scalp');
@@ -1276,6 +1638,12 @@
     render();
   }
 
+  function filterAngle(angle) {
+    state.comparison.activeAngle = angle;
+    saveState();
+    render();
+  }
+
   function handleSliderInput(val) {
     val = parseInt(val, 10);
     if (state.comparison.mode === 'split') {
@@ -1286,7 +1654,6 @@
       if (div) div.style.left = `${val}%`;
     } else {
       state.comparison.opacityBlendPct = val;
-      // brez render(): ponovno risanje med vlečenjem uniči drsnik in prekine dotik na iPhonu
       const imgs = document.querySelectorAll('#shCompareWrapper .sh-blend-img');
       if (imgs[1]) imgs[1].style.opacity = val / 100;
       const lbl = document.querySelector('#shCompareWrapper .sh-blend-container > div');
@@ -1309,13 +1676,15 @@
     render();
   }
 
-  /**
-   * Samodejna izbira najbližjih fotografij (prejšnja in nova) za primerjavo glede na interval (npr. 1, 3, 6 mesecev)
-   */
   function selectCompareInterval(months) {
     state.comparison.selectedInterval = months;
     const activeCat = state.comparison.activeCategory || 'vse';
-    let photos = (state.photos || []).filter(p => activeCat === 'vse' || p.category === activeCat);
+    const activeAngle = state.comparison.activeAngle || 'vse';
+    let photos = (state.photos || []).filter(p => {
+      const catMatch = activeCat === 'vse' || p.category === activeCat;
+      const angleMatch = activeAngle === 'vse' || (p.angle || 'spredaj') === activeAngle;
+      return catMatch && angleMatch;
+    });
     if (photos.length < 2 && (state.photos || []).length >= 2) {
       photos = state.photos;
     }
@@ -1337,20 +1706,37 @@
         const parsed = Date.parse(p.date);
         if (!isNaN(parsed)) ts = parsed;
       }
-      return { id: p.id, ts: ts || 0 };
+      return { id: p.id, ts: ts || 0, angle: p.angle || 'spredaj' };
     }).sort((a, b) => a.ts - b.ts);
 
     const targetMs = months * 30 * 24 * 60 * 60 * 1000;
     let bestPair = null;
     let bestDiffError = Infinity;
 
+    // 1. Najprej poskusi najti par z ISTIM KOTOM
     for (let i = 0; i < sorted.length - 1; i++) {
       for (let j = i + 1; j < sorted.length; j++) {
-        const span = Math.abs(sorted[j].ts - sorted[i].ts);
-        const err = Math.abs(span - targetMs);
-        if (err < bestDiffError || (err === bestDiffError && bestPair && j >= bestPair.j)) {
-          bestDiffError = err;
-          bestPair = { photoA: sorted[i].id, photoB: sorted[j].id, j };
+        if (sorted[i].angle === sorted[j].angle) {
+          const span = Math.abs(sorted[j].ts - sorted[i].ts);
+          const err = Math.abs(span - targetMs);
+          if (err < bestDiffError || (err === bestDiffError && bestPair && j >= bestPair.j)) {
+            bestDiffError = err;
+            bestPair = { photoA: sorted[i].id, photoB: sorted[j].id, j };
+          }
+        }
+      }
+    }
+
+    // 2. Če ni para z istim kotom, vzemi najboljši par
+    if (!bestPair) {
+      for (let i = 0; i < sorted.length - 1; i++) {
+        for (let j = i + 1; j < sorted.length; j++) {
+          const span = Math.abs(sorted[j].ts - sorted[i].ts);
+          const err = Math.abs(span - targetMs);
+          if (err < bestDiffError || (err === bestDiffError && bestPair && j >= bestPair.j)) {
+            bestDiffError = err;
+            bestPair = { photoA: sorted[i].id, photoB: sorted[j].id, j };
+          }
         }
       }
     }
@@ -1382,8 +1768,13 @@
 
   function setNewPhotoCategory(cat, btn) {
     selectedNewPhotoCat = cat;
-    // samo čipi v modalu (prej je odstranilo 'active' tudi s filtrov Primerjalnika in sestavin rutine)
     document.querySelectorAll('#shCameraModalOverlay .sh-newcat').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+  }
+
+  function setNewPhotoAngle(angle, btn) {
+    selectedNewPhotoAngle = angle;
+    document.querySelectorAll('#shCameraModalOverlay .sh-newangle').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
   }
 
@@ -1393,7 +1784,7 @@
 
     try {
       if (window.SkinStorage && typeof window.SkinStorage.savePhoto === 'function') {
-        const savedMeta = await window.SkinStorage.savePhoto(file, { category: selectedNewPhotoCat });
+        const savedMeta = await window.SkinStorage.savePhoto(file, { category: selectedNewPhotoCat, angle: selectedNewPhotoAngle });
         const retrieved = await window.SkinStorage.getPhoto(savedMeta.id);
 
         const newPhoto = {
@@ -1401,6 +1792,7 @@
           date: savedMeta.date || new Date().toISOString().split('T')[0],
           timestamp: savedMeta.timestamp || Date.now(),
           category: selectedNewPhotoCat,
+          angle: selectedNewPhotoAngle,
           url: retrieved ? retrieved.photoUrl : null,
           thumbnail: retrieved ? (retrieved.thumbnailUrl || retrieved.photoUrl) : null,
           storage: 'indexedDB'
@@ -1418,7 +1810,6 @@
     } catch (err) {
       const msg = String(err && err.message ? err.message : '');
       if (msg.startsWith('SEF_ZAKLENJEN') || (window.SkinStorage && vaultStatus.configured !== false)) {
-        // Trezor je vklopljen: fotografije ne smemo shraniti nešifrirano
         vaultMessage = msg.startsWith('SEF_ZAKLENJEN') ? 'Trezor je zaklenjen. Odkleni ga in poskusi znova.' : 'Fotografije ni bilo mogoče šifrirano shraniti.';
         input.value = '';
         closeCameraModal();
@@ -1437,6 +1828,7 @@
         date: new Date().toISOString().split('T')[0],
         timestamp: Date.now(),
         category: selectedNewPhotoCat,
+        angle: selectedNewPhotoAngle,
         url: dataUrl,
         thumbnail: dataUrl,
         storage: 'local'
@@ -1528,19 +1920,28 @@ pm_rutina: ${state.skincare.pmCompleted ? 'opravljeno' : 'ne'}
 - **Čelo:** ${state.acneZones.forehead}
 - **Lica:** D=${state.acneZones.right_cheek}, L=${state.acneZones.left_cheek}
 - **Zgornji hrbet & prsa:** ${state.acneZones.chest_back}
-- **AM Nega:** Azelainska kislina + SPF 50+ (${state.skincare.amCompleted ? '✓' : '✗'})
+- **AM Nega:** Azelainska kislina + SPF zaščita (${state.skincare.amCompleted ? '✓' : '✗'})
 - **PM Nega:** Tretinoin + Ceramidi (${state.skincare.pmCompleted ? '✓' : '✗'})
 `;
     } else {
       const hair = window.SkinHairEngine ? window.SkinHairEngine.calculateHairIndex(state.hair) : { hairIndex: 90 };
+      const hairSubstances = {
+        dutasteride: { name: 'Dutasterid', startDate: (state.hairProtocol.startDates && state.hairProtocol.startDates.dutasteride) || '2026-09-27', active: true },
+        oral_minoxidil: { name: 'Oralni minoksidil SL', startDate: (state.hairProtocol.startDates && state.hairProtocol.startDates.oralMinoxidil) || '2026-07-20', active: true },
+        ghk_cu: { name: 'GHK-Cu s.c.', startDate: (state.hairProtocol.startDates && state.hairProtocol.startDates.ghkCu) || '2026-07-01', active: true },
+        klow: { name: 'KLOW s.c.', startDate: (state.hairProtocol.startDates && state.hairProtocol.startDates.klow) || '2026-07-01', active: true }
+      };
+      const timeline = window.SkinHairEngine ? window.SkinHairEngine.calculateHairTimeline(hairSubstances) : [];
       md = `---
 datum: ${today}
 tip: lasje
 norwood: ${state.hair.norwoodStage}
 hair_index: ${hair.hairIndex}
 shedding_score: ${state.hair.sheddingScore}
-minoksidil: ${state.hairProtocol.minoxidilApplied ? 'da' : 'ne'}
-finasterid: ${state.hairProtocol.finasterideTaken ? 'da' : 'ne'}
+dutasterid: ${state.hairProtocol.dutasterideTaken ? 'da' : 'ne'}
+oralni_minoksidil: ${state.hairProtocol.oralMinoxidilTaken ? 'da' : 'ne'}
+ghk_cu: ${state.hairProtocol.ghkCuMorningTaken ? 'da' : 'ne'}
+klow: ${state.hairProtocol.klowEveningTaken ? 'da' : 'ne'}
 ---
 
 # Lasje in Protokol ${today}
@@ -1549,7 +1950,12 @@ finasterid: ${state.hairProtocol.finasterideTaken ? 'da' : 'ne'}
 - **Odmik zalizkov:** ${state.hair.hairlineRecessionMm} mm
 - **Pokritost temena:** ${state.hair.vertexCoveragePct} %
 - **Dnevno izpadanje:** ${state.hair.sheddingScore} / 10
-- **Streak:** ${state.hairProtocol.streakDays} dni
+- **Dutasterid:** ${state.hairProtocol.dutasterideTaken ? '✓' : '✗'}
+- **Oralni minoksidil SL:** ${state.hairProtocol.oralMinoxidilTaken ? '✓' : '✗'}
+- **GHK-Cu s.c.:** ${state.hairProtocol.ghkCuMorningTaken ? '✓' : '✗'}
+- **KLOW s.c.:** ${state.hairProtocol.klowEveningTaken ? '✓' : '✗'}
+- **Časovnica snovi:**
+${timeline.map(t => `  - ${t.name}: ${t.formatted} (od ${t.startDate})`).join('\n')}
 `;
     }
 
@@ -1567,30 +1973,7 @@ finasterid: ${state.hairProtocol.finasterideTaken ? 'da' : 'ne'}
   // ========== SAMODEJNI ZAGON ==========
   if (typeof document !== 'undefined') {
     document.addEventListener('DOMContentLoaded', () => {
-      // Pripravi začetne poskusne fotografije, če je tabela prazna
-      if (!state.photos || state.photos.length === 0) {
-        state.photos = [
-          {
-            id: 'ph_demo_1',
-            date: 'Dan 0 (Baseline)',
-            timestamp: Date.now() - 30 * 86400000,
-            category: 'obraz',
-            url: './assets/anime/happy.gif',
-            thumbnail: './assets/anime/happy.gif'
-          },
-          {
-            id: 'ph_demo_2',
-            date: 'Dan 30 (Danes)',
-            timestamp: Date.now(),
-            category: 'obraz',
-            url: './assets/anime/celebrate.gif',
-            thumbnail: './assets/anime/celebrate.gif'
-          }
-        ];
-        state.comparison.photoA = 'ph_demo_1';
-        state.comparison.photoB = 'ph_demo_2';
-        saveState();
-      }
+      // Brez vsiljevanja demo slik: ohranjamo čisto lokalno shrambo uporabnika
     });
   }
 
@@ -1603,12 +1986,16 @@ finasterid: ${state.hairProtocol.finasterideTaken ? 'da' : 'ne'}
     updateHairParam: updateHairParam,
     toggleRoutineCompleted: toggleRoutineCompleted,
     toggleHairStep: toggleHairStep,
+    updateSubstanceStartDate: updateSubstanceStartDate,
+    toggleShowOptionalHair: toggleShowOptionalHair,
+    toggleOptionalSubstanceActive: toggleOptionalSubstanceActive,
     toggleActiveIngredient: toggleActiveIngredient,
     logMicroneedlingSession: logMicroneedlingSession,
     logMicroneedlingFromButton: logMicroneedlingFromButton,
     resetMicroneedlingLockout: resetMicroneedlingLockout,
     setCompareMode: setCompareMode,
     filterCategory: filterCategory,
+    filterAngle: filterAngle,
     handleSliderInput: handleSliderInput,
     selectPhotoForCompare: selectPhotoForCompare,
     selectCompareInterval: selectCompareInterval,
@@ -1619,6 +2006,7 @@ finasterid: ${state.hairProtocol.finasterideTaken ? 'da' : 'ne'}
     closeCameraModal: closeCameraModal,
     updateGhostOpacity: updateGhostOpacity,
     setNewPhotoCategory: setNewPhotoCategory,
+    setNewPhotoAngle: setNewPhotoAngle,
     handleNativePhotoUpload: handleNativePhotoUpload,
     rehydratePhotosFromStorage: rehydratePhotosFromStorage,
     vaultEnable: vaultEnable,

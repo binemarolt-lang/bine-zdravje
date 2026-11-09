@@ -34,6 +34,15 @@
     }
   }
 
+  // Pomožna funkcija za varno parsanje decimalnih števil z vejico ("1,5" -> 1.5)
+  function parseGramsInput(v) {
+    if (typeof v === 'number') return isNaN(v) ? 0 : Math.max(0, v);
+    if (v == null || v === '') return 0;
+    const clean = String(v).replace(',', '.').trim();
+    const n = parseFloat(clean);
+    return isNaN(n) ? 0 : Math.max(0, n);
+  }
+
   // ---------- Povezava (žeton iz QR kode: ...#fv=<token>) ----------
   (function capturePairing() {
     try {
@@ -343,13 +352,13 @@
     css.textContent = `
       .fv-item{background:var(--surface-2);border:1px solid var(--edge-1);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:6px}
       .fv-row{display:flex;gap:6px;align-items:center}
-      .fv-row input{background:var(--surface-3);border:1px solid var(--edge-2);border-radius:8px;color:#fff;padding:8px 10px;font-size:16px;min-width:0}
-      .fv-name{flex:1;font-weight:700}
-      .fv-grams{width:76px;text-align:center}
-      .fv-del{background:none;border:none;color:var(--text-3);font-size:1.1rem;padding:4px 6px;cursor:pointer}
-      .fv-match{font-size:.68rem;color:var(--text-3);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-      .fv-match select{background:var(--surface-3);color:var(--text-2);border:1px solid var(--edge-2);border-radius:6px;font-size:.7rem;max-width:100%;padding:3px}
-      .fv-macros{font-size:.74rem;color:var(--text-2);display:flex;gap:10px;flex-wrap:wrap}
+      .fv-row input{background:var(--surface-3);border:1px solid var(--edge-2);border-radius:8px;color:#fff;padding:8px 10px;font-size:16px !important;min-height:44px;box-sizing:border-box;min-width:0}
+      .fv-name{flex:1;font-weight:700;font-size:16px !important;}
+      .fv-grams{width:80px;text-align:center;font-size:16px !important;}
+      .fv-del{background:none;border:none;color:var(--text-3);font-size:1.25rem;padding:0;cursor:pointer;min-height:44px;min-width:44px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;flex-shrink:0}
+      .fv-match{font-size:.75rem;color:var(--text-3);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+      .fv-match select{background:var(--surface-3);color:#fff;border:1px solid var(--edge-2);border-radius:8px;font-size:16px !important;min-height:44px;box-sizing:border-box;max-width:100%;padding:6px 10px}
+      .fv-macros{font-size:.78rem;color:var(--text-2);display:flex;gap:10px;flex-wrap:wrap}
       .fv-macros b{color:#fff}
       .fv-total{position:sticky;bottom:0;background:rgba(14,16,18,.97);border-top:1px solid var(--edge-2);padding:10px 0 4px;display:flex;flex-direction:column;gap:8px}
       .fv-total-nums{display:grid;grid-template-columns:repeat(4,1fr);text-align:center;gap:4px}
@@ -359,15 +368,18 @@
       .fv-spinner{width:34px;height:34px;border:3px solid var(--edge-2);border-top-color:var(--rec-green);border-radius:50%;animation:fvspin .8s linear infinite;margin:10px auto}
       @keyframes fvspin{to{transform:rotate(360deg)}}
       .fv-photo{width:100%;max-height:180px;object-fit:cover;border-radius:12px;border:1px solid var(--edge-2)}
-      .fv-conf{font-size:.6rem;padding:1px 6px;border-radius:6px;border:1px solid var(--edge-2)}
-      .fv-micros{font-size:.68rem;color:var(--text-3);line-height:1.5}
+      .fv-conf{font-size:.62rem;padding:2px 6px;border-radius:6px;border:1px solid var(--edge-2)}
+      .fv-micros{font-size:.72rem;color:var(--text-3);line-height:1.5}
       .fv-quick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:4px 0}
-      .fv-quick-btn{padding:10px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;border-radius:10px;cursor:pointer;background:var(--surface-2);border:1px solid var(--edge-2);transition:all 0.15s ease}
+      .fv-quick-btn{min-height:48px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:10px;cursor:pointer;background:var(--surface-2);border:1px solid var(--edge-2);transition:all 0.15s ease;box-sizing:border-box}
       .fv-quick-btn:hover{background:var(--surface-3)}
       .fv-quick-btn.active{border-color:var(--rec-green);background:rgba(0,230,118,0.12)}
       .fv-quick-btn.active strong{color:var(--rec-green)}
-      .fv-badge-clickable{cursor:pointer;transition:transform 0.15s ease}
+      .fv-scan{min-height:44px;padding:6px 12px;font-size:0.8rem;border-radius:8px;border:1px solid var(--edge-2);background:var(--surface-3);color:var(--text-1);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box}
+      .fv-badge-clickable{cursor:pointer;min-height:44px;min-width:44px;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;transition:transform 0.15s ease}
       .fv-badge-clickable:active{transform:scale(0.95)}
+      #fvModalOverlay .modal-close{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-size:1.3rem;}
+      #fvModalOverlay .btn{min-height:44px;box-sizing:border-box;}
     `;
     document.head.appendChild(css);
     const wrap = document.createElement('div');
@@ -379,7 +391,7 @@
           <div class="modal-header-row">
             <div style="display:flex;align-items:center;gap:8px;">
               <h3 id="fvTitle" style="margin:0;">📸 Prepoznava obroka</h3>
-              <button type="button" class="status-pill optimal fv-status-badge fv-badge-clickable" id="fvModalStatusBadge" onclick="FoodVision.checkHealth(true)" style="padding:2px 8px;font-size:0.7rem;font-weight:700;" title="Klikni za test AI povezave">🟢 AI Povezan</button>
+              <button type="button" class="status-pill optimal fv-status-badge fv-badge-clickable" id="fvModalStatusBadge" onclick="FoodVision.checkHealth(true)" style="padding:4px 10px;font-size:0.75rem;font-weight:700;" title="Klikni za test AI povezave">🟢 AI Povezan</button>
             </div>
             <button type="button" class="modal-close" onclick="FoodVision.close()">✕</button>
           </div>
@@ -426,67 +438,67 @@
 
     b.innerHTML = `
       ${photo ? `<img class="fv-photo" src="${photo}">` : ''}
-      <div style="background:rgba(255,214,0,0.1);border:1px solid rgba(255,214,0,0.3);border-radius:10px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
-        <span style="font-size:0.75rem;color:var(--rec-yellow);line-height:1.3;">
-          ${errText ? `⚠️ Strežnik ni dosegljiv (${esc(errText)}).` : '⚠️ Brez povezave s strežnikom.'} Vnesite hitro oceno:
+      <div style="background:rgba(255,214,0,0.1);border:1px solid rgba(255,214,0,0.3);border-radius:10px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <span style="font-size:0.78rem;color:var(--rec-yellow);line-height:1.4;">
+          ${errText ? `⚠️ Strežnik ni dosegljiv (${esc(errText)}).` : '⚠️ Brez povezave s strežnikom.'} Slika in vnos sta ohranjena. Vnesite hitro oceno ali ročni vnos:
         </span>
-        <button type="button" class="btn secondary" style="padding:4px 8px;font-size:0.7rem;white-space:nowrap;" onclick="FoodVision.retry()">🔄 Ponovi AI</button>
+        <button type="button" class="btn secondary" style="min-height:44px;padding:6px 12px;font-size:0.8rem;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;" onclick="FoodVision.retry()">🔄 Ponovi AI</button>
       </div>
 
       <div class="fv-row">
         <input id="fvQuickMealName" class="fv-name" value="${esc(quickState.mealName)}" oninput="FoodVision.onQuickMealName(this.value)" placeholder="Ime obroka (npr. Kosilo)">
       </div>
 
-      <div style="font-size:0.72rem;color:var(--text-3);font-weight:700;text-transform:uppercase;margin-top:2px;">
+      <div style="font-size:0.75rem;color:var(--text-3);font-weight:700;text-transform:uppercase;margin-top:2px;">
         Pametni predlogi kalorij (1-klik):
       </div>
       <div class="fv-quick-grid">
         <button type="button" class="fv-quick-btn ${k === 250 ? 'active' : ''}" onclick="FoodVision.setQuickKcal(250)">
           <strong style="font-size:1.1rem;color:#fff;">250</strong>
-          <span style="font-size:0.62rem;color:var(--text-3);">Prigrizek</span>
+          <span style="font-size:0.65rem;color:var(--text-3);">Prigrizek</span>
         </button>
         <button type="button" class="fv-quick-btn ${k === 450 ? 'active' : ''}" onclick="FoodVision.setQuickKcal(450)">
           <strong style="font-size:1.1rem;color:#fff;">450</strong>
-          <span style="font-size:0.62rem;color:var(--text-3);">Lahek</span>
+          <span style="font-size:0.65rem;color:var(--text-3);">Lahek</span>
         </button>
         <button type="button" class="fv-quick-btn ${k === 700 ? 'active' : ''}" onclick="FoodVision.setQuickKcal(700)">
           <strong style="font-size:1.1rem;color:#fff;">700</strong>
-          <span style="font-size:0.62rem;color:var(--text-3);">Glavni</span>
+          <span style="font-size:0.65rem;color:var(--text-3);">Glavni</span>
         </button>
         <button type="button" class="fv-quick-btn ${k === 1000 ? 'active' : ''}" onclick="FoodVision.setQuickKcal(1000)">
           <strong style="font-size:1.1rem;color:#fff;">1000</strong>
-          <span style="font-size:0.62rem;color:var(--text-3);">Krepak</span>
+          <span style="font-size:0.65rem;color:var(--text-3);">Krepak</span>
         </button>
       </div>
 
       <div style="background:var(--surface-2);border:1px solid var(--edge-1);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-          <span style="font-size:0.75rem;color:var(--text-2);font-weight:700;">Kalorije:</span>
+          <span style="font-size:0.8rem;color:var(--text-2);font-weight:700;">Kalorije:</span>
           <div style="display:flex;align-items:center;gap:4px;">
-            <input id="fvQuickKcalInput" type="number" inputmode="numeric" value="${k}" oninput="FoodVision.onQuickKcalInput(this.value)" style="width:84px;text-align:center;font-size:1.15rem;font-weight:800;padding:6px 4px;background:var(--surface-3);border:1px solid var(--edge-2);border-radius:8px;color:#fff;">
-            <span style="font-size:0.75rem;color:var(--text-3);font-weight:700;">kcal</span>
+            <input id="fvQuickKcalInput" type="text" inputmode="numeric" pattern="[0-9]*" value="${k}" oninput="FoodVision.onQuickKcalInput(this.value)" style="width:92px;min-height:44px;text-align:center;font-size:18px;font-weight:800;padding:6px 4px;background:var(--surface-3);border:1px solid var(--edge-2);border-radius:8px;color:#fff;box-sizing:border-box;">
+            <span style="font-size:0.8rem;color:var(--text-3);font-weight:700;">kcal</span>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center;">
           <div style="background:var(--surface-3);border-radius:8px;padding:6px 4px;">
-            <span style="font-size:0.62rem;color:var(--text-3);text-transform:uppercase;">Beljakovine</span>
+            <span style="font-size:0.65rem;color:var(--text-3);text-transform:uppercase;">Beljakovine</span>
             <div style="display:flex;align-items:center;justify-content:center;gap:2px;">
-              <input id="fvQuickProtein" type="number" inputmode="decimal" value="${quickState.p}" oninput="FoodVision.onQuickMacroChange()" style="width:48px;text-align:center;font-weight:700;color:var(--rec-green);background:transparent;border:none;font-size:0.95rem;">
-              <span style="font-size:0.7rem;color:var(--text-3);">g</span>
+              <input id="fvQuickProtein" type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" value="${quickState.p}" oninput="FoodVision.onQuickMacroChange()" style="width:54px;min-height:44px;text-align:center;font-weight:700;color:var(--rec-green);background:transparent;border:none;font-size:16px;box-sizing:border-box;">
+              <span style="font-size:0.75rem;color:var(--text-3);">g</span>
             </div>
           </div>
           <div style="background:var(--surface-3);border-radius:8px;padding:6px 4px;">
-            <span style="font-size:0.62rem;color:var(--text-3);text-transform:uppercase;">OH</span>
+            <span style="font-size:0.65rem;color:var(--text-3);text-transform:uppercase;">OH</span>
             <div style="display:flex;align-items:center;justify-content:center;gap:2px;">
-              <input id="fvQuickCarbs" type="number" inputmode="decimal" value="${quickState.c}" oninput="FoodVision.onQuickMacroChange()" style="width:48px;text-align:center;font-weight:700;color:var(--strain-blue);background:transparent;border:none;font-size:0.95rem;">
-              <span style="font-size:0.7rem;color:var(--text-3);">g</span>
+              <input id="fvQuickCarbs" type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" value="${quickState.c}" oninput="FoodVision.onQuickMacroChange()" style="width:54px;min-height:44px;text-align:center;font-weight:700;color:var(--strain-blue);background:transparent;border:none;font-size:16px;box-sizing:border-box;">
+              <span style="font-size:0.75rem;color:var(--text-3);">g</span>
             </div>
           </div>
           <div style="background:var(--surface-3);border-radius:8px;padding:6px 4px;">
-            <span style="font-size:0.62rem;color:var(--text-3);text-transform:uppercase;">Maščobe</span>
+            <span style="font-size:0.65rem;color:var(--text-3);text-transform:uppercase;">Maščobe</span>
             <div style="display:flex;align-items:center;justify-content:center;gap:2px;">
-              <input id="fvQuickFat" type="number" inputmode="decimal" value="${quickState.f}" oninput="FoodVision.onQuickMacroChange()" style="width:48px;text-align:center;font-weight:700;color:var(--rec-yellow);background:transparent;border:none;font-size:0.95rem;">
-              <span style="font-size:0.7rem;color:var(--text-3);">g</span>
+              <input id="fvQuickFat" type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" value="${quickState.f}" oninput="FoodVision.onQuickMacroChange()" style="width:54px;min-height:44px;text-align:center;font-weight:700;color:var(--rec-yellow);background:transparent;border:none;font-size:16px;box-sizing:border-box;">
+              <span style="font-size:0.75rem;color:var(--text-3);">g</span>
             </div>
           </div>
         </div>
@@ -515,14 +527,14 @@
   }
 
   function setQuickKcal(val) {
-    val = Math.round(Number(val) || 0);
+    val = Math.max(0, Math.round(parseGramsInput(val)));
     quickState.kcal = val;
     syncQuickMacros(val);
     renderQuickEstimatorBody(null);
   }
 
   function onQuickKcalInput(val) {
-    const k = Math.max(0, Math.round(Number(val) || 0));
+    const k = Math.max(0, Math.round(parseGramsInput(val)));
     quickState.kcal = k;
     syncQuickMacros(k);
     const pInp = document.getElementById('fvQuickProtein');
@@ -540,9 +552,9 @@
   }
 
   function onQuickMacroChange() {
-    const p = Math.max(0, Number(document.getElementById('fvQuickProtein')?.value) || 0);
-    const c = Math.max(0, Number(document.getElementById('fvQuickCarbs')?.value) || 0);
-    const f = Math.max(0, Number(document.getElementById('fvQuickFat')?.value) || 0);
+    const p = Math.max(0, parseGramsInput(document.getElementById('fvQuickProtein')?.value));
+    const c = Math.max(0, parseGramsInput(document.getElementById('fvQuickCarbs')?.value));
+    const f = Math.max(0, parseGramsInput(document.getElementById('fvQuickFat')?.value));
     quickState.p = p;
     quickState.c = c;
     quickState.f = f;
@@ -561,7 +573,7 @@
   function saveQuickMeal() {
     const mealName = (document.getElementById('fvQuickMealName')?.value || quickState.mealName || '').trim() ||
       (typeof getSuggestedMealName === 'function' ? getSuggestedMealName() : 'Obrok');
-    const k = Math.round(Number(quickState.kcal) || 450);
+    const k = Math.round(parseGramsInput(quickState.kcal) || 450);
     const p = r1(quickState.p);
     const c = r1(quickState.c);
     const f = r1(quickState.f);
@@ -600,6 +612,15 @@
         if (typeof savePrehranaState === 'function') savePrehranaState();
       }
       if (typeof renderPrehranaView === 'function') renderPrehranaView();
+    } else {
+      try {
+        const raw = localStorage.getItem('bine_zdravje_meals_v2');
+        const list = raw ? JSON.parse(raw) : [];
+        list.push(entry);
+        localStorage.setItem('bine_zdravje_meals_v2', JSON.stringify(list));
+      } catch (e) {
+        console.error('Napaka pri varnostnem shranjevanju obroka v localStorage:', e);
+      }
     }
 
     close();
@@ -613,19 +634,26 @@
 
   function renderReview() {
     const b = document.getElementById('fvBody');
+    if (!b) return;
+    const modal = document.querySelector('#fvModalOverlay .modal') || b.parentElement;
+    const prevScroll = modal ? modal.scrollTop : 0;
+    const activeEl = document.activeElement;
+    const activeDataI = activeEl ? activeEl.closest?.('.fv-item')?.getAttribute('data-i') : null;
+    const activeClass = activeEl?.className;
+
     document.getElementById('fvTitle').textContent = '📸 Prepoznava obroka';
     const t = totals();
     const items = review.items.map((it, i) => {
       const n = it.nutr || {};
       const opts = (it.candidates || []).map(c => `<option value="${c.index}" ${it.match && it.match.index === c.index ? 'selected' : ''}>${esc(c.name.slice(0, 70))}</option>`).join('');
       const conf = it.confidence != null ? `<span class="fv-conf" style="color:${it.confidence >= 0.75 ? 'var(--rec-green)' : it.confidence >= 0.5 ? 'var(--rec-yellow)' : 'var(--rec-red)'}">${Math.round(it.confidence * 100)} %</span>` : '';
-      const scanBtn = it.packaged ? `<button type="button" class="fv-scan" onclick="FoodVision.scanBarcode(${i})" style="background:none;border:1px solid var(--edge-2);border-radius:6px;color:var(--text-2);font-size:.66rem;padding:2px 6px;cursor:pointer">📷 Skeniraj črtno kodo</button>` : '';
+      const scanBtn = it.packaged ? `<button type="button" class="fv-scan" onclick="FoodVision.scanBarcode(${i})">📷 Skeniraj črtno kodo</button>` : '';
       const srcLine = `<div class="fv-src-line" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${sourceBadge(it)}${scanBtn}</div>`;
       return `
       <div class="fv-item" data-i="${i}">
         <div class="fv-row">
           <input class="fv-name" value="${esc(it.name)}" oninput="FoodVision.onName(${i}, this.value)" placeholder="Živilo (npr. puran)">
-          <input class="fv-grams" type="number" inputmode="decimal" value="${it.grams}" oninput="FoodVision.onGrams(${i}, this.value)"><span style="font-size:.7rem;color:var(--text-3)">g</span>
+          <input class="fv-grams" type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" value="${it.grams}" oninput="FoodVision.onGrams(${i}, this.value)"><span style="font-size:.75rem;color:var(--text-3);padding-left:2px;">g</span>
           <button class="fv-del" onclick="FoodVision.remove(${i})" title="Odstrani">✕</button>
         </div>
         ${srcLine}
@@ -637,12 +665,21 @@
       </div>`;
     }).join('');
 
+    const emptyHtml = `
+      <div style="text-align:center;color:var(--text-3);font-size:.82rem;padding:14px;background:var(--surface-2);border-radius:10px;display:flex;flex-direction:column;gap:8px;">
+        <span>Na sliki ni prepoznane hrane ali pa je seznam prazen.</span>
+        <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;">
+          <button type="button" class="btn secondary" style="min-height:44px;font-size:0.8rem;padding:6px 12px;" onclick="FoodVision.add()">+ Dodaj živilo</button>
+          <button type="button" class="btn secondary" style="min-height:44px;font-size:0.8rem;padding:6px 12px;" onclick="FoodVision.quick(review.photo, 'Hitri ročni vnos')">⚡ Hitri vnos kalorij</button>
+        </div>
+      </div>`;
+
     b.innerHTML = `
       ${review.photo ? `<img class="fv-photo" src="${review.photo}">` : ''}
       <div class="fv-row"><input id="fvMealName" class="fv-name" value="${esc(review.mealName)}" oninput="FoodVision.onMealName(this.value)" placeholder="Ime obroka"></div>
-      <div style="font-size:.68rem;color:var(--text-3);">Preveri postavke. Spremeni ime ali grame in hranila se preračunajo sama.${review.model ? ` · ${esc(review.model)}, ${(review.ms / 1000).toFixed(1)} s` : ''}</div>
-      ${items || '<div style="text-align:center;color:var(--text-3);font-size:.8rem;">Na sliki ni prepoznane hrane. Dodaj postavko ročno.</div>'}
-      <button class="btn secondary" onclick="FoodVision.add()">+ Dodaj postavko</button>
+      <div style="font-size:.72rem;color:var(--text-3);">Preveri postavke. Spremeni ime ali grame in hranila se preračunajo sama.${review.model ? ` · ${esc(review.model)}, ${(review.ms / 1000).toFixed(1)} s` : ''}</div>
+      ${items || emptyHtml}
+      <button class="btn secondary" style="min-height:44px;font-size:0.85rem;" onclick="FoodVision.add()">+ Dodaj postavko</button>
       <div class="fv-total">
         <div class="fv-total-nums">
           <div><strong>${Math.round(t.calories)}</strong><span>kcal</span></div>
@@ -650,8 +687,21 @@
           <div><strong style="color:var(--strain-blue)">${Math.round(t.carbs)}</strong><span>OH g</span></div>
           <div><strong style="color:var(--rec-yellow)">${Math.round(t.fat)}</strong><span>maščobe g</span></div>
         </div>
-        <button class="btn" style="padding:12px;font-weight:800;background:linear-gradient(135deg,#00E676 0%,#00B0FF 100%);color:#08090A;" onclick="FoodVision.save()" ${review.items.length ? '' : 'disabled'}>✓ Shrani obrok</button>
+        <button class="btn" style="min-height:48px;padding:12px;font-weight:800;background:linear-gradient(135deg,#00E676 0%,#00B0FF 100%);color:#08090A;" onclick="FoodVision.save()" ${review.items.length ? '' : 'disabled'}>✓ Shrani obrok</button>
       </div>`;
+
+    if (modal && prevScroll > 0) {
+      modal.scrollTop = prevScroll;
+    }
+    if (activeDataI !== null && activeClass) {
+      const targetItem = b.querySelector(`.fv-item[data-i="${activeDataI}"]`);
+      if (targetItem) {
+        const toFocus = targetItem.querySelector('.' + activeClass.split(' ')[0]);
+        if (toFocus && typeof toFocus.focus === 'function') {
+          toFocus.focus();
+        }
+      }
+    }
   }
 
   function refreshItem(i) {
@@ -676,7 +726,13 @@
     clearTimeout(timers[i]);
     timers[i] = setTimeout(() => { if (!review || review.items[i] !== it) return; it.estFromAI = false; rematch(it, v); refreshItem(i); }, 300);
   }
-  function onGrams(i, v) { const it = review.items[i]; it.grams = Math.max(0, Number(v) || 0); computeItem(it); refreshItem(i); }
+  function onGrams(i, v) {
+    if (!review || !review.items || !review.items[i]) return;
+    const it = review.items[i];
+    it.grams = parseGramsInput(v);
+    computeItem(it);
+    refreshItem(i);
+  }
   function pick(i, idx) {
     const it = review.items[i]; const c = (it.candidates || []).find(x => String(x.index) === String(idx));
     if (c) { it.match = { index: c.index, name: c.name }; computeItem(it); refreshItem(i); }
@@ -698,10 +754,18 @@
       id: 'm_' + Date.now(),
       date: (window.prehranaState && prehranaState.selectedDate) || (typeof PrehranaDays !== 'undefined' ? PrehranaDays.isoOf() : new Date().toISOString().slice(0, 10)),
       name: (review.mealName || '').trim() || (typeof getSuggestedMealName === 'function' ? getSuggestedMealName() : 'Obrok'),
-      serving: review.items.map(it => `${it.name} ${Math.round(it.grams)} g`).join(', '),
+      serving: review.items.map(it => `${it.name || 'Živilo'} ${Math.round(it.grams)} g`).join(', ') || '1 obrok',
       calories: Math.round(t.calories), protein: r1(t.protein), carbs: r1(t.carbs), fat: r1(t.fat), fiber: r1(t.fiber),
       micros,
-      items: review.items.map(it => ({ name: it.name, grams: it.grams, usda: it.match ? it.match.name : null, calories: it.nutr.calories, protein: it.nutr.protein, carbs: it.nutr.carbs, fat: it.nutr.fat })),
+      items: review.items.map(it => ({
+        name: it.name || 'Živilo',
+        grams: it.grams,
+        usda: it.match ? it.match.name : null,
+        calories: it.nutr ? it.nutr.calories : 0,
+        protein: it.nutr ? it.nutr.protein : 0,
+        carbs: it.nutr ? it.nutr.carbs : 0,
+        fat: it.nutr ? it.nutr.fat : 0
+      })),
       source: 'AI_VISION',
       time: new Date().toLocaleTimeString('sl-SI', { hour: '2-digit', minute: '2-digit' }),
       photo: review.photo || null
@@ -712,6 +776,15 @@
         entry.photo = null; if (typeof savePrehranaState === 'function') savePrehranaState();
       }
       if (typeof renderPrehranaView === 'function') renderPrehranaView();
+    } else {
+      try {
+        const raw = localStorage.getItem('bine_zdravje_meals_v2');
+        const list = raw ? JSON.parse(raw) : [];
+        list.push(entry);
+        localStorage.setItem('bine_zdravje_meals_v2', JSON.stringify(list));
+      } catch (e) {
+        console.error('Napaka pri varnostnem shranjevanju obroka v localStorage:', e);
+      }
     }
     close();
     toast(`✅ ${entry.name}: ${entry.calories} kcal · B ${Math.round(entry.protein)} g`);
@@ -723,9 +796,29 @@
     lastPhoto = photo;
     renderLoading(photo, 'Prepoznavam hrano in ocenjujem porcije…');
     try {
-      const [ai] = await Promise.all([analyzePhoto(photo), ensureDb()]);
-      review = { photo, mealName: ai.meal_name || (typeof getSuggestedMealName === 'function' ? getSuggestedMealName() : ''), model: ai.model, ms: ai.ms, items: (ai.items || []).map(itemFromAI) };
+      let ai = null;
+      try {
+        ai = await analyzePhoto(photo);
+      } catch (err) {
+        throw err;
+      }
+      try {
+        await ensureDb();
+      } catch (dbErr) {
+        console.warn('[FoodVision] Lokalna USDA baza ni bila naložena, uporabljam neposredne AI ocene:', dbErr);
+      }
+      const rawItems = (ai && Array.isArray(ai.items)) ? ai.items : [];
+      review = {
+        photo,
+        mealName: (ai && ai.meal_name) || (typeof getSuggestedMealName === 'function' ? getSuggestedMealName() : ''),
+        model: ai && ai.model,
+        ms: ai && ai.ms,
+        items: rawItems.map(itemFromAI)
+      };
       renderReview();
+      if (review.items.length === 0) {
+        toast('ℹ️ Na sliki ni bilo prepoznanih posameznih živil. Lahko jih dodaš ročno ali oceniš obrok.');
+      }
     } catch (e) {
       console.warn('[FoodVision] AI analiza ni uspela, odpiram hitri vnos:', e);
       openQuickEstimator(photo, e);
@@ -733,9 +826,19 @@
   }
 
   async function manual() {
-    try { await ensureDb(); } catch (e) { return openQuickEstimator(lastPhoto, e); }
-    review = { photo: lastPhoto, mealName: typeof getSuggestedMealName === 'function' ? getSuggestedMealName() : '', items: [] };
-    open(); renderReview(); add();
+    try {
+      await ensureDb();
+    } catch (e) {
+      console.warn('[FoodVision] USDA baza ni dosegljiva:', e);
+    }
+    review = {
+      photo: lastPhoto,
+      mealName: typeof getSuggestedMealName === 'function' ? getSuggestedMealName() : '',
+      items: []
+    };
+    open();
+    renderReview();
+    add();
   }
 
   function handleFile(input) {

@@ -131,6 +131,13 @@
     return '';
   }
 
+  const DL_SIZE = 64;
+  const DL_MATRIX = Array.from({ length: DL_SIZE }, () => new Int32Array(DL_SIZE));
+  for (let i = 0; i < DL_SIZE; i++) {
+    DL_MATRIX[i][0] = i;
+    DL_MATRIX[0][i] = i;
+  }
+
   /**
    * Restricted Damerau-Levenshtein distance (Optimal String Alignment).
    * Supports insertion, deletion, substitution, and transposition of two adjacent characters.
@@ -138,29 +145,24 @@
   function damerauLevenshtein(a, b) {
     const la = a.length, lb = b.length;
     if (Math.abs(la - lb) > 2) return Math.abs(la - lb);
-
-    const d = [];
-    for (let i = 0; i <= la; i++) {
-      d[i] = new Array(lb + 1);
-      d[i][0] = i;
-    }
-    for (let j = 0; j <= lb; j++) d[0][j] = j;
+    if (la >= DL_SIZE || lb >= DL_SIZE) return Math.abs(la - lb);
 
     for (let i = 1; i <= la; i++) {
       for (let j = 1; j <= lb; j++) {
-        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-        let min = Math.min(
-          d[i - 1][j] + 1,      // deletion
-          d[i][j - 1] + 1,      // insertion
-          d[i - 1][j - 1] + cost // substitution
-        );
-        if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
-          min = Math.min(min, d[i - 2][j - 2] + 1); // transposition
+        const cost = a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1;
+        let min = DL_MATRIX[i - 1][j] + 1;
+        const ins = DL_MATRIX[i][j - 1] + 1;
+        if (ins < min) min = ins;
+        const sub = DL_MATRIX[i - 1][j - 1] + cost;
+        if (sub < min) min = sub;
+        if (i > 1 && j > 1 && a.charCodeAt(i - 1) === b.charCodeAt(j - 2) && a.charCodeAt(i - 2) === b.charCodeAt(j - 1)) {
+          const trans = DL_MATRIX[i - 2][j - 2] + 1;
+          if (trans < min) min = trans;
         }
-        d[i][j] = min;
+        DL_MATRIX[i][j] = min;
       }
     }
-    return d[la][lb];
+    return DL_MATRIX[la][lb];
   }
 
   /**

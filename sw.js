@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bine-zdravje-v47';
+const CACHE_NAME = 'bine-zdravje-v48';
 const ASSETS = [
   './',
   './index.html',
@@ -29,20 +29,40 @@ const ASSETS = [
   './assistant-ui.js',
   './error-guard.js',
   './backup-ui.js',
+  './cloud-sync.js',
+  './casovnica-ui.js',
   './icon-192.png',
   './icon-512.png',
   './apple-touch-icon.png',
   './apple-touch-startup-image.png',
-  './icon-maskable-512.png'
+  './icon-maskable-512.png',
+  './assets/anime/bg_ambient.mp4',
+  './assets/anime/bg_ambient-opt.gif',
+  './assets/anime/celebrate-opt.gif',
+  './assets/anime/happy-opt.gif',
+  './assets/anime/wink-opt.gif',
+  './assets/anime/laugh-opt.gif',
+  './assets/anime/thumbsup-opt.gif'
 ];
 
+// 1. Namestitev: posamezni cache.add s catch, da manjkajoče datoteke ne zlomijo namestitve
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then((cache) => {
+      return Promise.all(
+        ASSETS.map((asset) =>
+          cache.add(asset).catch((err) => {
+            console.warn('[SW] Opozorilo: vir ni bil predpomnjen:', asset, err && err.message ? err.message : err);
+          })
+        )
+      );
+    })
   );
+  // Takoj prevzemi brez čakanja (iOS PWA)
   self.skipWaiting();
 });
 
+// 2. Aktivacija: čiščenje starih predpomnilnikov + clients.claim + postMessage obvestilo
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -54,34 +74,132 @@ self.addEventListener('activate', (event) => {
           }
         })
       )
-    )
+    ).then(() => self.clients.claim()).then(() => {
+      // Obvesti vse odprte zavihke/okna o posodobitvi: "nova različica, osveži"
+      return self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({
+            type: 'SW_UPDATED',
+            version: CACHE_NAME,
+            message: 'Nova različica, osveži'
+          });
+        });
+      });
+    })
   );
-  self.clients.claim();
 });
 
+// 3. Podpora za ročno sprožitev skipWaiting prek sporočila
+self.addEventListener('message', (event) => {
+  if (event.data) {
+    if (event.data === 'SKIP_WAITING' || event.data.type === 'SKIP_WAITING' || event.data === 'skipWaiting') {
+      self.skipWaiting();
+    }
+  }
+});
+
+// 4. Upravljanje zahtev (Fetch Handler)
 self.addEventListener('fetch', (event) => {
   const req = event.request;
+  const url = req.url;
 
-  // 1. Za navigacijo (HTML dokument): VEDNO Network-First, da se takoj naloži nova koda
-  if (req.mode === 'navigate' || req.destination === 'document' || req.url.includes('index.html')) {
+  // 4a. Ignoriraj zahteve, ki niso GET, ter protokole razen http/https
+  if (req.method !== 'GET' || !url.startsWith('http')) return;
+
+  // 4b. API klici, endpoint konfiguracija in zunanji dinamični viri: NIKOLI iz predpomnilnika
+  if (
+    url.includes('/api/') ||
+    url.includes('food-vision-endpoint.json') ||
+    url.includes('google-health-workouts.json')
+  ) {
+    return;
+  }
+
+  // 4c. HTML dokument / navigacija: Network-First s 3 s časovno omejitvijo
+  const isHtml =
+    req.mode === 'navigate' ||
+    req.destination === 'document' ||
+    url.endsWith('.html') ||
+    url.includes('index.html');
+
+  if (isHtml) {
     event.respondWith(
-      fetch(req)
-        .then((networkRes) => {
-          if (networkRes && networkRes.status === 200) {
-            const clone = networkRes.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+      new Promise((resolve) => {
+        let settled = false;
+
+        const timeoutId = setTimeout(() => {
+          if (!settled) {
+            settled = true;
+            caches.match(req, { ignoreSearch: true }).then((cached) => {
+              if (cached) {
+                resolve(cached);
+              } else {
+                caches.match('./index.html', { ignoreSearch: true }).then((idx) => {
+                  resolve(idx || caches.match('./', { ignoreSearch: true }) || Response.error());
+                });
+              }
+            });
           }
-          return networkRes;
-        })
-        .catch(() => caches.match(req, { ignoreSearch: true }).then((cached) => cached || caches.match('./index.html', { ignoreSearch: true })))
+        }, 3000);
+
+        fetch(req)
+          .then((networkRes) => {
+            if (networkRes && networkRes.status === 200) {
+              const clone = networkRes.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+            }
+            if (!settled) {
+              settled = true;
+              clearTimeout(timeoutId);
+              resolve(networkRes);
+            }
+          })
+          .catch(() => {
+            if (!settled) {
+              settled = true;
+              clearTimeout(timeoutId);
+              caches.match(req, { ignoreSearch: true }).then((cached) => {
+                if (cached) {
+                  resolve(cached);
+                } else {
+                  caches.match('./index.html', { ignoreSearch: true }).then((idx) => {
+                    resolve(idx || caches.match('./', { ignoreSearch: true }) || Response.error());
+                  });
+                }
+              });
+            }
+          });
+      })
     );
     return;
   }
 
-  // 1b. Endpoint in API klici ter dinamični uvozi: vedno omrežje (brez predpomnjenja)
-  if (req.method !== 'GET' || req.url.includes('food-vision-endpoint.json') || req.url.includes('google-health-workouts.json') || req.url.includes('/api/')) return;
+  // 4d. Slike in mediji (PNG, JPG, GIF, WebM, MP4, SVG): Cache-First
+  const isImageOrMedia =
+    req.destination === 'image' ||
+    req.destination === 'video' ||
+    /\.(png|jpg|jpeg|gif|webp|svg|ico|mp4|webm)(\?.*)?$/i.test(url) ||
+    url.includes('/assets/');
 
-  // 2. Za ostale statične vire: Stale-While-Revalidate (takoj iz cache-a, vzporedno posodobi)
+  if (isImageOrMedia) {
+    event.respondWith(
+      caches.match(req, { ignoreSearch: true }).then((cached) => {
+        if (cached) return cached;
+        return fetch(req)
+          .then((networkRes) => {
+            if (networkRes && networkRes.status === 200) {
+              const clone = networkRes.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+            }
+            return networkRes;
+          })
+          .catch(() => Response.error());
+      })
+    );
+    return;
+  }
+
+  // 4e. JS, JSON, CSS in ostali statični viri: Stale-While-Revalidate
   event.respondWith(
     caches.match(req, { ignoreSearch: true }).then((cached) => {
       const fetchPromise = fetch(req)

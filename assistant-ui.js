@@ -168,6 +168,72 @@
       .map(function (h) { return { datum: h.date, kg: num(h.weightKg) }; });
   }
 
+  // Binetov protokol iz dnevnika (aktivne snovi in datumi začetka / vnosov)
+  function getDiaryProtocol() {
+    var diaryEntries = [];
+    safe(function () {
+      if (root.ProtocolDiary && typeof root.ProtocolDiary.loadState === 'function') {
+        var st = root.ProtocolDiary.loadState();
+        if (st && Array.isArray(st.entries)) diaryEntries = st.entries;
+      }
+      if (!diaryEntries.length && typeof localStorage !== 'undefined') {
+        var raw = localStorage.getItem('bine_protocol_diary_v1');
+        if (raw) {
+          var p = JSON.parse(raw);
+          if (p && Array.isArray(p.entries)) diaryEntries = p.entries;
+        }
+      }
+    });
+
+    var summary = {};
+    diaryEntries.forEach(function (e) {
+      if (!e || !e.substance) return;
+      var name = String(e.substance).trim();
+      if (!summary[name]) {
+        summary[name] = {
+          snov: name,
+          zadnji_odmerek: e.dose || '',
+          enota: e.unit || '',
+          termin: e.slot || 'CUSTOM',
+          prvic_zabelezeno: e.date || null,
+          zadnjic_zabelezeno: e.date || null,
+          stevilo_vnosov: 0
+        };
+      }
+      var s = summary[name];
+      s.stevilo_vnosov++;
+      if (e.date && (!s.prvic_zabelezeno || e.date < s.prvic_zabelezeno)) s.prvic_zabelezeno = e.date;
+      if (e.date && (!s.zadnjic_zabelezeno || e.date > s.zadnjic_zabelezeno)) {
+        s.zadnjic_zabelezeno = e.date;
+        s.zadnji_odmerek = e.dose || s.zadnji_odmerek;
+        s.enota = e.unit || s.enota;
+        s.termin = e.slot || s.termin;
+      }
+    });
+
+    // Binetov potrjeni protokol s točnimi datumi začetka (potrjeno 9.11.2026)
+    var potrjeniProtokol = [
+      { snov: 'Testosteron', odmerek: '200 mg/teden', urnik: 'dnevne s.c. injekcije', datum_zacetka: '2026-09-27', termin: 'zjutraj na tešče', status: 'aktivno' },
+      { snov: 'Boldenon (EQ)', odmerek: '185 mg/teden', urnik: 'dnevne s.c. injekcije v isti brizgi s testosteronom', datum_zacetka: '2026-11-05', termin: 'zjutraj na tešče', status: 'aktivno' },
+      { snov: 'Dutasterid', odmerek: '0,5 mg', urnik: 'vsak drugi dan', datum_zacetka: '2026-09-27', termin: 'zjutraj na tešče', status: 'aktivno' },
+      { snov: 'Tadalafil', odmerek: '5 mg SL', urnik: 'vsak dan pod jezik', datum_zacetka: '2026-09-27', termin: 'zjutraj na tešče', status: 'aktivno' },
+      { snov: 'Minoksidil oralni', odmerek: '1,25 mg SL', urnik: 'vsak dan pod jezik', datum_zacetka: '2026-07-20', termin: 'zjutraj na tešče', status: 'aktivno' },
+      { snov: 'Ezetimib', odmerek: '10 mg', urnik: 'vsak dan', datum_zacetka: '2026-11-07', termin: 'zjutraj na tešče', status: 'aktivno' },
+      { snov: 'CDP-holin', odmerek: '1 mala žlička', urnik: 'vsak dan', datum_zacetka: '2026-08', termin: 'z zajtrkom', status: 'aktivno' },
+      { snov: 'Vitamin D3', odmerek: '4000 IU', urnik: 'vsak dan', datum_zacetka: '2026-10-15', termin: 'z zajtrkom', status: 'aktivno' },
+      { snov: 'GHK-Cu', odmerek: '3 mg s.c.', urnik: 'vsak dan', datum_zacetka: '2026-07', termin: 'zjutraj', status: 'aktivno' },
+      { snov: 'KLOW (GHK-Cu + BPC-157 + TB-500 + KPV)', odmerek: '2 mg GHK-Cu s.c.', urnik: 'vsak dan', datum_zacetka: '2026-07', termin: 'zvečer pred spanjem', status: 'aktivno' },
+      { snov: 'Mešanica (glicin + NAC + vitamin C + badelj)', odmerek: '1 žlička', urnik: 'vsak dan', datum_zacetka: '2026-10-18', termin: 'zvečer pred spanjem', status: 'aktivno' },
+      { snov: 'Kofein', odmerek: '200 ali 400 mg', urnik: 'po potrebi', datum_zacetka: 'redno', termin: 'pred fitnesom', status: 'po potrebi' },
+      { snov: 'Bor', odmerek: 'ustavljeno', urnik: 'ustavljeno', datum_zacetka: '2026-10-26 (ustavljeno)', termin: 'ustavljeno', status: 'ustavljeno' }
+    ];
+
+    return {
+      potrjeni_protokol: potrjeniProtokol,
+      aktivne_snovi_iz_dnevnika: Object.keys(summary).map(function (k) { return summary[k]; })
+    };
+  }
+
   function buildContext() {
     var workouts = safe(function () { return root.WorkoutUI.getWorkouts() || []; }, []);
     return {
@@ -195,6 +261,7 @@
           zadnjih_14_dni: weight14()
         };
       }, null),
+      protokol_iz_dnevnika: safe(function () { return getDiaryProtocol(); }, null),
       protokol_danes: safe(function () {
         return root.ProtocolDiary.getTodayEntries().map(function (e) {
           return { snov: e.substance, odmerek: e.dose, enota: e.unit, termin: e.slot, cas: e.time };

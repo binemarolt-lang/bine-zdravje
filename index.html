@@ -557,6 +557,11 @@
     body[data-view="estetika"] .fab-photo-food,
     body[data-view="vault"] .fab-photo-food,
     body[data-view="cikel"] .fab-photo-food { display: none; }
+    body[data-view="trening"] .fab-photo-food { display: none; }
+    .check-btn { min-width: 44px; min-height: 44px; }
+    .trendi-btn { min-height: 44px !important; }
+    #headerMascot { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+    input, select, textarea { font-size: max(16px, 1em); }
     body.modal-open .fab-photo-food,
     body.assistant-open .fab-photo-food { display: none !important; }
     /* Floating Action Button (FAB) za Foto Vnos Hrane */
@@ -1341,7 +1346,7 @@
       opacity: 0.16;
       transition: opacity 0.4s ease;
     }
-    .fullscreen-anime-bg img {
+    .fullscreen-anime-bg img, .fullscreen-anime-bg video {
       width: 100%;
       height: 100%;
       object-fit: cover;
@@ -1832,7 +1837,7 @@
 
   <!-- Fullscreen Anime Ozadje čez cel zaslon -->
   <div class="fullscreen-anime-bg" id="fsAnimeBg">
-    <img src="./assets/anime/bg_ambient.gif" id="fsAnimeImg" alt="ambient-anime">
+    <video autoplay muted loop playsinline id="fsAnimeImg" poster="./assets/anime/bg_ambient-opt.gif"><source src="./assets/anime/bg_ambient.webm" type="video/webm"><source src="./assets/anime/bg_ambient.mp4" type="video/mp4"></video>
     <div class="bg-vignette"></div>
   </div>
 
@@ -1840,9 +1845,9 @@
   <div id="beastModeOverlay" class="beast-overlay" onclick="closeBeastMode()">
     <div class="beast-card">
       <div class="beast-badge">🔥 BEAST MODE AKTIVEN</div>
-      <img src="./assets/anime/celebrate.gif" class="beast-gif" alt="powerup">
-      <div class="beast-title">82% RECOVERY · MAXIMUM ENERGY</div>
-      <div class="beast-quote">»Telo je spočito, centralni živčni sistem je na vrhuncu. Danes je dan za rušenje rekordov!«</div>
+      <img loading="lazy" src="./assets/anime/celebrate-opt.gif" class="beast-gif" alt="powerup">
+      <div class="beast-title" id="beastTitle">REGENERACIJA</div>
+      <div class="beast-quote" id="beastQuote">Poveži uro za podatke o regeneraciji.</div>
       <div class="beast-dismiss">Dotakni se kjerkoli za izhod</div>
     </div>
   </div>
@@ -1853,21 +1858,22 @@
       🧬 BINE <span>ZDRAVJE</span> <small id="appVersionBadge" style="font-size: 0.65rem; color: var(--rec-green); font-weight: 700; border: 1px solid rgba(0,230,118,0.3); padding: 2px 6px; border-radius: 6px; margin-left: 6px; cursor: pointer;" onclick="if(window.checkForAppUpdate) window.checkForAppUpdate(true);" title="Klikni za preverjanje posodobitev">v3.7 ↻</small>
     </div>
     <div style="display: flex; align-items: center; gap: 8px;">
+      <button type="button" class="status-pill" id="cloudSyncPill" title="Sinhronizacija v oblak" onclick="if(window.CloudSync&&window.CloudSync.syncNow)window.CloudSync.syncNow();" style="cursor: pointer; min-height: 44px; min-width: 44px; padding: 0 10px; box-sizing: border-box;"><span id="cloudSyncIcon">☁️</span></button>
       <button class="status-pill" onclick="cycleAnimeVibe()" id="vibeBtn" style="cursor: pointer; background: var(--surface-3); border-color: var(--edge-3); color: var(--text-1); min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 0 12px; box-sizing: border-box;" title="Nastavi glasnost anime ozadja">⚡ Vibe: 16%</button>
       <div class="status-pill">
         <span class="status-dot"></span>
         <span>Porto</span>
       </div>
       <div class="mascot-badge" id="headerMascot" role="button" tabindex="0" aria-label="Motivacijska misel, klikni za energijo" onclick="triggerMascotQuote()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();triggerMascotQuote();}" title="Klikni za energijo!">
-        <img id="mascotAvatar" src="./assets/anime/happy.gif" alt="mascot" class="mascot-img">
+        <img id="mascotAvatar" src="./assets/anime/happy-opt.gif" alt="mascot" class="mascot-img">
       </div>
     </div>
   </header>
 
   <!-- Plavajoči oblaček za motivacijo / maskoto -->
   <div class="mascot-toast" id="mascotToast" onclick="triggerMascotQuote()">
-    <img id="mascotToastImg" src="./assets/anime/happy.gif" alt="mascot">
-    <div id="mascotToastText">8h spanja = naravni anabolik!</div>
+    <img loading="lazy" id="mascotToastImg" src="./assets/anime/happy-opt.gif" alt="mascot">
+    <div id="mascotToastText">Kakovosten spanec je naravni anabolik!</div>
   </div>
 
   <div class="container">
@@ -1877,7 +1883,7 @@
       
       <!-- HERO TWIN RINGS -->
       <div class="card hero-rings-card">
-        <img src="./assets/anime/happy.gif" class="anime-watermark" style="width: 64px; height: 64px; opacity: 0.10; top: 8px; bottom: auto; right: 8px; border-radius: 14px;" alt="">
+        <img loading="lazy" src="./assets/anime/happy-opt.gif" class="anime-watermark" style="width: 64px; height: 64px; opacity: 0.10; top: 8px; bottom: auto; right: 8px; border-radius: 14px;" alt="">
         <div class="rings-wrapper">
           <svg width="220" height="220" viewBox="0 0 220 220">
             <!-- Ozadja obročev -->
@@ -1895,7 +1901,7 @@
                     transform="rotate(-90 110 110)" style="filter: drop-shadow(0 0 10px var(--rec-green-glow)); transition: stroke-dashoffset 0.8s ease;"/>
           </svg>
           <div class="rings-center" onclick="triggerSuperSaiyan()" style="cursor: pointer;" title="Klikni za Beast Mode!">
-            <img id="ringCenterChibi" src="./assets/anime/wink.gif" class="ring-chibi" alt="chibi">
+            <img id="ringCenterChibi" src="./assets/anime/wink-opt.gif" class="ring-chibi" alt="chibi">
             <span class="recovery-score" id="heroRecoveryNum">–</span>
             <span class="recovery-sub">Regeneracija</span>
           </div>
@@ -1904,17 +1910,17 @@
         <button type="button" id="danesVir" onclick="DanesPodatki.povezi()" style="background:none;border:0;padding:2px 4px;font-size:0.72rem;color:var(--text-3);cursor:pointer;text-align:center;">Nalagam podatke ure…</button>
         <div class="hero-stat-row" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; text-align: center; width: 100%; border-top: 1px solid var(--edge-1); padding-top: 12px; margin-top: 4px;">
           <div>
-            <div class="bento-label">Aktivnost <img src="./assets/anime/laugh.gif" class="micro-sticker" alt=""></div>
+            <div class="bento-label">Aktivnost <img loading="lazy" src="./assets/anime/laugh-opt.gif" class="micro-sticker" alt=""></div>
             <div style="font-size: 1.4rem; font-weight: 800; color: var(--strain-blue); font-variant-numeric: tabular-nums; white-space: nowrap;" id="heroStrainNum">–</div>
             <div style="font-size: 0.7rem; color: var(--text-3);" id="heroStrainSub">korakov danes</div>
           </div>
           <div>
-            <div class="bento-label">HRV / RHR <img src="./assets/anime/happy.gif" class="micro-sticker" alt=""></div>
+            <div class="bento-label">HRV / RHR <img loading="lazy" src="./assets/anime/happy-opt.gif" class="micro-sticker" alt=""></div>
             <div style="font-size: 1.4rem; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; white-space: nowrap;" id="heroHrvRhr">–</div>
             <div style="font-size: 0.7rem; color: var(--text-3);" id="heroHrvSub">nalagam…</div>
           </div>
           <div>
-            <div class="bento-label">Spanje <img src="./assets/anime/wink.gif" class="micro-sticker" alt=""></div>
+            <div class="bento-label">Spanje <img loading="lazy" src="./assets/anime/wink-opt.gif" class="micro-sticker" alt=""></div>
             <div style="font-size: 1.4rem; font-weight: 800; color: var(--sleep-purple); font-variant-numeric: tabular-nums; white-space: nowrap;" id="heroSpanje">–</div>
             <div style="font-size: 0.7rem; color: var(--text-3);" id="heroSpanjeSub">–</div>
           </div>
@@ -1934,6 +1940,7 @@
           </div>
         </div>
         <div id="danesTrendiRoot"></div>
+        <div id="casovnicaRoot"></div>
       </div>
 
       <!-- HYPNOGRAM SPANJA -->
@@ -1959,8 +1966,8 @@
       <!-- DNEVNIK PROTOKOLOV & VNOSOV (WIDGET ZA DANES) -->
       <div id="danesDiaryWidget"></div>
 
-      <!-- DNEVNI PROTOKOL PO REŽAH -->
-      <div class="card">
+      <!-- DNEVNI PROTOKOL PO REŽAH (skrito 9.11.2026: podvajalo dnevnik protokola z izmišljenimi snovmi) -->
+      <div class="card" style="display:none">
         <div class="card-header">
           <div class="card-title">🕒 Današnji Urnik Dopolnil & Spojin</div>
           <button class="btn secondary" style="padding: 4px 8px; font-size: 0.72rem;" onclick="switchNav('vault')">+ Dodaj</button>
@@ -1990,7 +1997,7 @@
 
       <!-- DNEVNI VNOS TEŽE, TLAKA IN FOTOGRAFIJE FORME -->
       <div class="card" style="border-top: 2px solid var(--rec-green);">
-        <img src="./assets/anime/happy.gif" class="anime-watermark" style="opacity: 0.12;" alt="">
+        <img loading="lazy" src="./assets/anime/happy-opt.gif" class="anime-watermark" style="opacity: 0.12;" alt="">
         <div class="card-header">
           <div class="card-title">📝 Dnevni Vnos: Teža & Počutje</div>
           <span class="status-pill" id="lastVnosBadge">Brez vnosa</span>
@@ -2069,22 +2076,23 @@
           Odpri Dnevnik →
         </button>
       </div>
-      <div class="card">
-        <img id="cikelWatermark" src="./assets/anime/laugh.gif" class="anime-watermark" style="opacity: 0.12;" alt="">
+      <!-- Stari simulator razmerja T:EQ (skrito 9.11.2026: ocenjeval je odmerke; nadomešča ga Načrt cikla) -->
+      <div class="card" style="display:none">
+        <img loading="lazy" id="cikelWatermark" src="./assets/anime/laugh-opt.gif" class="anime-watermark" style="opacity: 0.12;" alt="">
         <div class="card-header">
           <div class="card-title">💉 Aktivno Hormonsko Stanje</div>
-          <span class="status-pill" id="pkStatusPill">Razmerje 2.67:1 (Varno)</span>
+          <span class="status-pill" id="pkStatusPill">–</span>
         </div>
         
         <div class="bento-grid">
           <div class="bento-cell">
-            <span class="bento-label">Aktivni Testosteron <img src="./assets/anime/wink.gif" class="micro-sticker" alt=""></span>
-            <span class="bento-val" style="color: var(--strain-blue);" id="statActiveTest">~57 mg/dan</span>
+            <span class="bento-label">Aktivni Testosteron <img loading="lazy" src="./assets/anime/wink-opt.gif" class="micro-sticker" alt=""></span>
+            <span class="bento-val" style="color: var(--strain-blue);" id="statActiveTest">–</span>
             <span class="bento-sub">400 mg/teden s.c.</span>
           </div>
           <div class="bento-cell">
-            <span class="bento-label">Aktivni Boldenon (EQ) <img src="./assets/anime/laugh.gif" class="micro-sticker" alt=""></span>
-            <span class="bento-val" style="color: var(--c-kinetics);" id="statActiveEq">~21 mg/dan</span>
+            <span class="bento-label">Aktivni Boldenon (EQ) <img loading="lazy" src="./assets/anime/laugh-opt.gif" class="micro-sticker" alt=""></span>
+            <span class="bento-val" style="color: var(--c-kinetics);" id="statActiveEq">–</span>
             <span class="bento-sub">150 mg/teden</span>
           </div>
         </div>
@@ -2152,10 +2160,10 @@
       
       <!-- ⚡ MacroFactor Dinamični TDEE & Coaching Barometer -->
       <div class="card" style="border-top: 2px solid var(--rec-green);">
-        <img src="./assets/anime/thumbsup.gif" class="anime-watermark" style="opacity: 0.12;" alt="">
+        <img loading="lazy" src="./assets/anime/thumbsup-opt.gif" class="anime-watermark" style="opacity: 0.12;" alt="">
         <div class="card-header">
           <div class="card-title">⚡ Dinamični TDEE (MacroFactor algoritem)</div>
-          <span class="status-pill optimal" id="mfTdeeBadge">2.888 kcal poraba</span>
+          <span class="status-pill optimal" id="mfTdeeBadge">–</span>
         </div>
         
         <!-- Cilj izbira (Hujšanje / Vzdrževanje / Masa) -->
@@ -2170,11 +2178,11 @@
           <div class="bento-cell">
             <div style="display: flex; justify-content: space-between; align-items: baseline;">
               <span class="bento-label">Kalorije (Zaužito / Cilj)</span>
-              <span style="font-size: 0.7rem; color: var(--text-3);" id="mfCalRemaining">Preostalo: 2.438 kcal</span>
+              <span style="font-size: 0.7rem; color: var(--text-3);" id="mfCalRemaining">–</span>
             </div>
             <div style="display: flex; align-items: baseline; gap: 6px;">
               <span class="bento-val" id="mfCaloriesVal">0</span>
-              <span style="color: var(--text-3); font-size: 0.85rem;" id="mfCaloriesTarget">/ 2.438 kcal</span>
+              <span style="color: var(--text-3); font-size: 0.85rem;" id="mfCaloriesTarget">–</span>
             </div>
             <div class="macro-progress-track">
               <div class="macro-progress-fill" id="mfCaloriesBar" style="width: 0%; background: var(--text-1);"></div>
@@ -2182,12 +2190,12 @@
           </div>
           <div class="bento-cell">
             <div style="display: flex; justify-content: space-between; align-items: baseline;">
-              <span class="bento-label">Beljakovine <img src="./assets/anime/thumbsup.gif" class="micro-sticker" alt=""></span>
-              <span style="font-size: 0.7rem; color: var(--rec-green);" id="mfProtPerKg">2.2 g/kg</span>
+              <span class="bento-label">Beljakovine <img loading="lazy" src="./assets/anime/thumbsup-opt.gif" class="micro-sticker" alt=""></span>
+              <span style="font-size: 0.7rem; color: var(--rec-green);" id="mfProtPerKg">–</span>
             </div>
             <div style="display: flex; align-items: baseline; gap: 6px;">
               <span class="bento-val" style="color: var(--rec-green);" id="mfProteinVal">0 g</span>
-              <span style="color: var(--text-3); font-size: 0.85rem;" id="mfProteinTarget">/ 178 g</span>
+              <span style="color: var(--text-3); font-size: 0.85rem;" id="mfProteinTarget">–</span>
             </div>
             <div class="macro-progress-track">
               <div class="macro-progress-fill" id="mfProteinBar" style="width: 0%; background: var(--rec-green);"></div>
@@ -2199,21 +2207,21 @@
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px;">
           <div class="bento-cell">
             <span class="bento-label">Ogljikovi hidrati</span>
-            <div style="font-size: 1rem; font-weight: 700;" id="mfCarbVal">0 / 285 g</div>
+            <div style="font-size: 1rem; font-weight: 700;" id="mfCarbVal">–</div>
             <div class="macro-progress-track">
               <div class="macro-progress-fill" id="mfCarbBar" style="width: 0%; background: var(--strain-blue);"></div>
             </div>
           </div>
           <div class="bento-cell">
             <span class="bento-label">Maščobe</span>
-            <div style="font-size: 1rem; font-weight: 700;" id="mfFatVal">0 / 65 g</div>
+            <div style="font-size: 1rem; font-weight: 700;" id="mfFatVal">–</div>
             <div class="macro-progress-track">
               <div class="macro-progress-fill" id="mfFatBar" style="width: 0%; background: var(--rec-yellow);"></div>
             </div>
           </div>
           <div class="bento-cell">
             <span class="bento-label">Voda</span>
-            <div style="font-size: 1rem; font-weight: 700; color: var(--strain-blue);" id="mfWaterTarget">3.6 L</div>
+            <div style="font-size: 1rem; font-weight: 700; color: var(--strain-blue);" id="mfWaterTarget">–</div>
             <span class="bento-sub">45 ml / kg</span>
           </div>
         </div>
@@ -2222,8 +2230,8 @@
         <div style="background: var(--surface-2); border: 1px solid var(--edge-1); border-radius: 10px; padding: 10px 12px; margin-top: 10px;">
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <div>
-              <span style="font-size: 0.8rem; font-weight: 700;">Zglajena teža (EMA): <span id="mfSmoothedWeight" style="color: var(--rec-green);">81.59 kg</span></span>
-              <div style="font-size: 0.7rem; color: var(--text-3);">Tehtnica: <span id="mfRawWeight">81.1 kg</span> · 14-dnevni trend brez vodnega šuma</div>
+              <span style="font-size: 0.8rem; font-weight: 700;">Zglajena teža (EMA): <span id="mfSmoothedWeight" style="color: var(--rec-green);">–</span></span>
+              <div style="font-size: 0.7rem; color: var(--text-3);">Tehtnica: <span id="mfRawWeight">–</span> · 14-dnevni trend brez vodnega šuma</div>
             </div>
             <button type="button" class="btn secondary" style="font-size: 0.72rem; padding: 5px 10px;" onclick="openTdeeHistoryModal()">
               📈 14-dnevni vnos
@@ -2357,7 +2365,7 @@
       
       <!-- Naročilnica za Dr. Luís Marinho v Portu -->
       <div class="card" style="border-left: 4px solid var(--rec-green);">
-        <img src="./assets/anime/wave.gif" class="anime-watermark" style="opacity: 0.11;" alt="">
+        <img loading="lazy" src="./assets/anime/wave-opt.gif" class="anime-watermark" style="opacity: 0.11;" alt="">
         <div class="card-header">
           <div class="card-title">📍 Laboratório Dr. Luís Marinho (Porto)</div>
           <span class="status-pill" style="color: var(--rec-green);">Sem P1 (Brez napotnice)</span>
@@ -2382,7 +2390,7 @@
 
       <!-- 🔬 FOTO SKENER & VNOS KRVNIH IZVIDOV -->
       <div class="card" style="border-top: 2px solid var(--strain-blue);">
-        <img src="./assets/anime/wink.gif" class="anime-watermark" style="opacity: 0.12;" alt="">
+        <img loading="lazy" src="./assets/anime/wink-opt.gif" class="anime-watermark" style="opacity: 0.12;" alt="">
         <div class="card-header">
           <div class="card-title">🔬 Vnos Krvnih Izvidov & Foto Skener</div>
           <span class="status-pill" id="bloodworkStatusBadge">Porto OCR</span>
@@ -2400,7 +2408,7 @@
             </button>
           </div>
           <div id="labPasteContainer" style="display: none; margin-top: 10px; text-align: left;">
-            <textarea id="txtLabPaste" placeholder="Prilepi sem besedilo ali surove vrstice izvida (npr. zVEM ali PDF kopijo)..." style="width: 100%; height: 90px; background: var(--surface-3); border: 1px solid var(--edge-1); border-radius: 6px; color: #fff; font-family: monospace; font-size: 0.75rem; padding: 8px; box-sizing: border-box;"></textarea>
+            <textarea id="txtLabPaste" placeholder="Prilepi sem besedilo ali surove vrstice izvida (npr. zVEM ali PDF kopijo)..." style="width: 100%; height: 90px; background: var(--surface-3); border: 1px solid var(--edge-1); border-radius: 6px; color: #fff; font-family: monospace; font-size: 16px; padding: 8px; box-sizing: border-box;"></textarea>
             <button type="button" class="btn" style="width: 100%; margin-top: 6px; padding: 6px; font-size: 0.78rem;" onclick="parseAndApplyBloodworkText()">⚡ Preberi in samodejno izpolni polja</button>
           </div>
           <div class="photo-preview-card" id="labPreview" style="display: none;">
@@ -2422,37 +2430,37 @@
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;">
           <div>
             <label style="font-size: 0.7rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Hematokrit (%)</label>
-            <input type="number" id="inpBioHct" aria-label="Hematokrit (%)" step="0.1" value="45.6" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;">
+            <input type="number" id="inpBioHct" aria-label="Hematokrit (%)" step="0.1" placeholder="45.6" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;">
           </div>
           <div>
             <label style="font-size: 0.7rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">17-Beta E2 (pg/mL)</label>
-            <input type="number" id="inpBioE2" aria-label="17-Beta E2 (pg/mL)" step="1" value="67" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;">
+            <input type="number" id="inpBioE2" aria-label="17-Beta E2 (pg/mL)" step="1" placeholder="67" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;">
           </div>
           <div>
             <label style="font-size: 0.7rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Skupni T (ng/dL)</label>
-            <input type="number" id="inpBioTotalT" aria-label="Skupni testosteron (ng/dL)" value="1140" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;" oninput="document.getElementById('vermT').value=this.value; runVermeulen();">
+            <input type="number" id="inpBioTotalT" aria-label="Skupni testosteron (ng/dL)" placeholder="1140" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;" oninput="document.getElementById('vermT').value=this.value; runVermeulen();">
           </div>
           <div>
             <label style="font-size: 0.7rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">SHBG (nmol/L)</label>
-            <input type="number" id="inpBioSHBG" aria-label="SHBG (nmol/L)" value="32" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;" oninput="document.getElementById('vermSHBG').value=this.value; runVermeulen();">
+            <input type="number" id="inpBioSHBG" aria-label="SHBG (nmol/L)" placeholder="32" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;" oninput="document.getElementById('vermSHBG').value=this.value; runVermeulen();">
           </div>
           <div>
             <label style="font-size: 0.7rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">ApoB (mg/dL)</label>
-            <input type="number" id="inpBioApoB" aria-label="ApoB (mg/dL)" value="72" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;">
+            <input type="number" id="inpBioApoB" aria-label="ApoB (mg/dL)" placeholder="72" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;">
           </div>
           <div>
             <label style="font-size: 0.7rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">GGT (Jetrni encim U/L)</label>
-            <input type="number" id="inpBioGGT" aria-label="GGT (U/L)" value="9" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;">
+            <input type="number" id="inpBioGGT" aria-label="GGT (U/L)" placeholder="9" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;">
           </div>
           <div>
             <label style="font-size: 0.7rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">Kreatinin (mg/dL)</label>
-            <input type="number" id="inpBioKreatinin" aria-label="Kreatinin (mg/dL)" step="0.01" value="0.93" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;">
+            <input type="number" id="inpBioKreatinin" aria-label="Kreatinin (mg/dL)" step="0.01" placeholder="0.93" style="width: 100%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;">
           </div>
           <div>
             <label style="font-size: 0.7rem; color: var(--text-3); font-weight: 700; text-transform: uppercase;">AST / ALT (U/L)</label>
             <div style="display: flex; gap: 4px;">
-              <input type="number" id="inpBioAST" aria-label="AST (U/L)" value="44" placeholder="AST" style="width: 50%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;">
-              <input type="number" id="inpBioALT" aria-label="ALT (U/L)" value="31" placeholder="ALT" style="width: 50%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;">
+              <input type="number" id="inpBioAST" aria-label="AST (U/L)" placeholder="AST" style="width: 50%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;">
+              <input type="number" id="inpBioALT" aria-label="ALT (U/L)" placeholder="ALT" style="width: 50%; padding: 8px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 6px; color: #fff; font-weight: 700;">
             </div>
           </div>
         </div>
@@ -2471,25 +2479,25 @@
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 110px), 1fr)); gap: 8px;">
           <div>
             <label style="font-size: 0.72rem; color: var(--text-3);">Skupni T (ng/dL)</label>
-            <input type="number" id="vermT" aria-label="Vermeulen: skupni testosteron (ng/dL)" value="950" oninput="runVermeulen()">
+            <input type="number" id="vermT" aria-label="Vermeulen: skupni testosteron (ng/dL)" placeholder="npr. 950" oninput="runVermeulen()">
           </div>
           <div>
             <label style="font-size: 0.72rem; color: var(--text-3);">SHBG (nmol/L)</label>
-            <input type="number" id="vermSHBG" aria-label="Vermeulen: SHBG (nmol/L)" value="32" oninput="runVermeulen()">
+            <input type="number" id="vermSHBG" aria-label="Vermeulen: SHBG (nmol/L)" placeholder="npr. 32" oninput="runVermeulen()">
           </div>
           <div>
             <label style="font-size: 0.72rem; color: var(--text-3);">Albumin (g/dL)</label>
-            <input type="number" id="vermAlb" aria-label="Vermeulen: albumin (g/dL)" value="4.4" step="0.1" oninput="runVermeulen()">
+            <input type="number" id="vermAlb" aria-label="Vermeulen: albumin (g/dL)" placeholder="npr. 4.4" step="0.1" oninput="runVermeulen()">
           </div>
         </div>
         <div style="background: var(--surface-2); border: 1px solid var(--edge-1); border-radius: 10px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
           <div>
             <div style="font-size: 0.7rem; color: var(--text-3);">IZRAČUNAN PROSTI TESTOSTERON:</div>
-            <div style="font-size: 1.35rem; font-weight: 800; color: var(--rec-green);" id="vermResVal">21.84 ng/dL</div>
+            <div style="font-size: 1.35rem; font-weight: 800; color: var(--rec-green);" id="vermResVal">–</div>
           </div>
           <div style="text-align: right;">
             <div style="font-size: 0.7rem; color: var(--text-3);">DELEŽ CELOTNEGA:</div>
-            <div style="font-size: 1.1rem; font-weight: 700; color: #fff;" id="vermResPct">2.30 %</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: #fff;" id="vermResPct">–</div>
           </div>
         </div>
       </div>
@@ -2504,10 +2512,10 @@
           <div>
             <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
               <span>Hematokrit (HCT)</span>
-              <strong id="hctDisplayVal">48.5 % <span style="color: var(--rec-green);">(Varno)</span></strong>
+              <strong id="hctDisplayVal">–</strong>
             </div>
             <div style="height: 8px; background: var(--surface-3); border-radius: 4px; overflow: hidden; margin-top: 4px; position: relative;">
-              <div id="hctBar" style="position: absolute; left: 0; width: 65%; height: 100%; background: var(--rec-green); transition: width 0.4s ease;"></div>
+              <div id="hctBar" style="position: absolute; left: 0; width: 0%; height: 100%; background: var(--rec-green); transition: width 0.4s ease;"></div>
               <div style="position: absolute; left: 80%; width: 2px; height: 100%; background: #FF3D00;" title="Meja 54%"></div>
             </div>
             <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-3); margin-top: 2px;">
@@ -2519,20 +2527,20 @@
           <div>
             <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
               <span>GGT (Jetrni encim)</span>
-              <strong id="ggtDisplayVal">18 U/L <span style="color: var(--rec-green);">(Odlično)</span></strong>
+              <strong id="ggtDisplayVal">–</strong>
             </div>
             <div style="height: 8px; background: var(--surface-3); border-radius: 4px; overflow: hidden; margin-top: 4px;">
-              <div id="ggtBar" style="width: 35%; height: 100%; background: var(--rec-green); transition: width 0.4s ease;"></div>
+              <div id="ggtBar" style="width: 0%; height: 100%; background: var(--rec-green); transition: width 0.4s ease;"></div>
             </div>
           </div>
 
           <div>
             <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
               <span>ApoB (Aterogeni delci)</span>
-              <strong id="apobDisplayVal">64 mg/dL <span style="color: var(--rec-green);">(Optimalno)</span></strong>
+              <strong id="apobDisplayVal">–</strong>
             </div>
             <div style="height: 8px; background: var(--surface-3); border-radius: 4px; overflow: hidden; margin-top: 4px;">
-              <div id="apobBar" style="width: 50%; height: 100%; background: var(--rec-green); transition: width 0.4s ease;"></div>
+              <div id="apobBar" style="width: 0%; height: 100%; background: var(--rec-green); transition: width 0.4s ease;"></div>
             </div>
           </div>
         </div>
@@ -2566,15 +2574,15 @@
           <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 8px;">
             <div style="background: var(--surface-2); border: 1px solid var(--edge-1); border-radius: 8px; padding: 10px;">
               <div style="font-size: 0.7rem; color: var(--text-3); text-transform: uppercase; font-weight: 700;">Izbrana mišična skupina:</div>
-              <div style="font-size: 1.1rem; font-weight: 800; color: #fff; margin-top: 2px;" id="selectedMuscleName">Prsne mišice (Chest)</div>
-              <div style="font-size: 0.75rem; color: var(--rec-green); margin-top: 4px;" id="selectedMuscleStatus">Status: Pripravljeno na stimulacijo (100% regeneracija)</div>
+              <div style="font-size: 1.1rem; font-weight: 800; color: #fff; margin-top: 2px;" id="selectedMuscleName">Izberi mišico</div>
+              <div style="font-size: 0.75rem; color: var(--rec-green); margin-top: 4px;" id="selectedMuscleStatus">Dotakni se mišice na modelu.</div>
             </div>
 
             <div style="background: var(--surface-2); border: 1px solid var(--edge-1); border-radius: 8px; padding: 10px;">
               <div style="font-size: 0.7rem; color: var(--text-3); text-transform: uppercase; font-weight: 700;">RP Hipertrofijski Volumen (Ta teden):</div>
               <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-top: 4px;">
                 <span>Trenutno serij:</span>
-                <strong id="muscleWeekSets">12 delovnih serij</strong>
+                <strong id="muscleWeekSets">–</strong>
               </div>
               <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
                 <span>Ciljni prag (MAV):</span>
@@ -2612,7 +2620,7 @@
     <!-- ZAVIHEK 5: VAULT ENCIKLOPEDIJA (133 SNOVI) -->
     <div id="view-vault" class="view">
       <div class="card">
-        <img src="./assets/anime/shrug.gif" class="anime-watermark" style="opacity: 0.10;" alt="">
+        <img loading="lazy" src="./assets/anime/shrug-opt.gif" class="anime-watermark" style="opacity: 0.10;" alt="">
         <div class="card-header">
           <div class="card-title">📚 Vault Enciklopedija (133 Snovi · 239 Trditev)</div>
         </div>
@@ -2764,7 +2772,7 @@
       </div>
       <div class="modal-body">
         <div style="display: flex; gap: 6px;">
-          <input type="text" id="offSearchInput" placeholder="Vnesi ime ali črtno kodo (EAN-13)..." onkeydown="if(event.key==='Enter') executeOffSearch()" style="flex: 1; padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 8px; color: #fff; font-size: 0.82rem;">
+          <input type="text" id="offSearchInput" placeholder="Vnesi ime ali črtno kodo (EAN-13)..." onkeydown="if(event.key==='Enter') executeOffSearch()" style="flex: 1; padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--edge-2); border-radius: 8px; color: #fff; font-size: 16px;">
           <button type="button" class="btn" style="padding: 8px 14px;" onclick="executeOffSearch()">Išči</button>
           <button type="button" class="btn secondary" title="Skeniraj s kamero" style="padding: 8px 12px;" onclick="toggleBarcodeCamera()">📷</button>
         </div>
@@ -3198,6 +3206,7 @@
       const view = document.getElementById('view-' + id);
       if (view) view.classList.add('active');
       if (id === 'danes' && window.ProtocolDiaryUI) window.ProtocolDiaryUI.renderTodayWidget();
+      if (id === 'danes' && window.CasovnicaUI) { try { window.CasovnicaUI.render('casovnicaRoot'); } catch (e) { console.warn('casovnica', e); } }
       if (id === 'prehrana' && typeof renderPrehranaView === 'function') renderPrehranaView();
       if (id === 'vault') ensureVaultLoaded();
       if (id === 'cikel' && window.CikelPlan) window.CikelPlan.render();
@@ -3214,6 +3223,7 @@
       }
       window.scrollTo(0,0);
     }
+    document.addEventListener('DOMContentLoaded', () => { setTimeout(() => { if (window.CasovnicaUI && document.getElementById('casovnicaRoot')) { try { window.CasovnicaUI.render('casovnicaRoot'); } catch (e) {} } }, 1500); });
 
     // DANES SLOTS
     function renderDanesSlots() {
@@ -3306,31 +3316,31 @@
         pill.innerText = "TRT samo";
         pill.style.color = "var(--text-1)";
         warn.style.display = "none";
-        if (cw) cw.src = "./assets/anime/thumbsup.gif";
+        if (cw) cw.src = "./assets/anime/thumbsup-opt.gif";
       } else if (parseFloat(ratio) >= 2.5 && !fl) {
         pill.innerText = `Razmerje ${ratio}:1 (Optimalno)`;
         pill.style.color = "var(--rec-green)";
         warn.className = "alert-banner success";
         warn.style.display = "flex";
-        warn.innerHTML = "<strong>Varno območje:</strong> Razmerje 2.5:1 do 3:1 ohranja zdrav E2 in preprečuje ginekomastijo brez sesutja estrogena.";
-        if (cw) cw.src = "./assets/anime/wink.gif";
-        if (ma) ma.src = "./assets/anime/happy.gif";
+        warn.innerHTML = "";
+        if (cw) cw.src = "./assets/anime/wink-opt.gif";
+        if (ma) ma.src = "./assets/anime/happy-opt.gif";
       } else {
         pill.innerText = `Razmerje ${ratio}:1 (TVEGANJE!)`;
         pill.style.color = "var(--rec-red)";
         warn.className = "alert-banner danger";
         warn.style.display = "flex";
         warn.innerHTML = "<strong>OPOZORILO:</strong> Razmerje T:EQ pod 2:1 po podatkih uporabnikov močno zbije estradiol (tveganje za suhe sklepe, letargijo in padec libida).";
-        if (cw) cw.src = "./assets/anime/facepalm.gif";
-        if (ma) ma.src = "./assets/anime/facepalm.gif";
+        if (cw) cw.src = "./assets/anime/facepalm-opt.gif";
+        if (ma) ma.src = "./assets/anime/facepalm-opt.gif";
       }
 
       if (fl) {
         warn.className = "alert-banner danger";
         warn.style.display = "flex";
         warn.innerHTML = "<strong>OPOZORILO FRONT-LOAD:</strong> 14-dnevni razpolovni čas boldenona ustvari depo za 6 tednov. Če pride do anksioznosti ali skoka hematokrita, odmerka ni mogoče znižati!";
-        if (cw) cw.src = "./assets/anime/cry.gif";
-        if (ma) ma.src = "./assets/anime/cry.gif";
+        if (cw) cw.src = "./assets/anime/cry-opt.gif";
+        if (ma) ma.src = "./assets/anime/cry-opt.gif";
       }
 
       // Kinetični izris (112 dni)
@@ -3397,6 +3407,11 @@
       const root = (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a);
       const freeT = root / (0.03467 * 1e-9);
       const pct = (freeT / t) * 100;
+      if (!(t > 0) || !(shbg > 0) || !isFinite(freeT) || !isFinite(pct)) {
+        document.getElementById('vermResVal').innerText = '–';
+        document.getElementById('vermResPct').innerText = '–';
+        return;
+      }
 
       document.getElementById('vermResVal').innerText = freeT.toFixed(2) + ' ng/dL';
       document.getElementById('vermResPct').innerText = pct.toFixed(2) + ' %';
@@ -3819,7 +3834,7 @@
         'BEFORE_BED': 'Pred spanjem'
       };
       const label = slotLabels[targetSlot] || targetSlot;
-      showAppToast(`✓ ${title} dodano v protokol (${label})!`, './assets/anime/celebrate.gif');
+      showAppToast(`✓ ${title} dodano v protokol (${label})!`, './assets/anime/celebrate-opt.gif');
     }
 
     function closeSnovModal(e) { if (e.target.id === 'snovModalOverlay') closeSnovModalDirect(); }
@@ -3859,7 +3874,7 @@
       window.checkForAppUpdate = triggerUpdateCheck;
 
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=47').then((reg) => {
+        navigator.serviceWorker.register('./sw.js?v=48').then((reg) => {
           swReg = reg;
           window._swReg = reg;
           reg.update().catch(() => {});
@@ -3886,7 +3901,9 @@
       });
 
       // Ko nov Service Worker prevzame nadzor (skipWaiting / clients.claim)
+      let hadSwController = !!navigator.serviceWorker.controller;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!hadSwController) { hadSwController = true; return; }
         if (!refreshing) {
           refreshing = true;
           if (typeof showMascotNotification === 'function') {
@@ -3911,12 +3928,12 @@
 
     // Interaktivna maskota & motivacija
     const MASCOT_QUOTES = [
-      { text: "8h spanja = naravni anabolik. Regeneracija je danes vrhunska!", gif: "./assets/anime/happy.gif" },
-      { text: "Pazi razmerje Test:EQ (2.5:1 do 3:1), da estradiol ostane zdrav!", gif: "./assets/anime/wink.gif" },
-      { text: "Pred odvzemom krvi v Portu spij 0.5L vode za točen hematokrit!", gif: "./assets/anime/thumbsup.gif" },
-      { text: "Mehanska napetost gradi mišico, ne le začasni pump!", gif: "./assets/anime/laugh.gif" },
-      { text: "Soja ali jajčni beljak: najcenejši vir čistih beljakovin v Portu.", gif: "./assets/anime/happy.gif" },
-      { text: "Če čutiš preutrujenost, raje izberi deload kot preobremenitev tetive.", gif: "./assets/anime/shrug.gif" }
+      { text: "Kakovosten spanec je naravni anabolik.", gif: "./assets/anime/happy-opt.gif" },
+      { text: "Pred kontrolo krvi vprašaj zdravnika, katere vrednosti naj preveri.", gif: "./assets/anime/wink-opt.gif" },
+      { text: "Pred odvzemom krvi v Portu spij 0.5L vode za točen hematokrit!", gif: "./assets/anime/thumbsup-opt.gif" },
+      { text: "Mehanska napetost gradi mišico, ne le začasni pump!", gif: "./assets/anime/laugh-opt.gif" },
+      { text: "Soja ali jajčni beljak: najcenejši vir čistih beljakovin v Portu.", gif: "./assets/anime/happy-opt.gif" },
+      { text: "Če čutiš preutrujenost, raje izberi deload kot preobremenitev tetive.", gif: "./assets/anime/shrug-opt.gif" }
     ];
     let quoteIdx = 0;
     function triggerMascotQuote() {
@@ -4287,7 +4304,7 @@
       const toastImg = document.getElementById('mascotToastImg');
       if (toast && toastText && toastImg) {
         toastText.textContent = `Vnos shranjen: ${teza ? teza + ' kg' : 'brez teže'} · Tlak ${tlak || '–'}!`;
-        toastImg.src = './assets/anime/thumbsup.gif';
+        toastImg.src = './assets/anime/thumbsup-opt.gif';
         toast.style.display = 'flex';
         clearTimeout(window._toastTimeout);
         window._toastTimeout = setTimeout(() => toast.style.display = 'none', 3500);
@@ -4609,7 +4626,7 @@
       const toastImg = document.getElementById('mascotToastImg');
       if (toast && toastText && toastImg) {
         toastText.textContent = `Izvid shranjen! HCT: ${hct}%, E2: ${e2} pg/mL. Barometri posodobljeni!`;
-        toastImg.src = './assets/anime/wink.gif';
+        toastImg.src = './assets/anime/wink-opt.gif';
         toast.style.display = 'flex';
         clearTimeout(window._toastTimeout);
         window._toastTimeout = setTimeout(() => toast.style.display = 'none', 4000);
@@ -5067,6 +5084,7 @@
             color = 'var(--rec-red)';
             fillWidth = '25%';
           }
+          if (evalData.status === 'unknown') { color = 'var(--text-3)'; fillWidth = '0%'; }
 
           const row = document.createElement('div');
           row.className = 'ratio-row';
@@ -5899,7 +5917,7 @@
       const toastImg = document.getElementById('mascotToastImg');
       if (toast && toastText && toastImg) {
         toastText.textContent = msg;
-        toastImg.src = './assets/anime/happy.gif';
+        toastImg.src = './assets/anime/happy-opt.gif';
         toast.style.display = 'flex';
         clearTimeout(window._toastTimeout);
         window._toastTimeout = setTimeout(() => toast.style.display = 'none', 3500);
@@ -5909,25 +5927,27 @@
 
     initApp();
   </script>
-  <script src="./food-match.js?v=43"></script>
-  <script src="./food-vision-ui.js?v=43"></script>
-  <script src="./bp-ui.js?v=43"></script>
-  <script src="./exercise-match.js?v=43"></script>
-  <script src="./workout-engine.js?v=43"></script>
-  <script src="./recovery-engine.js?v=43"></script>
-  <script src="./workout-parser.js?v=43"></script>
-  <script src="./workout-io.js?v=43"></script>
-  <script src="./workout-ui.js?v=44"></script>
-  <script src="./skin-storage.js?v=43"></script>
-  <script src="./skinhair-engine.js?v=43"></script>
-  <script src="./skinhair-ui.js?v=43"></script>
-  <script src="./danes-podatki.js?v=43"></script>
-  <script src="./cikel-plan.js?v=43"></script>
-  <script src="./protocol-diary.js?v=47"></script>
-  <script src="./protocol-diary-ui.js?v=47"></script>
-  <script src="./assistant-ui.js?v=43"></script>
-  <script src="./error-guard.js?v=43"></script>
-  <script src="./backup-ui.js?v=43"></script>
+  <script src="./food-match.js?v=48"></script>
+  <script src="./food-vision-ui.js?v=48"></script>
+  <script src="./bp-ui.js?v=48"></script>
+  <script src="./exercise-match.js?v=48"></script>
+  <script src="./workout-engine.js?v=48"></script>
+  <script src="./recovery-engine.js?v=48"></script>
+  <script src="./workout-parser.js?v=48"></script>
+  <script src="./workout-io.js?v=48"></script>
+  <script src="./workout-ui.js?v=48"></script>
+  <script src="./skin-storage.js?v=48"></script>
+  <script src="./skinhair-engine.js?v=48"></script>
+  <script src="./skinhair-ui.js?v=48"></script>
+  <script src="./danes-podatki.js?v=48"></script>
+  <script src="./cikel-plan.js?v=48"></script>
+  <script src="./protocol-diary.js?v=48"></script>
+  <script src="./protocol-diary-ui.js?v=48"></script>
+  <script src="./assistant-ui.js?v=48"></script>
+  <script src="./casovnica-ui.js?v=48"></script>
+  <script src="./cloud-sync.js?v=48"></script>
+  <script src="./error-guard.js?v=48"></script>
+  <script src="./backup-ui.js?v=48"></script>
   <script>
     if (window.SkinHairUI && typeof window.SkinHairUI.mount === 'function') {
       window.SkinHairUI.mount();

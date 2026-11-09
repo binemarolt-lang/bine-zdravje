@@ -8,6 +8,7 @@
  */
 (function () {
   'use strict';
+  const root = typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this);
   const LS_TOKEN = 'bine_zdravje_dnevno_token';
   const LS_CACHE = 'bine_zdravje_dnevno_cache_v1';
   const LS_DANES = 'bine_zdravje_danes_vnos';
@@ -46,6 +47,33 @@
     try { const v = JSON.parse(localStorage.getItem(key) || 'null'); return v == null ? fb : v; } catch (e) { return fb; }
   }
 
+  function formatSinhroStarost(ts) {
+    if (!ts) return null;
+    let ms = 0;
+    if (typeof ts === 'number') {
+      const numTs = ts < 1e11 ? ts * 1000 : ts;
+      ms = Date.now() - numTs;
+    } else {
+      const parsed = Date.parse(ts);
+      if (isNaN(parsed)) return null;
+      ms = Date.now() - parsed;
+    }
+    if (isNaN(ms) || ms < 0) return 'ravnokar';
+    const min = Math.floor(ms / 60000);
+    if (min < 1) return 'ravnokar';
+    if (min === 1) return 'pred 1 min';
+    if (min < 60) return `pred ${min} min`;
+    const h = Math.floor(min / 60);
+    const ostMin = min % 60;
+    if (h < 24) {
+      return ostMin > 0 ? `pred ${h} h ${ostMin} min` : (h === 1 ? 'pred 1 h' : (h === 2 ? 'pred 2 h' : `pred ${h} h`));
+    }
+    const d = Math.floor(h / 24);
+    if (d === 1) return 'včeraj';
+    if (d === 2) return 'pred 2 dnevoma';
+    return `pred ${d} dnevi`;
+  }
+
   async function endpoints() {
     const list = [];
     try {
@@ -69,29 +97,43 @@
         if (r.status === 401) return { status: 'bad-token' };
         if (!r.ok) { last = 'HTTP ' + r.status; continue; }
         const j = await r.json();
-        try { localStorage.setItem(LS_CACHE, JSON.stringify({ t: Date.now(), j })); } catch (e) { /* poln */ }
-        return { status: 'ok', data: j };
+        const fetchTime = Date.now();
+        try { localStorage.setItem(LS_CACHE, JSON.stringify({ t: fetchTime, j })); } catch (e) { /* poln */ }
+        return { status: 'ok', data: j, fetchTime };
       } catch (e) { last = e.name === 'AbortError' ? 'timeout' : 'offline'; }
     }
     try {
       const c = JSON.parse(localStorage.getItem(LS_CACHE) || 'null');
-      if (c && c.j) return { status: 'cache', data: c.j, cacheAge: Date.now() - c.t, err: last };
+      if (c && c.j) return { status: 'cache', data: c.j, cacheTime: c.t, cacheAge: Date.now() - c.t, err: last };
     } catch (e) { /* ignore */ }
     return { status: 'offline', err: last };
   }
 
-  /** Iz zadnjih dni izračuna ključne vrednosti. Regeneracija = HRV in RHR proti lastni 30-dnevni osnovi (+spanje). */
+  /** Iz zadnjih dni izračuna ključne vrednosti. Regeneracija = HRV in RHR proti lastni 30-dnevni osnovi (+spanje).
+   * Ob premalo podatkov (<7 dni) vrne rec: null in premaloPodatkov: true (prikaz »premalo podatkov« namesto številke).
+   */
   function izracunaj(dnevi) {
+    if (typeof window !== 'undefined' && window.RecoveryEngine && typeof window.RecoveryEngine.calculateDailyRecovery === 'function') {
+      return window.RecoveryEngine.calculateDailyRecovery(dnevi);
+    }
+    if (!Array.isArray(dnevi) || dnevi.length === 0) return null;
     const danes = new Date().toLocaleDateString('sv-SE');
+    const urejeni = [...dnevi].filter(d => d && d.datum).sort((a, b) => (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : 0));
+    if (!urejeni.length) return null;
+
     // zadnji poln dan z nočnimi meritvami (HRV ali spanje)
-    const polni = dnevi.filter((d) => d.datum !== danes || num(d.spanjeMin) != null);
+    const polni = urejeni.filter((d) => d.datum !== danes || num(d.spanjeMin) != null);
     const z = [...polni].reverse().find((d) => num(d.hrv) != null || num(d.spanjeMin) != null);
     if (!z) return null;
-    const pred = dnevi.filter((d) => d.datum < z.datum).slice(-30);
+
+    const pred = urejeni.filter((d) => d.datum < z.datum).slice(-30);
     const hrvVals = pred.map((d) => num(d.hrv)).filter((x) => x != null);
     const rhrVals = pred.map((d) => num(d.rhr)).filter((x) => x != null);
-    const hrvOsn = avg(hrvVals);
-    const rhrOsn = avg(rhrVals);
+    const dniOsnove = Math.min(hrvVals.length, rhrVals.length);
+    const premaloPodatkov = dniOsnove < 7;
+
+    const hrvOsn = hrvVals.length ? avg(hrvVals) : null;
+    const rhrOsn = rhrVals.length ? avg(rhrVals) : null;
     const spOsn = avg(pred.map((d) => num(d.spanjeMin)));
     const hrv = num(z.hrv), rhr = num(z.rhr), sp = num(z.spanjeMin);
 
@@ -102,41 +144,43 @@
     const rhrLo = (rhrOsn != null && rhrSd != null) ? Math.round(rhrOsn - rhrSd) : null;
     const rhrHi = (rhrOsn != null && rhrSd != null) ? Math.round(rhrOsn + rhrSd) : null;
 
-    // (1) Opozorilo ob odstopanju HRV/RHR od osnovnega pasu (informativno, brez medicinske ocene)
+    // Opozorilo ob odstopanju HRV/RHR od osnovnega pasu (samo ob dovolj podatkih)
     const opozorila = [];
-    if (hrv != null && hrvOsn != null && hrvSd != null) {
-      if (hrv < hrvLo) {
-        opozorila.push({
-          tip: 'hrv-pod',
-          naslov: 'HRV je danes pod tvojim 30-dnevnim območjem',
-          tekst: `HRV je danes pod tvojim 30-dnevnim območjem (${Math.round(hrv)} ms proti običajnemu pasu ${hrvLo}–${hrvHi} ms).`
-        });
-      } else if (hrv > hrvHi) {
-        opozorila.push({
-          tip: 'hrv-nad',
-          naslov: 'HRV je danes nad tvojim 30-dnevnim območjem',
-          tekst: `HRV je danes nad tvojim 30-dnevnim območjem (${Math.round(hrv)} ms proti običajnemu pasu ${hrvLo}–${hrvHi} ms).`
-        });
+    if (!premaloPodatkov) {
+      if (hrv != null && hrvOsn != null && hrvSd != null) {
+        if (hrv < hrvLo) {
+          opozorila.push({
+            tip: 'hrv-pod',
+            naslov: 'HRV je danes pod tvojim 30-dnevnim območjem',
+            tekst: `HRV je danes pod tvojim 30-dnevnim območjem (${Math.round(hrv)} ms proti običajnemu pasu ${hrvLo}–${hrvHi} ms).`
+          });
+        } else if (hrv > hrvHi) {
+          opozorila.push({
+            tip: 'hrv-nad',
+            naslov: 'HRV je danes nad tvojim 30-dnevnim območjem',
+            tekst: `HRV je danes nad tvojim 30-dnevnim območjem (${Math.round(hrv)} ms proti običajnemu pasu ${hrvLo}–${hrvHi} ms).`
+          });
+        }
       }
-    }
-    if (rhr != null && rhrOsn != null && rhrSd != null) {
-      if (rhr > rhrHi) {
-        opozorila.push({
-          tip: 'rhr-nad',
-          naslov: 'RHR je danes nad tvojim 30-dnevnim območjem',
-          tekst: `Utrip v mirovanju (RHR) je danes nad tvojim 30-dnevnim območjem (${Math.round(rhr)} bpm proti običajnemu pasu ${rhrLo}–${rhrHi} bpm).`
-        });
-      } else if (rhr < rhrLo) {
-        opozorila.push({
-          tip: 'rhr-pod',
-          naslov: 'RHR je danes pod tvojim 30-dnevnim območjem',
-          tekst: `Utrip v mirovanju (RHR) je danes pod tvojim 30-dnevnim območjem (${Math.round(rhr)} bpm proti običajnemu pasu ${rhrLo}–${rhrHi} bpm).`
-        });
+      if (rhr != null && rhrOsn != null && rhrSd != null) {
+        if (rhr > rhrHi) {
+          opozorila.push({
+            tip: 'rhr-nad',
+            naslov: 'RHR je danes nad tvojim 30-dnevnim območjem',
+            tekst: `Utrip v mirovanju (RHR) je danes nad tvojim 30-dnevnim območjem (${Math.round(rhr)} bpm proti običajnemu pasu ${rhrLo}–${rhrHi} bpm).`
+          });
+        } else if (rhr < rhrLo) {
+          opozorila.push({
+            tip: 'rhr-pod',
+            naslov: 'RHR je danes pod tvojim 30-dnevnim območjem',
+            tekst: `Utrip v mirovanju (RHR) je danes pod tvojim 30-dnevnim območjem (${Math.round(rhr)} bpm proti običajnemu pasu ${rhrLo}–${rhrHi} bpm).`
+          });
+        }
       }
     }
 
-    // (3) Personaliziran spalni cilj: povprečje zadnjih 14 noči s spodnjo mejo 7 h (420 min). Fallback 8 h (480 min).
-    const nocne = dnevi.filter((d) => d.datum <= z.datum && num(d.spanjeMin) != null);
+    // Personaliziran spalni cilj: povprečje zadnjih 14 noči s spodnjo mejo 7 h (420 min). Fallback 8 h (480 min).
+    const nocne = urejeni.filter((d) => d.datum <= z.datum && num(d.spanjeMin) != null);
     const zadnjih14 = nocne.slice(-14);
     const avg14Min = avg(zadnjih14.map((d) => num(d.spanjeMin)));
     const spalniCiljMin = avg14Min != null ? Math.max(7 * 60, Math.round(avg14Min)) : 480;
@@ -149,27 +193,33 @@
     }
 
     // Ocena regeneracije 0–100 (orientacijska): 50 % HRV, 25 % RHR, 25 % spanje glede na personaliziran cilj.
+    // Če je podatkov osnovne linije premalo (<7 dni), rec ostane null!
     let rec = null;
-    const deli = [];
-    if (hrv != null && hrvOsn) deli.push([0.5, clamp(50 + (hrv / hrvOsn - 1) * 150, 0, 100)]);
-    if (rhr != null && rhrOsn) deli.push([0.25, clamp(50 - (rhr / rhrOsn - 1) * 300, 0, 100)]);
-    if (sp != null) deli.push([0.25, clamp((sp / spalniCiljMin) * 100, 0, 100)]);
-    if (deli.length) { const w = deli.reduce((a, [x]) => a + x, 0); rec = Math.round(deli.reduce((a, [x, v]) => a + x * v, 0) / w); }
+    if (!premaloPodatkov) {
+      const deli = [];
+      if (hrv != null && hrvOsn) deli.push([0.5, clamp(50 + (hrv / hrvOsn - 1) * 150, 0, 100)]);
+      if (rhr != null && rhrOsn) deli.push([0.25, clamp(50 - (rhr / rhrOsn - 1) * 300, 0, 100)]);
+      if (sp != null) deli.push([0.25, clamp((sp / spalniCiljMin) * 100, 0, 100)]);
+      if (deli.length) { const w = deli.reduce((a, [x]) => a + x, 0); rec = Math.round(deli.reduce((a, [x, v]) => a + x * v, 0) / w); }
+    }
 
     const bud = num(z.budnoMin), lah = num(z.spanjeLahkoMin), glo = num(z.spanjeGlobokoMin), rem = num(z.spanjeRemMin);
     const vsota = [bud, lah, glo, rem].reduce((a, b) => a + (b || 0), 0);
     return {
       datum: z.datum, hrv, rhr, sp, hrvOsn, rhrOsn, spOsn, rec,
+      premaloPodatkov, dniOsnove,
+      recStatus: premaloPodatkov ? 'premalo_podatkov' : 'ok',
+      recText: premaloPodatkov ? 'premalo podatkov' : (rec != null ? `${rec}%` : '–'),
       hrvSd, rhrSd, hrvLo, hrvHi, rhrLo, rhrHi,
       opozorila,
       spalniCiljMin, spalniDolgMin,
-      hrvRel: hrv != null && hrvOsn ? Math.round((hrv / hrvOsn - 1) * 100) : null,
+      hrvRel: !premaloPodatkov && hrv != null && hrvOsn ? Math.round((hrv / hrvOsn - 1) * 100) : null,
       faze: vsota > 0 ? { bud, lah, glo, rem, vsota } : null,
       spanjeOd: z.spanjeOd, spanjeDo: z.spanjeDo,
-      koraki: num((dnevi.find((d) => d.datum === danes) || {}).koraki),
-      azm: num((dnevi.find((d) => d.datum === danes) || {}).azm),
+      koraki: num((urejeni.find((d) => d.datum === danes) || {}).koraki),
+      azm: num((urejeni.find((d) => d.datum === danes) || {}).azm),
       korakiVceraj: num(z.koraki), azmVceraj: num(z.azm),
-      vsiDnevi: dnevi,
+      vsiDnevi: urejeni,
     };
   }
 
@@ -291,12 +341,83 @@
     host.innerHTML = html;
   }
 
+  function posodobiBeastMode(v, res) {
+    const overlay = $('beastModeOverlay');
+    if (!overlay) return;
+    const title = overlay.querySelector('.beast-title');
+    const quote = overlay.querySelector('.beast-quote');
+    const badge = overlay.querySelector('.beast-badge');
+
+    if (v && v.rec != null && !v.premaloPodatkov) {
+      if (title) {
+        title.style.display = '';
+        title.textContent = `${v.rec}% RECOVERY · ${v.rec >= 85 ? 'MAXIMUM ENERGY' : v.rec >= 70 ? 'DOBRA ENERGIJA' : 'ZMERNA ENERGIJA'}`;
+      }
+      if (quote) {
+        quote.style.display = '';
+        if (v.rec >= 85) quote.textContent = '»Telo je spočito, centralni živčni sistem je na vrhuncu. Danes je dan za rušenje rekordov!«';
+        else if (v.rec >= 70) quote.textContent = '»Dobra regeneracija. Telo je pripravljeno na produktiven trening.«';
+        else quote.textContent = '»Regeneracija je zmerna. Prilagodi volumen in poskrbi za kakovosten počitek.«';
+      }
+      if (badge) {
+        badge.textContent = v.rec >= 85 ? '🔥 BEAST MODE AKTIVEN' : '⚡ REGENERACIJA';
+      }
+    } else if (v && v.premaloPodatkov) {
+      if (title) {
+        title.style.display = '';
+        title.textContent = 'PREMALO PODATKOV (<7 DNI)';
+      }
+      if (quote) {
+        quote.style.display = '';
+        quote.textContent = 'Za zanesljivo oceno regeneracije je potrebnih vsaj 7 zaporednih dni nočnih meritev HRV in RHR.';
+      }
+      if (badge) {
+        badge.textContent = '📊 ZBIRANJE PODATKOV';
+      }
+    } else {
+      // Brez podatkov ure
+      if (title) {
+        title.style.display = 'none';
+        title.textContent = '–';
+      }
+      if (quote) {
+        quote.style.display = '';
+        quote.textContent = (res && res.status === 'no-token')
+          ? 'Podatki ure niso povezani. Tapni na napis pod obročem in vnesi kodo za povezavo ure.'
+          : 'Podatki ure niso na voljo. Poveži uro za spremljanje regeneracije.';
+      }
+      if (badge) {
+        badge.textContent = '⚪ NI PODATKOV';
+      }
+    }
+  }
+
   function prikazi(v, res) {
     zadnjiDnevi = (v && v.vsiDnevi) ? v.vsiDnevi : (res && res.data && Array.isArray(res.data.dnevi) ? res.data.dnevi : null);
 
     const recEl = $('heroRecoveryNum');
-    if (recEl) recEl.textContent = v && v.rec != null ? v.rec + '%' : '–';
-    setRing('ringRecovery', 477.5, v && v.rec != null ? v.rec / 100 : 0);
+    if (recEl) {
+      if (v && v.rec != null && !v.premaloPodatkov) {
+        recEl.textContent = v.rec + '%';
+        recEl.style.fontSize = '';
+        recEl.style.lineHeight = '';
+        recEl.style.color = 'var(--rec-green)';
+        recEl.style.textShadow = '';
+      } else if (v && v.premaloPodatkov) {
+        recEl.textContent = 'premalo podatkov';
+        recEl.style.fontSize = '0.95rem';
+        recEl.style.lineHeight = '1.2';
+        recEl.style.color = 'var(--text-2)';
+        recEl.style.textShadow = 'none';
+      } else {
+        recEl.textContent = '–';
+        recEl.style.fontSize = '';
+        recEl.style.lineHeight = '';
+        recEl.style.color = 'var(--text-3)';
+        recEl.style.textShadow = 'none';
+      }
+    }
+    setRing('ringRecovery', 477.5, (v && v.rec != null && !v.premaloPodatkov) ? v.rec / 100 : 0);
 
     const hrvEl = $('heroHrvRhr');
     if (hrvEl) hrvEl.innerHTML = v && (v.hrv != null || v.rhr != null)
@@ -304,22 +425,46 @@
       : '–';
     const hrvSub = $('heroHrvSub');
     if (hrvSub) {
-      if (v && v.hrvRel != null) {
+      if (v && v.premaloPodatkov) {
+        hrvSub.textContent = `osnova: ${v.dniOsnove || 0}/7 dni`;
+        hrvSub.style.color = 'var(--text-3)';
+      } else if (v && v.hrvRel != null) {
         hrvSub.textContent = `${v.hrvRel >= 0 ? '+' : ''}${v.hrvRel} % proti osnovi`;
         hrvSub.style.color = v.hrvRel >= -5 ? 'var(--rec-green)' : 'var(--rec-yellow, #FFC23D)';
-      } else { hrvSub.textContent = 'ni osnove'; hrvSub.style.color = 'var(--text-3)'; }
+      } else if (v && v.hrv != null) {
+        hrvSub.textContent = 'ni 30d osnove';
+        hrvSub.style.color = 'var(--text-3)';
+      } else {
+        hrvSub.textContent = (res && res.status === 'no-token') ? 'ni povezave' : 'ni podatka';
+        hrvSub.style.color = 'var(--text-3)';
+      }
     }
     const spEl = $('heroSpanje');
-    if (spEl) spEl.textContent = v ? hm(v.sp) : '–';
+    if (spEl) spEl.textContent = v && v.sp != null ? hm(v.sp) : '–';
     const spSub = $('heroSpanjeSub');
     if (spSub) {
       if (v && v.sp != null && v.spalniCiljMin != null) {
         const pct = Math.round((v.sp / v.spalniCiljMin) * 100);
         spSub.textContent = `${pct} % od cilja (${hm(v.spalniCiljMin)})`;
+      } else if (v && v.sp != null) {
+        spSub.textContent = 'brez cilja';
       } else {
         spSub.textContent = '–';
       }
     }
+
+    // Posodobi tudi motivacijski toast za spanje (brez trdo zapisanega 8h)
+    const mascotToastText = $('mascotToastText');
+    if (mascotToastText) {
+      if (v && v.sp != null) {
+        mascotToastText.textContent = `${hm(v.sp)} spanja = naravni anabolik!`;
+      } else {
+        mascotToastText.textContent = 'Kakovosten spanec je naravni anabolik!';
+      }
+    }
+
+    // Posodobi BEAST MODE overlay z dejansko vrednostjo ali praznim stanjem
+    posodobiBeastMode(v, res);
 
     // aktivnost: koraki danes (če jih še ni, včerajšnji dan), zunanji obroč = aktivne minute / 22
     const kEl = $('heroStrainNum'), kSub = $('heroStrainSub');
@@ -375,19 +520,31 @@
     // Trendi 7 / 30 dni za HRV, RHR in spanje
     renderTrendi(zadnjiDnevi);
 
-    // izvor podatkov
+    // izvor podatkov: starost podatkov in stanje povezave
     const vir = $('danesVir');
     if (vir) {
       let t = '', c = 'var(--text-3)';
-      if (res.status === 'no-token') { t = '⚪ Podatki ure niso povezani — tapni za vnos kode'; }
-      else if (res.status === 'bad-token') { t = '🔴 Koda za podatke ure ni veljavna — tapni za novo'; c = '#FF6B5B'; }
-      else if (res.status === 'offline') { t = '🟡 Strežnik nedosegljiv, ni shranjenih podatkov'; c = '#FFC23D'; }
-      else {
-        const dni = v ? Math.round((Date.parse(new Date().toLocaleDateString('sv-SE')) - Date.parse(v.datum)) / 864e5) : null;
-        const kdaj = dni == null ? '' : dni <= 0 ? 'nocoj' : dni === 1 ? 'pretekla noč' : `pred ${dni} dnevi`;
+      if (res.status === 'no-token') {
+        t = '⚪ Podatki ure niso povezani — tapni za vnos kode';
+        c = 'var(--text-3)';
+      } else if (res.status === 'bad-token') {
+        t = '🔴 Koda za podatke ure ni veljavna (401) — tapni za ponovni vnos';
+        c = '#FF6B5B';
+      } else if (res.status === 'offline') {
+        t = '🔴 Strežnik nedosegljiv in ni shranjenih podatkov v predpomnilniku';
+        c = '#FF6B5B';
+      } else if (res.status === 'cache') {
+        const starost = formatSinhroStarost(res.cacheTime || (res.cacheAge ? Date.now() - res.cacheAge : null)) || 'pred nekaj časa';
+        t = `🟡 Predpomnilnik (strežnik nedosegljiv) · sinhronizirano ${starost} · Fitbit Air`;
+        c = '#FFC23D';
+      } else {
         const s = res.data && res.data.sinhronizacija;
+        const syncTs = s && (s.cas || s.zadnjiUspeh || s.zadnjaSinhronizacija || s.timestamp || s.posodobljeno);
+        const starost = formatSinhroStarost(syncTs) || formatSinhroStarost(res.fetchTime) || 'ravnokar';
+        const dni = v && v.datum ? Math.round((Date.parse(new Date().toLocaleDateString('sv-SE')) - Date.parse(v.datum)) / 864e5) : null;
+        const kdaj = dni == null ? '' : dni <= 0 ? 'nocoj' : dni === 1 ? 'včeraj' : `pred ${dni} dnevi`;
         const zastarelo = (dni != null && dni > 1) || (s && s.stanje === 'napaka');
-        t = `${zastarelo ? '🟡' : '🟢'} Fitbit Air · ${kdaj} (${v ? v.datum : '–'})${res.status === 'cache' ? ' · shranjeno' : ''}`;
+        t = `${zastarelo ? '🟡' : '🟢'} Fitbit Air · sinhronizirano ${starost}${kdaj ? ` (${kdaj})` : ''}`;
         if (s && s.stanje === 'napaka') t += ' · sinhronizacija ne teče (Google prijava potekla)';
         c = zastarelo || (s && s.stanje === 'napaka') ? '#FFC23D' : 'var(--rec-green)';
       }
@@ -581,15 +738,56 @@
     w.document.close();
   }
 
+  /** Vrne seznam dni iz zadnjega odgovora ali predpomnilnika (uporablja A02 časovnica). */
+  function dnevi() {
+    if (Array.isArray(zadnjiDnevi) && zadnjiDnevi.length > 0) return zadnjiDnevi;
+    try {
+      const c = JSON.parse(localStorage.getItem(LS_CACHE) || 'null');
+      if (c && c.j && Array.isArray(c.j.dnevi)) {
+        zadnjiDnevi = c.j.dnevi;
+        return zadnjiDnevi;
+      }
+    } catch (e) { /* ignore */ }
+    return [];
+  }
+
   /** Osveži vse danes-vezane dele (vrstica, graf teže, zgodovina tlaka). */
   function renderDanes() {
+    // Takoj posodobi beastModeOverlay in toast (če je že shranjen cache ali prazno stanje),
+    // da preprečimo prikaz trdo zapisanega "82% RECOVERY"
+    if (zadnjiDnevi === null) {
+      try {
+        const c = JSON.parse(localStorage.getItem(LS_CACHE) || 'null');
+        if (c && c.j && Array.isArray(c.j.dnevi)) {
+          zadnjiDnevi = c.j.dnevi;
+          const v = izracunaj(zadnjiDnevi);
+          prikazi(v, { status: 'cache', data: c.j, cacheTime: c.t, cacheAge: Date.now() - c.t });
+        } else {
+          posodobiBeastMode(null, { status: token() ? 'offline' : 'no-token' });
+        }
+      } catch (e) {
+        posodobiBeastMode(null, { status: token() ? 'offline' : 'no-token' });
+      }
+    }
+
     renderMissing();
     renderWeight();
     renderTrendi(zadnjiDnevi);
-    if (window.BpVision && BpVision.renderHistory) BpVision.renderHistory('bpHistRoot');
+    if (typeof window !== 'undefined' && window.BpVision && BpVision.renderHistory) BpVision.renderHistory('bpHistRoot');
   }
 
-  window.DanesPodatki = { osvezi, povezi, renderDanes, exportDoctor, setTrendiDni, _izracunaj: izracunaj, _vpisiDanes: vpisiDanes };
+  root.DanesPodatki = {
+    osvezi,
+    povezi,
+    renderDanes,
+    exportDoctor,
+    setTrendiDni,
+    dnevi,
+    _izracunaj: izracunaj,
+    _vpisiDanes: vpisiDanes,
+    _formatSinhroStarost: formatSinhroStarost,
+  };
+  if (typeof module !== 'undefined' && module.exports) module.exports = root.DanesPodatki;
   if (typeof document !== 'undefined') {
     const go = () => {
       renderDanes();

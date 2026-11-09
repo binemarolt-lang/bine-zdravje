@@ -1,11 +1,20 @@
 {
+  "id": "./index.html",
   "name": "Bine Zdravje & Protokoli",
   "short_name": "Zdravje",
   "description": "Binetov enotni sistem za regeneracijo, cikel, biomarkerje in načrtovanje suplementov",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0a0c10",
   "theme_color": "#08090A",
+  "lang": "sl",
+  "categories": [
+    "health",
+    "fitness",
+    "lifestyle"
+  ],
   "icons": [
     {
       "src": "icon-192.png",
@@ -24,6 +33,12 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    },
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
   "shortcuts": [

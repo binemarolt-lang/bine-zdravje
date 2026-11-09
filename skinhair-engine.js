@@ -195,14 +195,14 @@
     tretinoin: { name: 'Tretinoin / Retinol', category: 'retinoid', preferredSlot: 'pm', photosensitizing: true },
     adapalene: { name: 'Adapalen', category: 'retinoid', preferredSlot: 'pm', photosensitizing: true },
     benzoyl_peroxide: { name: 'Benzoil peroksid (BPO)', category: 'antibacterial', preferredSlot: 'am_or_pm', oxidant: true },
-    salicylic_acid: { name: 'Salicilna kislina (BHA 2%)', category: 'exfoliant', preferredSlot: 'am_or_pm', lipidSoluble: true },
+    salicylic_acid: { name: 'Salicilna kislina (BHA)', category: 'exfoliant', preferredSlot: 'am_or_pm', lipidSoluble: true },
     glycolic_acid: { name: 'Glikolna / Mlečna kislina (AHA)', category: 'exfoliant', preferredSlot: 'pm', lowPh: true },
-    azelaic_acid: { name: 'Azelainska kislina (15–20%)', category: 'antiinflammatory', preferredSlot: 'am_or_pm', safeWithRetinoids: true },
+    azelaic_acid: { name: 'Azelainska kislina', category: 'antiinflammatory', preferredSlot: 'am_or_pm', safeWithRetinoids: true },
     vitamin_c_laa: { name: 'Vitamin C (L-Askorbinska kislina)', category: 'antioxidant', preferredSlot: 'am', lowPh: true },
-    niacinamide: { name: 'Niacinamid (B3)', category: 'barrier', preferredSlot: 'am_or_pm', neutralPh: true },
-    ketoconazole: { name: 'Ketokonazol 2%', category: 'antifungal', preferredSlot: 'post_workout', antiAndrogen: true },
+    niacinamide: { name: 'Niacinamid', category: 'barrier', preferredSlot: 'am_or_pm', neutralPh: true },
+    ketoconazole: { name: 'Ketokonazol', category: 'antifungal', preferredSlot: 'post_workout', antiAndrogen: true },
     ceramides: { name: 'Ceramidi / Pantenol / Cica', category: 'barrier_repair', preferredSlot: 'am_or_pm' },
-    spf_50: { name: 'Širokospektralni SPF 50+', category: 'sunscreen', preferredSlot: 'am' }
+    spf_50: { name: 'Širokospektralni SPF', category: 'sunscreen', preferredSlot: 'am' }
   };
 
   /**
@@ -275,14 +275,14 @@
       recommendations.push('V jutranjo rutino vedno dodaj fotostabilen SPF 50+ kot zadnji korak pred odhodom na prosto.');
     }
 
-    // 6. Sinergija: Adapalen + BPO je varna in priporočena kombinacija (npr. Epiduo)
+    // 6. Sinergija: Adapalen + BPO je varna kombinacija
     if (hasAdapalene && hasBPO) {
-      recommendations.push('Adapalen je odporen na oksidacijo z BPO. Ta kombinacija je sinergijska in učinkovito uničuje C. acnes ter odpira pore.');
+      recommendations.push('Adapalen je odporen na oksidacijo z BPO. Ta kombinacija je kemično združljiva.');
     }
 
     // 7. Sinergija: Azelainska kislina + Retinoid
     if (hasRetinoid && ingredients.includes('azelaic_acid')) {
-      recommendations.push('Azelainska kislina in retinoid delujeta sinergijsko: azelainska zmanjša rdečico (PIE) in zavira lokalno 5α-reduktazo, medtem ko retinoid pospeši obnovo celic.');
+      recommendations.push('Azelainska kislina in retinoid delujeta dopolnilno: azelainska kislina zmanjša rdečico (PIE), retinoid pa podpira obnovo kože.');
     }
 
     return {
@@ -405,7 +405,7 @@
     context = context || {};
     const insights = [];
 
-    // 1. Sirotka + Zamuda tuširanja -> Malassezia izbruh na hrbtu ("Bacne")
+    // 1. Sirotka + Zamuda tuširanja -> tveganje za akne na hrbtu (sočasnost, ne vzrok)
     const whey = context.wheyGramsToday || 0;
     const showerDelay = context.postWorkoutShowerDelayMin || 0;
 
@@ -414,13 +414,13 @@
         id: 'WHEY_SWEAT_BACKNE_ALERT',
         category: 'higiena_prehrana',
         severity: 'high',
-        title: '⚠️ Visoko tveganje za akne na hrbtu (Malassezia + mTORC1)',
-        message: `Zaužil si ${whey} g sirotkinih beljakovin (visok levcin aktivira mTORC1 v lojnicah), tuširanje pa je zamujalo ${showerDelay} minut. Znoj in loj ustvarjata idealno gojišče za kvasovke Malassezia.`,
-        action: 'Umij zgornji del hrbta in ramena s šamponom Ketokonazol 2% (pusti delovati 3–5 min) ali uporabi 2% BHA sprej.'
+        title: '⚠️ Zaznana sočasnost: sirotka in zamuda tuširanja (sočasnost, ne vzrok)',
+        message: `Zaužitih ${whey} g sirotkinih beljakovin, tuširanje po vadbi pa je zamujalo ${showerDelay} minut. Znoj in loj lahko ustvarita okolje za draženje kože in kvasovke (sočasnost, ne vzrok).`,
+        action: 'Priporočeno pravočasno prhanje po vadbi in nežno čiščenje kože. Sočasnost, ne vzrok.'
       });
     }
 
-    // 2. Sesut estradiol ob Boldenonu (E2 Crash)
+    // 2. Nizek estradiol ob spremljanju cikla (sočasnost, ne vzrok)
     const e2 = context.estradiolPgMl;
     const eq = context.eqDoseMg || 0;
     const test = context.testDoseMg || 0;
@@ -430,18 +430,18 @@
         id: 'E2_CRASH_BARRIER_HAIR_SHED',
         category: 'hormoni',
         severity: 'critical',
-        title: '🚨 Kritično nizek Estradiol (<18 pg/mL) — zlom kožne bariere & shedding',
-        message: `Nizek E2 (${e2} pg/mL) prek ER-β receptorjev sesuje sintezo kožnih ceramidov (suha, vneta koža) in inducira akutni telogeni efluvij (pospešeno izpadanje las).`,
-        action: 'Zmanjšaj ali začasno ukini zaviralce aromataze (AI) oziroma preveri razmerje T:EQ (varno razmerje ≥2.5:1). Predpiši kontrolo pri Dr. Luís Marinho v Portu.'
+        title: '🚨 Nizek izvid estradiola (<18 pg/mL) — korelacija s suhostjo kože (sočasnost, ne vzrok)',
+        message: `Zadnji izvid E2 (${e2} pg/mL) je pod referenčno mejo. Nizek estradiol lahko sovpada z zmanjšano vlažnostjo kože in povečanim izpadanjem las (sočasnost, ne vzrok).`,
+        action: 'Opravi kontrolni krvni izvid in se posvetuj z lečečim zdravnikom (Dr. Luís Marinho, Porto). Brez spreminjanja režima na lastno pest.'
       });
     } else if (eq > 0 && test > 0 && (test / eq) < 2.0) {
       insights.push({
         id: 'TEQ_RATIO_ALERT',
         category: 'hormoni',
         severity: 'medium',
-        title: '⚠️ Tveganje za padec estradiola (Razmerje T:EQ pod 2.0)',
-        message: `Razmerje Test:EQ je trenutno ${(test / eq).toFixed(1)}:1. Presnovki boldenona lahko zatrejo aromatazo in povzročijo suho kožo ter redčenje las.`,
-        action: 'Spremljaj vlažnost kože in bodi pozoren na znake srbečice ter izpadanja las.'
+        title: '⚠️ Spremljanje razmerja hormonov (sočasnost, ne vzrok)',
+        message: `Razmerje Test:EQ je trenutno ${(test / eq).toFixed(1)}:1. Presnovki lahko vplivajo na raven aromataze (sočasnost, ne vzrok).`,
+        action: 'Spremljaj vlažnost kože in lasišča ter načrtuj laboratorijski izvid. Sočasnost, ne vzrok.'
       });
     }
 
@@ -454,13 +454,163 @@
         id: 'STRESS_CRH_ACNE_FLARE',
         category: 'regeneracija',
         severity: 'medium',
-        title: '⚠️ Zvišan kortizol in nevropeptidi (Slaba regeneracija / Primanjkljaj spanja)',
-        message: `Whoop regeneracija ${recovery || 0}% oz. dolg spanja ${sleepDebt || 0} min sproščata substanco P in CRH, kar neposredno spodbuja lojnice k vnetnim izbruhom.`,
-        action: 'Osredotoči se na obnovo kožne pregrade (ceramidi, pantenol) in se izogni agresivnim kemičnim pilingom ta večer.'
+        title: '⚠️ Zaznana visoka obremenitev / dolg spanja (sočasnost, ne vzrok)',
+        message: `Whoop regeneracija ${recovery || 0}% oz. dolg spanja ${sleepDebt || 0} min lahko sovpadata s povečanim izločanjem sebuma in vnetnimi spremembami kože (sočasnost, ne vzrok).`,
+        action: 'Osredotoči se na obnovo kožne pregrade z vlažilno nego. Sočasnost, ne vzrok.'
       });
     }
 
     return insights;
+  }
+
+  // =========================================================================
+  // 7. ČASOVNICA LAS & SPREMLJANJE PROTOKOLA (WEEKS ELAPSED)
+  // =========================================================================
+
+  const DEFAULT_HAIR_SUBSTANCES = {
+    dutasteride: {
+      id: 'dutasteride',
+      name: 'Dutasterid',
+      startDate: '2026-09-27',
+      active: true,
+      frequency: 'vsak drugi dan'
+    },
+    oral_minoxidil: {
+      id: 'oral_minoxidil',
+      name: 'Oralni minoksidil SL',
+      startDate: '2026-07-20',
+      active: true,
+      frequency: 'dnevno'
+    },
+    ghk_cu: {
+      id: 'ghk_cu',
+      name: 'GHK-Cu s.c.',
+      startDate: '2026-07-01',
+      active: true,
+      frequency: 'zjutraj'
+    },
+    klow: {
+      id: 'klow',
+      name: 'KLOW s.c.',
+      startDate: '2026-07-01',
+      active: true,
+      frequency: 'zvečer'
+    },
+    finasteride: {
+      id: 'finasteride',
+      name: 'Finasterid',
+      startDate: null,
+      active: false,
+      frequency: 'izbirno'
+    },
+    topical_minoxidil: {
+      id: 'topical_minoxidil',
+      name: 'Topikalni minoksidil',
+      startDate: null,
+      active: false,
+      frequency: 'izbirno'
+    },
+    ketoconazole: {
+      id: 'ketoconazole',
+      name: 'Ketokonazol šampon',
+      startDate: null,
+      active: false,
+      frequency: 'izbirno'
+    },
+    microneedling: {
+      id: 'microneedling',
+      name: 'Mikroneedling',
+      startDate: null,
+      active: false,
+      frequency: 'izbirno'
+    }
+  };
+
+  /**
+   * Izračuna pretečene tedne in dni od začetka jemanja snovi.
+   * Brez trditev o učinkovitosti in brez odmerkov.
+   * @param {string|Date} startDateStr - Datum začetka (npr. '2026-09-27')
+   * @param {string|Date} [refDateStr] - Referenčni datum (privzeto danes)
+   * @returns {Object|null} { weeks: number, days: number, totalDays: number, formatted: string }
+   */
+  function calculateWeeksElapsed(startDateStr, refDateStr) {
+    if (!startDateStr) return null;
+    const start = new Date(startDateStr);
+    const ref = refDateStr ? new Date(refDateStr) : new Date();
+    if (isNaN(start.getTime()) || isNaN(ref.getTime())) return null;
+
+    const startMidnight = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const refMidnight = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
+
+    const diffMs = refMidnight.getTime() - startMidnight.getTime();
+    if (diffMs < 0) {
+      return {
+        weeks: 0,
+        days: 0,
+        totalDays: 0,
+        formatted: '0 tednov'
+      };
+    }
+
+    const totalDays = Math.round(diffMs / (24 * 60 * 60 * 1000));
+    const weeks = Math.floor(totalDays / 7);
+    const days = totalDays % 7;
+
+    function formatWeeks(w) {
+      if (w === 1) return '1 teden';
+      if (w === 2) return '2 tedna';
+      if (w === 3 || w === 4) return `${w} tedne`;
+      return `${w} tednov`;
+    }
+
+    function formatDays(d) {
+      if (d === 1) return '1 dan';
+      if (d === 2) return '2 dneva';
+      if (d === 3 || d === 4) return `${d} dni`;
+      return `${d} dni`;
+    }
+
+    let formatted = formatWeeks(weeks);
+    if (days > 0) {
+      formatted += ` ${formatDays(days)}`;
+    }
+
+    return {
+      weeks,
+      days,
+      totalDays,
+      formatted
+    };
+  }
+
+  /**
+   * Pripravi celotno časovnico snovi za lase.
+   * @param {Object} [customSubstances] - Uporabniško nastavljene snovi z datumi
+   * @param {string|Date} [refDateStr] - Referenčni datum
+   * @returns {Array<Object>} Seznam snovi z izračunano časovnico
+   */
+  function calculateHairTimeline(customSubstances, refDateStr) {
+    const merged = Object.assign({}, DEFAULT_HAIR_SUBSTANCES, customSubstances || {});
+    const timeline = [];
+
+    for (const [key, sub] of Object.entries(merged)) {
+      if (!sub) continue;
+      const startDate = sub.startDate || null;
+      const elapsed = startDate ? calculateWeeksElapsed(startDate, refDateStr) : null;
+      timeline.push({
+        id: sub.id || key,
+        name: sub.name || key,
+        startDate: startDate,
+        active: Boolean(sub.active),
+        frequency: sub.frequency || '',
+        weeks: elapsed ? elapsed.weeks : 0,
+        days: elapsed ? elapsed.days : 0,
+        totalDays: elapsed ? elapsed.totalDays : 0,
+        formatted: elapsed ? elapsed.formatted : 'Ni določeno'
+      });
+    }
+
+    return timeline;
   }
 
   // =========================================================================
@@ -488,6 +638,11 @@
     checkMalasseziaSafety: checkMalasseziaSafety,
 
     // 6. Korelacijski motor
-    analyzeTriggersAndRisks: analyzeTriggersAndRisks
+    analyzeTriggersAndRisks: analyzeTriggersAndRisks,
+
+    // 7. Časovnica las & snovi
+    DEFAULT_HAIR_SUBSTANCES: DEFAULT_HAIR_SUBSTANCES,
+    calculateWeeksElapsed: calculateWeeksElapsed,
+    calculateHairTimeline: calculateHairTimeline
   };
 }));

@@ -1,78 +1,213 @@
 /*
- * Globalni nadzor napak: window.onerror + unhandledrejection -> prijazen toast (največ 1 na 10 s).
- * Zadnjih 20 napak v localStorage 'bine_zdravje_errors_v1' (brez osebnih podatkov, sporočilo skrajšano).
+ * Bine Zdravje — Globalni nadzor in zbiranje napak.
+ * Napake se zbirajo v localStorage 'bine_error_log_v1' (zadnjih 50),
+ * z gumbom za kopiranje in brez motečih pojavnih oken.
  */
 (function (root) {
   'use strict';
 
-  var KEY = 'bine_zdravje_errors_v1';
-  var MAX = 20;
-  var TOAST_GAP_MS = 10000;
-  var MSG = 'Nekaj je šlo narobe. Podatki so varni; poskusi znova.';
-  var lastToast = 0;
-  var toastEl = null, hideTimer = null;
+  var KEY = 'bine_error_log_v1';
+  var OLD_KEY = 'bine_zdravje_errors_v1';
+  var MAX = 50;
 
   function safeGet() {
-    try { var v = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (!raw) {
+        // Migracija iz starega ključa, če obstaja
+        var oldRaw = localStorage.getItem(OLD_KEY);
+        if (oldRaw) {
+          var oldList = JSON.parse(oldRaw);
+          if (Array.isArray(oldList)) {
+            localStorage.setItem(KEY, JSON.stringify(oldList.slice(-MAX)));
+            return oldList.slice(-MAX);
+          }
+        }
+        return [];
+      }
+      var v = JSON.parse(raw);
+      return Array.isArray(v) ? v : [];
+    } catch (e) {
+      return [];
+    }
   }
+
   function record(kind, msg, src) {
     try {
       var list = safeGet();
       list.push({
         t: new Date().toISOString(),
-        kind: kind,
-        msg: String(msg || '').replace(/[\r\n]+/g, ' ').slice(0, 200),
-        src: String(src || '').replace(/^.*\//, '').slice(0, 80),
-        path: (location.pathname || '').slice(0, 120)
+        kind: String(kind || 'error').slice(0, 30),
+        msg: String(msg || '').replace(/[\r\n]+/g, ' ').slice(0, 300),
+        src: String(src || '').replace(/^.*[\\\/]/, '').slice(0, 100),
+        path: (typeof location !== 'undefined' && location.pathname ? location.pathname : '').slice(0, 120)
       });
-      localStorage.setItem(KEY, JSON.stringify(list.slice(-MAX)));
-    } catch (e) { /* polna shramba ali zasebni način: ignoriramo */ }
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(KEY, JSON.stringify(list.slice(-MAX)));
+      }
+      updateButtonBadge();
+    } catch (e) {
+      // Polna shramba ali zasebni način: ignoriramo
+    }
   }
 
-  function ensureToast() {
-    if (toastEl) return toastEl;
-    toastEl = document.createElement('div');
-    toastEl.id = 'errorGuardToast';
-    toastEl.setAttribute('role', 'alert');
-    toastEl.setAttribute('aria-live', 'assertive');
-    toastEl.style.cssText = [
-      'position: fixed', 'left: 12px', 'right: 12px',
-      'bottom: calc(12px + env(safe-area-inset-bottom, 0px))', 'z-index: 20000',
-      'max-width: 480px', 'margin: 0 auto', 'padding: 12px 14px', 'border-radius: 12px',
-      'background: #14171A', 'color: #F4F5F6', 'border: 1px solid rgba(255,61,0,0.45)',
-      'font: 600 0.9rem/1.35 system-ui, sans-serif', 'box-shadow: 0 8px 24px rgba(0,0,0,0.5)',
-      'display: none', 'overflow-wrap: anywhere'
+  function getFormattedLog() {
+    var list = safeGet();
+    if (!list.length) return 'Dnevnik napak je prazen (0 napak).';
+    var lines = ['=== BINE ZDRAVJE DNEVNIK NAPAK (zadnjih ' + list.length + ') ==='];
+    list.forEach(function (e, idx) {
+      lines.push('[' + (idx + 1) + '] ' + (e.t || '') + ' | ' + (e.kind || 'error').toUpperCase());
+      lines.push('  Sporočilo: ' + (e.msg || '–'));
+      if (e.src) lines.push('  Vir: ' + e.src);
+      if (e.path) lines.push('  Pot: ' + e.path);
+    });
+    return lines.join('\n');
+  }
+
+  function copyText(text) {
+    var fallback = function () {
+      if (typeof document === 'undefined') return false;
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '0';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      ta.remove();
+      return ok;
+    };
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).then(function () { return true; }, function () { return fallback(); });
+    }
+    return Promise.resolve(fallback());
+  }
+
+  function copyErrors() {
+    var list = safeGet();
+    var text = getFormattedLog();
+    return copyText(text).then(function (ok) {
+      return {
+        ok: ok,
+        count: list.length,
+        text: text,
+        msg: ok
+          ? (list.length ? 'Kopiranih ' + list.length + ' napak v odložišče.' : 'Dnevnik je prazen (0 napak).')
+          : 'Kopiranje ni uspelo.'
+      };
+    });
+  }
+
+  function clearErrors() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(KEY);
+      }
+      updateButtonBadge();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // ---------- Gumb za kopiranje napak v UI ----------
+
+  var BTN_ID = 'errorGuardCopyBtn';
+
+  function updateButtonBadge() {
+    if (typeof document === 'undefined') return;
+    var btn = document.getElementById(BTN_ID);
+    if (!btn) return;
+    var count = safeGet().length;
+    btn.textContent = count ? '📋 Napake (' + count + ')' : '📋 Napake';
+  }
+
+  function mountCopyButton(tries) {
+    if (typeof document === 'undefined') return;
+    if (document.getElementById(BTN_ID)) return;
+
+    // Najprej poskusimo vstaviti v glavo pomočnika (#assistantSheet .as-header) poleg varnostne kopije
+    var hdr = document.querySelector('#assistantSheet .as-header');
+    if (!hdr) {
+      if ((tries || 0) < 40) {
+        setTimeout(function () { mountCopyButton((tries || 0) + 1); }, 250);
+      }
+      return;
+    }
+
+    var btn = document.createElement('button');
+    btn.id = BTN_ID;
+    btn.type = 'button';
+    btn.setAttribute('aria-label', 'Kopiraj dnevnik napak');
+    btn.title = 'Kopiraj zbrane napake (bine_error_log_v1)';
+    btn.style.cssText = [
+      'min-width: 44px', 'min-height: 44px', 'border-radius: 12px',
+      'border: 1px solid var(--edge-2, rgba(255,255,255,0.10))',
+      'background: var(--surface-2, #14171A)', 'color: var(--text-2, #A1A7B0)',
+      'font-size: 0.8rem', 'font-weight: 700', 'padding: 0 10px',
+      'cursor: pointer', 'font-family: inherit', 'touch-action: manipulation'
     ].join(';');
-    document.body.appendChild(toastEl);
-    return toastEl;
+
+    var count = safeGet().length;
+    btn.textContent = count ? '📋 Napake (' + count + ')' : '📋 Napake';
+
+    btn.addEventListener('click', function () {
+      btn.disabled = true;
+      copyErrors().then(function (res) {
+        btn.textContent = res.ok ? '✓ Kopirano!' : 'Napaka pri kopiranju';
+        setTimeout(function () {
+          btn.disabled = false;
+          updateButtonBadge();
+        }, 2000);
+      });
+    });
+
+    hdr.insertBefore(btn, hdr.lastElementChild);
   }
 
-  function toast() {
-    var now = Date.now();
-    if (now - lastToast < TOAST_GAP_MS) return;
-    lastToast = now;
-    var t = ensureToast();
-    t.textContent = MSG;
-    t.style.display = 'block';
-    clearTimeout(hideTimer);
-    hideTimer = setTimeout(function () { t.style.display = 'none'; }, 6000);
+  // Poslušalci globalnih napak (brez pojavnih oken)
+  if (typeof root.addEventListener === 'function') {
+    root.addEventListener('error', function (e) {
+      if (!e || !e.message) return;
+      record('error', e.message, e.filename);
+    });
+
+    root.addEventListener('unhandledrejection', function (e) {
+      var r = e && e.reason;
+      var msg = (r && r.message) || String(r || 'unhandled rejection');
+      var src = (r && r.stack) ? String(r.stack).split('\n')[1] : '';
+      record('rejection', msg, src);
+    });
   }
 
-  function handle(kind, msg, src) {
-    record(kind, msg, src);
-    if (document.body) toast();
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function () { mountCopyButton(0); });
+    } else {
+      mountCopyButton(0);
+    }
   }
 
-  root.addEventListener('error', function (e) {
-    // Napake virov (img/script brez onerror) niso JS napake: ignoriramo.
-    if (!e || !e.message) return;
-    handle('error', e.message, e.filename);
-  });
-  root.addEventListener('unhandledrejection', function (e) {
-    var r = e && e.reason;
-    handle('rejection', (r && r.message) || String(r || 'unhandled rejection'), r && r.stack ? String(r.stack).split('\n')[1] : '');
-  });
+  var api = {
+    record: record,
+    list: safeGet,
+    copy: copyErrors,
+    copyErrors: copyErrors,
+    clear: clearErrors,
+    getFormattedLog: getFormattedLog,
+    mountCopyButton: mountCopyButton,
+    KEY: KEY,
+    OLD_KEY: OLD_KEY,
+    MAX: MAX
+  };
 
-  root.ErrorGuard = { record: record, list: safeGet, KEY: KEY, MAX: MAX, _toast: toast };
-  if (typeof module !== 'undefined' && module.exports) module.exports = root.ErrorGuard;
-})(typeof window !== 'undefined' ? window : globalThis);
+  root.ErrorGuard = api;
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = api;
+  }
+})(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this));

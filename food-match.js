@@ -135,12 +135,32 @@
 
   const MACRO_KEYS = new Set(['calories', 'protein', 'carbs', 'fat', 'fiber', 'sugar']);
 
+  function parseVal(v, def = 0) {
+    if (typeof v === 'number') return isNaN(v) ? def : v;
+    if (v == null || v === '') return def;
+    const s = String(v).replace(',', '.').trim();
+    const n = parseFloat(s);
+    return isNaN(n) ? def : n;
+  }
+
   /** Hranila za dano količino. Vrne {calories, protein, carbs, fat, fiber, sugar, micros:{...}} */
   function nutrientsFor(index, grams) {
+    if (!DB || !DB.foods || !DB.foods[index]) {
+      return { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, micros: {} };
+    }
     const p = per100(index);
-    const f = (Number(grams) || 0) / 100;
+    const g = parseVal(grams, 0);
+    const f = Math.max(0, g) / 100;
     const r1 = v => Math.round(v * 10) / 10;
-    const out = { calories: Math.round((p.calories || 0) * f), protein: r1((p.protein || 0) * f), carbs: r1((p.carbs || 0) * f), fat: r1((p.fat || 0) * f), fiber: r1((p.fiber || 0) * f), sugar: r1((p.sugar || 0) * f), micros: {} };
+    const out = {
+      calories: Math.round((p.calories || 0) * f),
+      protein: r1((p.protein || 0) * f),
+      carbs: r1((p.carbs || 0) * f),
+      fat: r1((p.fat || 0) * f),
+      fiber: r1((p.fiber || 0) * f),
+      sugar: r1((p.sugar || 0) * f),
+      micros: {}
+    };
     for (const [k, v] of Object.entries(p)) {
       if (MACRO_KEYS.has(k)) continue;
       const val = v * f;
@@ -152,9 +172,22 @@
 
   /** Iz ocene AI (na 100 g) naredi "virtualno" živilo, ko v bazi ni dobrega zadetka. */
   function nutrientsFromEstimate(est, grams) {
-    const f = (Number(grams) || 0) / 100;
-    const r1 = v => Math.round((Number(v) || 0) * f * 10) / 10;
-    return { calories: Math.round((Number(est.kcal) || 0) * f), protein: r1(est.protein), carbs: r1(est.carbs), fat: r1(est.fat), fiber: r1(est.fiber), sugar: 0, micros: { protein: r1(est.protein) } };
+    if (!est || typeof est !== 'object') {
+      return { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, micros: {} };
+    }
+    const g = parseVal(grams, 0);
+    const f = Math.max(0, g) / 100;
+    const r1 = v => Math.round(parseVal(v, 0) * f * 10) / 10;
+    const proteinVal = r1(est.protein);
+    return {
+      calories: Math.round(parseVal(est.kcal, 0) * f),
+      protein: proteinVal,
+      carbs: r1(est.carbs),
+      fat: r1(est.fat),
+      fiber: r1(est.fiber),
+      sugar: 0,
+      micros: { protein: proteinVal }
+    };
   }
 
   /**
@@ -162,6 +195,7 @@
    * prednost tistemu, ki je energijsko blizu (prepreči npr. "rice, raw" namesto kuhanega).
    */
   function bestMatch(item) {
+    if (!item) return null;
     const queries = [item.usda_query, item.name_en, item.name].filter(Boolean);
     let cands = [];
     for (const q of queries) {
@@ -169,7 +203,7 @@
       if (c.length) { cands = c; break; }
     }
     if (!cands.length) return null;
-    const est = item.per100g && Number(item.per100g.kcal);
+    const est = item.per100g && parseVal(item.per100g.kcal, 0);
     if (est > 0) {
       const top = cands[0].score;
       let best = null, bestVal = -Infinity;
@@ -180,7 +214,7 @@
         const val = c.score / top + ratio * 0.9;
         if (val > bestVal) { bestVal = val; best = { ...c, kcalRatio: Math.round(ratio * 100) / 100 }; }
       }
-      return { best, candidates: cands };
+      return { best: best || cands[0], candidates: cands };
     }
     return { best: cands[0], candidates: cands };
   }
