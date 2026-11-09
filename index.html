@@ -3859,7 +3859,7 @@
       window.checkForAppUpdate = triggerUpdateCheck;
 
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=43').then((reg) => {
+        navigator.serviceWorker.register('./sw.js?v=44').then((reg) => {
           swReg = reg;
           window._swReg = reg;
           reg.update().catch(() => {});
