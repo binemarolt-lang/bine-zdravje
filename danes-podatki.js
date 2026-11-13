@@ -28,6 +28,36 @@
     }
   } catch (e) { /* ignore */ }
 
+  function idbToken(val) {
+    try {
+      if (typeof indexedDB === 'undefined') return Promise.resolve(null);
+      return new Promise((res) => {
+        const req = indexedDB.open('bine_zdravje_meta', 1);
+        req.onupgradeneeded = () => { try { req.result.createObjectStore('kv'); } catch (e) {} };
+        req.onerror = () => res(null);
+        req.onsuccess = () => {
+          try {
+            const db = req.result;
+            const tx = db.transaction('kv', val !== undefined ? 'readwrite' : 'readonly');
+            const st = tx.objectStore('kv');
+            if (val !== undefined) {
+              st.put(val, LS_TOKEN);
+              tx.oncomplete = () => { db.close(); res(val); };
+            } else {
+              const g = st.get(LS_TOKEN);
+              g.onsuccess = () => { db.close(); res(g.result || null); };
+              g.onerror = () => { db.close(); res(null); };
+            }
+          } catch (e) { res(null); }
+        };
+      });
+    } catch (e) { return Promise.resolve(null); }
+  }
+  try {
+    const curTok = localStorage.getItem(LS_TOKEN);
+    if (curTok) { idbToken(curTok); }
+    else { idbToken().then((saved) => { if (saved && !localStorage.getItem(LS_TOKEN)) { localStorage.setItem(LS_TOKEN, saved); if (typeof root.osveziDanes === 'function') root.osveziDanes(); } }); }
+  } catch (e) {}
   const token = () => { try { return localStorage.getItem(LS_TOKEN) || ''; } catch (e) { return ''; } };
   const $ = (id) => document.getElementById(id);
   const num = (v) => (v === null || v === undefined || v === '' || isNaN(Number(v))) ? null : Number(v);
