@@ -488,8 +488,13 @@
     let vol = 0;
     for (const ex of exs) {
       for (const s of (ex.sets || [])) {
-        if (s.done && s.type !== 'warmup' && Number(s.w) > 0 && Number(s.reps) > 0) {
-          vol += Number(s.w) * Number(s.reps);
+        if (s.done && s.type !== 'warmup' && Number(s.w) > 0) {
+          if (s.repsL != null || s.repsR != null) {
+            const totalSideReps = (Number(s.repsL) || 0) + (Number(s.repsR) || 0);
+            if (totalSideReps > 0) vol += Number(s.w) * totalSideReps;
+          } else if (Number(s.reps) > 0) {
+            vol += Number(s.w) * Number(s.reps);
+          }
         }
       }
     }
@@ -674,6 +679,26 @@
   let wantWakeLock = false;
   let wakeRequesting = false;
   let wakeBound = false;
+
+  function isUnilateralName(name) {
+    if (!name) return false;
+    return /one[-\s]?arm|single[-\s]?arm|single[-\s]?leg|unilateral|enoro[cč]n|enono[zž]|bulgarian\s+split|concentration\s+curl|alternating|izmeni[cč]n/i.test(String(name));
+  }
+
+  function isExerciseUnilateral(ex) {
+    if (!ex) return false;
+    if (ex.unilateral === true) return true;
+    if (ex.unilateral === false) return false;
+    return isUnilateralName(ex.name) || (ex.sets || []).some(s => s && (s.repsL != null || s.repsR != null));
+  }
+
+  function formatSetRepsLabel(s) {
+    if (!s) return '0';
+    if (s.repsL != null || s.repsR != null) {
+      return `${s.repsL != null ? s.repsL : 0}L/${s.repsR != null ? s.repsR : 0}D`;
+    }
+    return String(s.reps || 0);
+  }
 
   function getSettings() {
     const stored = getStorage(LS_SETTINGS, {}) || {};
@@ -1586,6 +1611,7 @@
                 ${livePrs[ex.exId] ? `<span class="status-pill" style="color:var(--rec-yellow); margin-top:2px; font-size:0.65rem;">🏆 PR: ${esc(livePrs[ex.exId].join(' · '))}</span>` : ''}
               </div>
               <div style="display: flex; gap: 4px;">
+                <button type="button" class="wui-menu-btn" onclick="WorkoutUI.toggleExerciseUnilateral(${exIdx})" title="Enoročna / enonožna vaja (L/D)" style="${isExerciseUnilateral(ex) ? 'background: rgba(59, 130, 246, 0.25); border-color: var(--strain-blue); color: #fff; font-weight: 800;' : 'font-size: 0.72rem; font-weight: 700;'}">L/D</button>
                 <button type="button" class="wui-menu-btn" data-exid="${esc(ex.exId)}" data-exname="${esc(ex.name)}" onclick="WorkoutUI.openStatsModal(this.dataset.exid, this.dataset.exname)" title="Statistika">📊</button>
                 <button type="button" class="wui-menu-btn" onclick="WorkoutUI.openPlatesModalForExercise(${exIdx})" title="Koluti">⚖️</button>
                 <button type="button" class="wui-menu-btn" onclick="WorkoutUI.openWarmupModalForExercise(${exIdx})" title="Ogrevanje">🔥</button>
@@ -1619,7 +1645,7 @@
                   <th style="width: 40px;">SET</th>
                   <th style="width: 52px;">PREJ.</th>
                   <th>KG</th>
-                  <th>PON</th>
+                  <th>${isExerciseUnilateral(ex) ? 'L / D' : 'PON'}</th>
                   <th style="width: 38px;">${isRpe ? 'RPE' : 'RIR'}</th>
                   <th style="width: 44px;">✓</th>
                   <th style="width: 40px;"></th>
@@ -1630,12 +1656,16 @@
 
         (ex.sets || []).forEach((s, sIdx) => {
           const prevSet = prev && prev[sIdx] ? prev[sIdx] : null;
-          const prevStr = prevSet && (prevSet.w !== null || prevSet.reps !== null)
-            ? `${prevSet.w != null ? prevSet.w + 'k' : ''}×${prevSet.reps || ''}`
+          const uni = isExerciseUnilateral(ex);
+          const prevRepsStr = prevSet ? ((prevSet.repsL != null || prevSet.repsR != null) ? `${prevSet.repsL ?? 0}/${prevSet.repsR ?? 0}` : (prevSet.reps || '')) : '';
+          const prevStr = prevSet && (prevSet.w !== null || prevSet.reps !== null || prevSet.repsL != null || prevSet.repsR != null)
+            ? `${prevSet.w != null ? prevSet.w + 'k' : ''}×${prevRepsStr}`
             : '—';
 
           const placeholderW = prevSet && prevSet.w != null ? prevSet.w : '';
           const placeholderReps = prevSet && prevSet.reps != null ? prevSet.reps : '';
+          const placeholderRepsL = prevSet && prevSet.repsL != null ? prevSet.repsL : placeholderReps || 'L';
+          const placeholderRepsR = prevSet && prevSet.repsR != null ? prevSet.repsR : placeholderReps || 'D';
           const placeholderRir = prevSet && prevSet.rir != null ? prevSet.rir : '2';
 
           const typeLabel = s.type === 'warmup' ? 'W' : s.type === 'drop' ? 'D' : s.type === 'failure' ? 'F' : (sIdx + 1);
@@ -1653,7 +1683,14 @@
                 <input type="number" step="any" inputmode="decimal" class="wui-input" data-focus-key="set_w_${exIdx}_${sIdx}" data-ex-idx="${exIdx}" data-s-idx="${sIdx}" data-field="w" value="${s.w !== null && s.w !== undefined ? s.w : ''}" placeholder="${placeholderW}" oninput="WorkoutUI.onSetWeightChange(${exIdx}, ${sIdx}, this.value)">
               </td>
               <td>
-                <input type="number" step="1" inputmode="numeric" class="wui-input" data-focus-key="set_reps_${exIdx}_${sIdx}" data-ex-idx="${exIdx}" data-s-idx="${sIdx}" data-field="reps" value="${s.reps !== null && s.reps !== undefined ? s.reps : ''}" placeholder="${placeholderReps}" oninput="WorkoutUI.onSetRepsChange(${exIdx}, ${sIdx}, this.value)">
+                ${uni ? `
+                  <div style="display: flex; gap: 4px; align-items: center;">
+                    <input type="number" step="1" inputmode="numeric" class="wui-input" style="min-width: 34px; max-width: 44px; padding: 8px 2px;" data-focus-key="set_repsL_${exIdx}_${sIdx}" data-ex-idx="${exIdx}" data-s-idx="${sIdx}" data-field="repsL" value="${s.repsL !== null && s.repsL !== undefined ? s.repsL : ''}" placeholder="${placeholderRepsL}" title="Leva stran (ponovitve)" oninput="WorkoutUI.onSetRepsSideChange(${exIdx}, ${sIdx}, 'L', this.value)">
+                    <input type="number" step="1" inputmode="numeric" class="wui-input" style="min-width: 34px; max-width: 44px; padding: 8px 2px;" data-focus-key="set_repsR_${exIdx}_${sIdx}" data-ex-idx="${exIdx}" data-s-idx="${sIdx}" data-field="repsR" value="${s.repsR !== null && s.repsR !== undefined ? s.repsR : ''}" placeholder="${placeholderRepsR}" title="Desna stran (ponovitve)" oninput="WorkoutUI.onSetRepsSideChange(${exIdx}, ${sIdx}, 'R', this.value)">
+                  </div>
+                ` : `
+                  <input type="number" step="1" inputmode="numeric" class="wui-input" data-focus-key="set_reps_${exIdx}_${sIdx}" data-ex-idx="${exIdx}" data-s-idx="${sIdx}" data-field="reps" value="${s.reps !== null && s.reps !== undefined ? s.reps : ''}" placeholder="${placeholderReps}" oninput="WorkoutUI.onSetRepsChange(${exIdx}, ${sIdx}, this.value)">
+                `}
               </td>
               <td>
                 <input type="number" step="${isRpe ? '0.5' : '1'}" inputmode="${isRpe ? 'decimal' : 'numeric'}" class="wui-input" data-focus-key="set_rir_${exIdx}_${sIdx}" data-ex-idx="${exIdx}" data-s-idx="${sIdx}" data-field="${isRpe ? 'rpe' : 'rir'}" style="max-width: 38px; padding: 8px 0; font-size: 16px !important;" value="${isRpe ? (s.rpe != null ? s.rpe : '') : (s.rir != null ? s.rir : '')}" placeholder="${isRpe ? (prevSet && prevSet.rpe != null ? prevSet.rpe : '8') : placeholderRir}" oninput="WorkoutUI.${isRpe ? 'onSetRpeChange' : 'onSetRirChange'}(${exIdx}, ${sIdx}, this.value)">
@@ -1953,15 +1990,18 @@
     let name = 'Trening';
     let exercises = [];
 
-    if (type === 'repeat_last' && history.length > 0) {
-      const last = history[0];
+    if (type === 'repeat_last' && (prefilled || history.length > 0)) {
+      const last = prefilled || history[0];
       name = last.name || 'Trening';
       exercises = (last.exercises || []).map(e => ({
         exId: e.exId,
         name: e.name,
+        unilateral: isExerciseUnilateral(e),
         sets: (e.sets || []).map(s => ({
           w: s.w,
           reps: s.reps,
+          repsL: s.repsL !== undefined ? s.repsL : null,
+          repsR: s.repsR !== undefined ? s.repsR : null,
           rir: s.rir,
           type: s.type || 'normal',
           done: false
@@ -2069,6 +2109,38 @@
     if (!s) return;
     s.reps = val !== '' ? parseInt(val, 10) : null;
     saveActiveDraft(activeWorkout);
+  }
+
+  function onSetRepsSideChange(exIdx, sIdx, side, val) {
+    if (!activeWorkout || !activeWorkout.exercises[exIdx]) return;
+    const s = activeWorkout.exercises[exIdx].sets[sIdx];
+    if (!s) return;
+    const parsed = val !== '' ? parseInt(val, 10) : null;
+    if (side === 'L') s.repsL = parsed;
+    else s.repsR = parsed;
+    if (s.repsL != null || s.repsR != null) {
+      s.reps = Math.max(Number(s.repsL) || 0, Number(s.repsR) || 0);
+    } else {
+      s.reps = null;
+    }
+    saveActiveDraft(activeWorkout);
+  }
+
+  function toggleExerciseUnilateral(exIdx) {
+    if (!activeWorkout || !activeWorkout.exercises[exIdx]) return;
+    const ex = activeWorkout.exercises[exIdx];
+    const next = !isExerciseUnilateral(ex);
+    ex.unilateral = next;
+    if (next) {
+      (ex.sets || []).forEach(s => {
+        if (s.reps != null && s.repsL == null && s.repsR == null) {
+          s.repsL = s.reps;
+          s.repsR = s.reps;
+        }
+      });
+    }
+    saveActiveDraft(activeWorkout);
+    renderActiveWorkoutBody();
   }
 
   function onSetRirChange(exIdx, sIdx, val) {
@@ -2206,9 +2278,11 @@
     if (typeof window !== 'undefined' && now - lastAddExTime < 250) return;
     lastAddExTime = now;
 
+    const exName = ex.sl || ex.name || 'Vaja';
     activeWorkout.exercises.push({
       exId: ex.id || ('custom:' + (ex.name || 'vaja').toLowerCase().replace(/[^a-z0-9]+/g, '-')),
-      name: ex.sl || ex.name || 'Vaja',
+      name: exName,
+      unilateral: isUnilateralName(exName) || isUnilateralName(ex.name),
       sets: [
         { w: null, reps: null, rir: null, type: 'normal', done: false },
         { w: null, reps: null, rir: null, type: 'normal', done: false },
@@ -2786,7 +2860,7 @@
         const wStr = s.w != null ? `${s.w} kg` : 'lastna teža';
         html += `
           <div style="display: flex; justify-content: space-between; font-size: 0.8rem; padding: 3px 6px; background: var(--surface-3); border-radius: 6px;">
-            <span>Serija ${idx + 1}${typeStr}: <b>${wStr}</b> × <b>${s.reps || 0}</b>${rirStr}</span>
+            <span>Serija ${idx + 1}${typeStr}: <b>${wStr}</b> × <b>${formatSetRepsLabel(s)}</b>${rirStr}</span>
             <span style="color: var(--rec-green);">${s.done ? '✓' : '—'}</span>
           </div>
         `;
@@ -3352,6 +3426,8 @@
     importCsvFile,
     applySuggestion,
     onSetRpeChange,
+    onSetRepsSideChange,
+    toggleExerciseUnilateral,
     onExerciseRestChange,
     pruneIncompleteSets,
     requestWakeLock,
