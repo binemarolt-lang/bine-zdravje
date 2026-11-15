@@ -1977,7 +1977,9 @@
     lastStartWorkoutTime = now;
 
     if (activeWorkout) {
-      if (!confirm('Že imate aktiven trening v teku. Ga želite nadaljevati (V redu) ali zavreči in začeti znova (Prekliči)?')) {
+      // 15.11.2026: prej je "V redu" odprl star osnutek, zato je "Ponovi ta trening" kazal zadnji (nedokončan) trening.
+      const target = prefilled && prefilled.name ? '"' + prefilled.name + '"' + (prefilled.date ? ' (' + prefilled.date + ')' : '') : 'nov trening';
+      if (confirm('Imaš nedokončan trening "' + (activeWorkout.name || 'Trening') + '" (' + (activeWorkout.date || '') + ').\n\nV redu = zavrzi ga in začni ' + target + '\nPrekliči = nadaljuj nedokončanega')) {
         discardActiveWorkout(true);
       } else {
         openActiveModal();
